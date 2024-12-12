@@ -349,7 +349,96 @@ Lưu Ý Khi Sử Dụng Wildcards
 	Ví dụ: 
 		" find /home/user -name "file\*name.txt" " : Tìm tệp có tên chứa dấu sao * như file*name.txt
 		" find /home/user -name "file\?name.txt" " : Tìm tệp có tên chứa dấu chấm hỏi ? như file?name.txt
-		
 
+# Input/Output 
+Linux có 3 loại luồng dữ liệu chính ( "Standard Streams" ):
+
+"I/O Name" 			"Abbreviation" 	"File Descriptor"
+Standard Input 			stdin 				0
+Standard Output	 		stdout 				1
+Standard Error 			stderr 				2
+=> Đây cũng là các File Descriptor Mặc Định
+
+
+	# Chuyển hướng Đầu ra (Output Redirection)
+	
+		+ ">"  Ghi đè đầu ra vào một tệp. Nếu tệp đã tồn tại, nội dung cũ sẽ bị ghi đè.
+		Ví dụ:
+			" echo "Hello, Linux!" > output.txt "   : Tạo hoặc ghi đè nội dung "Hello, Linux!" vào tệp output.txt
+
+		+ ">>" Ghi thêm đầu ra vào cuối tệp mà không ghi đè.
+		Ví dụ:
+			" echo "This is a new line." >> output.txt " : Thêm dòng "This is a new line." vào cuối tệp output.txt
+		
+		+ "2>" Gửi lỗi của lệnh vào một tệp.
+		Ví dụ:
+			" ls nonexistentfile 2> error.log " : Ghi thông báo lỗi vào error.log khi tệp không tồn tại.
+		
+		+ "2>>" Ghi thêm thông báo lỗi vào tệp.
+		Ví dụ:
+			" ls nonexistentfile 2>> error.log " : Thêm thông báo lỗi vào cuối tệp error.log nếu tệp không tồn tại.
+		
+		+ "&>" Ghi cả đầu ra và lỗi vào một tệp. "&" được sử dụng để báo hiệu rằng một trình mô tả tệp ( "File descriptor" ) đang được sử dụng.
+		Ví dụ:
+			" ls /nonexistentpath &> output.log " : Ghi cả thông báo lỗi và đầu ra vào output.log.
+
+		+ ">&" Gửi cả stdout và stderr vào một tệp hoặc thiết bị.
+		Ví dụ:
+			" command > output.txt 2>&1 " : Ghi cả đầu ra và lỗi vào output.txt.
+
+	# Chuyển hướng Đầu vào (Input Redirection)
+	Tương tự như Output
+	Ví dụ:
+		" wc -l < input.txt " : Đếm số dòng trong tệp input.txt bằng cách đọc tệp làm đầu vào.
+
+	# Chuyển hướng Nối Dữ Liệu (Piping)
+	
+	+ "|" (Dấu ống) Dùng để nối đầu ra của lệnh trước làm đầu vào cho lệnh sau.
+	Ví dụ:
+		" cat file.txt | grep "Linux" " : Tìm kiếm từ "Linux" trong tệp file.txt.
+		
+	# Chuyển hướng Vô hiệu hóa (Null Device)
+
+	+ "/dev/null" Dùng để bỏ qua đầu ra hoặc loại bỏ lỗi.
+	Ví dụ:
+		" ls nonexistentfile 2> /dev/null " 	Bỏ qua thông báo lỗi khi tệp không tồn tại.
+		" ls here not-here > /dev/null 2>&1 "   Bỏ qua cả thông báo lỗi và đầu ra khi tệp không tồn tại.
+		" ./script.sh > /dev/null "				Bỏ qua đầu ra nhưng giữ thông báo lỗi
+		" ./script.sh 2> /dev/null "			Bỏ qua thông báo lỗi nhưng giữ đầu ra
+
+# File Descriptor
+File Descriptor (FD) trong Linux là một số nguyên không âm đại diện cho một tệp hoặc tài nguyên được mở
+bởi "một tiến trình". Nó là một cơ chế trừu tượng giúp hệ điều hành và chương trình quản lý tệp, thiết bị 
+đầu vào/đầu ra, hoặc socket mạng mà không cần quan tâm đến cách thức hoạt động nội bộ của thiết bị.
+
+Cách Hoạt Động của File Descriptor
++ Khi một tệp, socket, hoặc thiết bị được mở, hạt nhân (kernel) gán cho nó một số nguyên gọi là File Descriptor.
++ Chương trình sử dụng số nguyên này để tương tác với tài nguyên tương ứng.
++ Khi tệp được đóng, File Descriptor sẽ được giải phóng để sử dụng lại.
+
+Ví dụ:
+	# Mở và Đóng File Descriptor
+	Mở tệp: Khi một chương trình gọi một hàm như open() hoặc fopen(), File Descriptor sẽ được tạo.
+	Đóng tệp: Khi tệp được đóng bằng close(), File Descriptor sẽ bị giải phóng.
+	Ví dụ:
+		#include <fcntl.h>
+		#include <unistd.h>
+
+		int fd = open("file.txt", O_RDONLY);  // Mở tệp chỉ đọc
+		if (fd == -1) 
+		{
+			perror("Error opening file");
+		}
+		close(fd);  // Đóng tệp
+	# Chuyển Hướng File Descriptor trong Shell
+	Ví dụ:
+	" echo "Hello, Linux!" > output.txt "  : stdout (FD=1) chuyển hướng vào tệp
+
+	# Kiểm Tra File Descriptor
+	Kiểm tra các File Descriptor mở của một tiến trình bằng cách xem thư mục "/proc/<PID>/fd/"
+	Ví dụ:
+	" ls -l /proc/$$/fd " : $$ là một biến đặc biệt trong shell, đại diện cho PID của shell hiện tại đang chạy lệnh, bạn chạy lệnh này bạn liệt kê tất cả các File Descriptors của Shell hiện tại
+
+	
 
 
