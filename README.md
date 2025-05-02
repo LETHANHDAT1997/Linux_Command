@@ -70,7 +70,7 @@ Lệnh liệt kê các tệp và thư mục hiện có trong thư mục hiện t
 Note:   ls -l Liệt kê thông tin các tệp
         ls -lr Liệt kê thông tin các tệp theo chiều ngược lại
         ls -a hoặc ls -l -a Liệt kê các file ẩn
-        ls --color hiển thị danh sách các tệp và thư mục với   các màu sắc khác nha
+        ls --color hiển thị danh sách các tệp và thư mục với các màu sắc khác nhau
         ls -R liệt kê tất cả tệp và thư mục con trong thư mục hiện tại
         ls -F giúp bạn nhận biết loại tệp hoặc thư mục
               Các ký hiệu:
@@ -135,7 +135,8 @@ Thông thường để in ra giá trị của chúng ta có thể dùng lệnh "
 PATH là một biến môi trường chứa danh sách đường dẫn đến các thư mục mà hệ thống sẽ tìm kiếm khi một lệnh được gọi hoặc một chương trình được thực thi. Khi bạn chạy một lệnh trong Linux mà không chỉ rõ đường dẫn tuyệt đối (như /bin/ls), hệ thống sẽ tìm kiếm chương trình thực thi của lệnh này trong các thư mục được liệt kê trong biến PATH
 Giả sử bạn chạy lệnh echo $PATH
 Kết quả: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
-Danh sách này cho hệ thống biết rằng khi bạn nhập một lệnh, nó sẽ tìm kiếm lệnh đó theo thứ tự trong các thư mục này. Nếu tìm thấy lệnh trong một thư mục nào đó, nó sẽ thực thi lệnh từ thư mục đó và không tiếp tục tìm trong các thư mục còn lại
+Danh sách này cho hệ thống biết rằng khi bạn nhập một lệnh, nó sẽ tìm kiếm lệnh đó theo thứ tự trong các thư mục này. 
+Nếu tìm thấy lệnh trong một thư mục nào đó, nó sẽ thực thi lệnh từ thư mục đó và không tiếp tục tìm trong các thư mục còn lại
 
 # which [command]
 Cho biết thư mục chứa chương trình để thực hiện lệnh này
@@ -210,6 +211,7 @@ VD: chnmod 777 sales.data <=> chnmod u+rwx, g+rwx, o+rwx sales.data
 "Note" 
 chmod -R u+rwx,g+rwx,o+rwx /home/datlt49/Desktop/02_Github_ENV/DatLT49 
 => thay đổi tất cả các đối tượng trong thư mục nguồn đều có thể rwx
+sudo chown -R new_user:new_group folder/
 
 
 # find item 
