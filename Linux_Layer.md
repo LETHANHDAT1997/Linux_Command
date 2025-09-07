@@ -319,24 +319,34 @@ User Applications Layer là lớp cao nhất trong kiến trúc Linux, bao gồm
 
 ## **`Bảng So Sánh Hệ Thống Tệp Linux và Linux Layer`**
 
+#### **Bảng so sánh**
 - Bảng dưới đây thể hiện mối quan hệ giữa các thư mục chính trong hệ thống tệp Linux (Filesystem) và các lớp (Layers) trong kiến trúc Linux. 
-- ✅ biểu thị rằng thư mục được sử dụng bởi lớp đó, còn ❌ biểu thị không sử dụng.
+- ✅: biểu thị rằng thư mục được sử dụng bởi lớp đó.
+- ⚠️: Có mối liên hệ hoặc được sử dụng trong một số trường hợp đặc biệt, cần xem xét kỹ hơn.
+- ❌: Không sử dụng hoặc không có mối liên hệ trực tiếp.
 
 | Filesystem | Hardware Layer | Kernel Layer | System Libraries Layer    | User Space Layer                   | Shell Layer | User Applications Layer |
 | ---------- | -------------- | ------------ | ------------------------- | ---------------------------------- | ----------- | ----------------------- |
 | `/bin`     | ❌              | ❌            | ❌                         | ✅                                  | ✅           | ✅                       |
 | `/boot`    | ❌              | ✅            | ❌                         | ❌                                  | ❌           | ❌                       |
-| `/dev`     | ❌              | ✅            | ❌                         | ✅ (truy cập device)                | ❌           | ❌                       |
+| `/dev`     | ⚠️              | ✅            | ❌                         | ✅ (truy cập device)                | ❌           | ❌                       |
 | `/etc`     | ❌              | ❌            | ✅ (config cho lib/daemon) | ✅                                  | ✅           | ✅                       |
 | `/home`    | ❌              | ❌            | ❌                         | ✅                                  | ✅           | ✅                       |
-| `/lib`     | ❌              | ❌            | ✅                         | ❌                                  | ❌           | ❌                       |
+| `/lib`     | ❌              | ⚠️            | ✅                         | ❌                                  | ❌           | ❌                       |
 | `/media`   | ❌              | ❌            | ❌                         | ✅ (tự động mount removable drives) | ✅           | ✅                       |
 | `/mnt`     | ❌              | ❌            | ❌                         | ✅ (mount tạm thời)                 | ✅           | ✅                       |
 | `/opt`     | ❌              | ❌            | ❌                         | ❌                                  | ❌           | ✅                       |
 | `/proc`    | ❌              | ✅            | ❌                         | ✅ (đọc thông tin kernel/process)   | ❌           | ❌                       |
-| `/root`    | ❌              | ❌            | ❌                         | ✅                                  | ✅           | ❌                       |
-| `/sbin`    | ❌              | ❌            | ❌                         | ✅                                  | ✅           | (quản trị) ❌            |
+| `/root`    | ❌              | ❌            | ❌                         | ✅                                  | ✅           | ⚠️                       |
+| `/sbin`    | ❌              | ❌            | ❌                         | ✅                                  | ✅           | (quản trị) ⚠️            |
 | `/sys`     | ❌              | ✅            | ❌                         | ✅ (đọc sysfs)                      | ❌           | ❌                       |
 | `/tmp`     | ❌              | ❌            | ❌                         | ✅ (dùng cho mọi tiến trình)        | ✅           | ✅                       |
 | `/usr`     | ❌              | ❌            | ✅ (lib, include)          | ✅ (binary /usr/bin)                | ✅           | ✅                       |
 | `/var`     | ❌              | ❌            | ❌                         | ✅ (log, spool, cache)              | ✅           | ✅                       |
+
+#### Giải thích các phần ⚠️:
+- **/dev (Hardware & Kernel Layer)**: Về mặt khái niệm, /dev là sự trừu tượng hóa của lớp Hardware Layer. Kernel tạo ra các tệp trong /dev để đại diện cho phần cứng vật lý, cho phép User Space Layer tương tác với phần cứng một cách gián tiếp. Vì vậy, mối liên hệ của nó với Hardware Layer là rất mật thiết, dù lớp phần cứng không "trực tiếp" sử dụng thư mục này.
+
+- **/root và /sbin (User Applications Layer)**: Đây không phải là nơi chứa dữ liệu của các ứng dụng người dùng thông thường (như trình duyệt hay bộ office). Tuy nhiên, các công cụ quản trị hệ thống trong ``/sbin`` và các script/công cụ do người dùng root chạy từ ``/root`` cũng là một dạng "ứng dụng". Việc đánh dấu ⚠️ là để phân biệt chúng với các ứng dụng phổ thông, và cách giải thích này có thể chấp nhận được.
+
+- **/lib (Kernel Layer)**: Thường các thư viện chia sẻ (shared libraries) không được dùng bởi Kernel, nhưng thư mục con ``/lib/modules`` lại chứa các module của kernel. Do đó, Kernel Layer có sử dụng một phần quan trọng của cấu trúc thư mục /lib.
