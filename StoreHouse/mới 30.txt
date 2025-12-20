@@ -1,0 +1,23 @@
+class JournalCursorLogger {
+public:
+    void setMaxSize(size_t bytes);
+    void collect();
+
+private:
+    std::string readCursor();
+    void writeCursor(const std::string& cursor);
+    std::string extractLastCursor(const std::string& file);
+
+    void dumpJournal(const std::string& cursor);
+    void appendAndRotate();
+    void rotateLogs();
+
+    size_t getFileSize(const std::string& path);
+
+    size_t maxSizeBytes = 1 * 1024 * 1024;
+    int maxRotateFiles = 5;
+
+    const std::string logPath   = "log";
+    const std::string tempPath  = "temp.log";
+    const std::string statePath = "cursor.state";
+};

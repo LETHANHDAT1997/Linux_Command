@@ -1,0 +1,172 @@
+#include <syslog.h>
+#include <unistd.h>
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <chrono> //thư viện đo thời gian thực hiện các tác vụ.
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <sys/stat.h>
+#include <fstream>
+#include "main.h"
+
+class JournalCursorLogger {
+public:
+    void setMaxSize(size_t bytes) 
+    {
+        maxSizeBytes = bytes;
+    }
+
+    void collect() 
+    {
+        std::string lastCursor = readCursor();
+        dumpJournal(lastCursor);
+
+        std::string newCursor = extractLastCursor(tempPath);
+        if (!newCursor.empty()) 
+        {
+            appendAndRotate();
+            writeCursor(newCursor);
+        }
+
+        ::unlink(tempPath.c_str());
+    }
+
+private:
+    size_t maxSizeBytes = 10 * 1024 * 1024;
+    int maxRotateFiles = 10;
+
+    const std::string logPath   = "log";
+    const std::string tempPath  = "temp.log";
+    const std::string statePath = "cursor.state";
+
+    /* ---------- Cursor handling ---------- */
+
+    std::string readCursor() 
+    {
+        std::ifstream in(statePath);
+        if (!in) 
+        {
+            return "";
+        }
+        std::string cursor;
+        std::getline(in, cursor);
+        return cursor;
+    }
+
+    void writeCursor(const std::string& cursor) 
+    {
+        std::ofstream out(statePath, std::ios::trunc);
+        out << cursor;
+        out.flush();
+        fsync(out.rdbuf()->fd());
+    }
+
+    std::string extractLastCursor(const std::string& file) 
+    {
+        std::ifstream in(file);
+        if (!in) return "";
+
+        std::string line, lastCursor;
+        while (std::getline(in, line)) 
+        {
+            if (line.rfind("-- cursor:", 0) == 0) 
+            {
+                lastCursor = line.substr(10);
+                trim(lastCursor);
+            }
+        }
+        return lastCursor;
+    }
+
+    /* ---------- Journal dump ---------- */
+
+    void dumpJournal(const std::string& cursor) 
+    {
+        std::ostringstream cmd;
+        if (cursor.empty()) 
+        {
+            cmd << "journalctl --show-cursor > " << tempPath;
+        } 
+        else 
+        {
+            cmd << "journalctl --after-cursor '" << cursor
+                << "' --show-cursor > " << tempPath;
+        }
+
+        if (system(cmd.str().c_str()) != 0) 
+        {
+            throw std::runtime_error("journalctl failed");
+        }
+    }
+
+    /* ---------- File append & rotation ---------- */
+
+    void appendAndRotate() 
+    {
+        appendFile(tempPath, logPath);
+
+        if (getFileSize(logPath) >= maxSizeBytes) 
+        {
+            rotateLogs();
+        }
+    }
+
+    void appendFile(const std::string& src, const std::string& dst) 
+    {
+        std::ifstream in(src, std::ios::binary);
+        std::ofstream out(dst, std::ios::binary | std::ios::app);
+
+        if (!in || !out) 
+        {
+            throw std::runtime_error("file open failed");
+        }
+
+        out << in.rdbuf();
+        out.flush();
+        fsync(out.rdbuf()->fd());
+    }
+
+    void rotateLogs() 
+    {
+        for (int i = maxRotateFiles - 1; i >= 1; --i) 
+        {
+            rename( (logPath + std::to_string(i)).c_str(), (logPath + std::to_string(i + 1)).c_str() );
+        }
+        rename(logPath.c_str(), (logPath + "1").c_str());
+    }
+
+    size_t getFileSize(const std::string& path) 
+    {
+        struct stat st{};
+        if (stat(path.c_str(), &st) != 0) return 0;
+        return st.st_size;
+    }
+
+    /* ---------- Utils ---------- */
+
+    static void trim(std::string& s) 
+    {
+        while (!s.empty() && (s.back() == ' ' || s.back() == '\n'))
+        {
+            s.pop_back();
+        }   
+    }
+};
+
+int main() 
+{
+    try 
+    {
+        JournalCursorLogger logger;
+        logger.setMaxSize(5 * 1024 * 1024); // 5MB
+
+        logger.collect();   // gọi định kỳ (timer / cron / service loop)
+
+    } 
+    catch (const std::exception& e) 
+    {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+}
