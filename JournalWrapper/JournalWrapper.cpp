@@ -274,4 +274,6 @@ bool JournalReader::Wait(int timeout_ms)
 /*
 sd_journal_get_catalog
 sd_journal_get_catalog_for_message_id
+sd_journal_seek_realtime_usec
+sd_journal_get_realtime_usec
 */
