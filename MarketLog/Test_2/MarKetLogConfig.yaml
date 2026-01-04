@@ -1,0 +1,16 @@
+VERSION: 1.0
+
+# Cấu hình rotator 
+MAX_LOG_FILES:      15      # Tránh để quá nhiều gây khó khăn trong việc check log nhưng đừng quá ít nếu tần suất ghi log nhiều gây tốn tài nguyên
+MAX_SIZE_LOG_FILE:  32768   # Đơn vị byte, tránh để kích thước file log quá nhỏ, làm việc rotate liên tục
+
+# Cấu hình cho các chức năng ring buffer
+# CAPACITY_DEFAULT_WRITE_LOG_BUFFER:    32768     # Đơn vị byte, tránh để quá nhỏ làm đọc buffer chậm hơn ghi vào buffer, tránh việc để quá lớn làm tốn tài nguyên
+# CAPACITY_DEFAULT_LOG_BUFFER:          1048576   # Đơn vị byte, nên chọn mức dung lượng đảm bảo việc đọc và ghi buffer luôn đủ tải.
+
+# Cấu hình cho tệp và thư mục log
+DEFAULT_DIR_PATH:                     "./stress_logs/"  # Thư mục mặc định để lưu log
+DEFAULT_FILE_NAME_WITHOUT_INDEX:      "log"             # Tên tệp log không tính index
+DEFAULT_EXTENSION:                    ".log"            # Đuôi tệp log
+DEFAULT_TEMP_NAME_FILE:               "temp"            # Tên têp đệm lưu log trước khi log được lưu lại và thực hiện rotator
+
