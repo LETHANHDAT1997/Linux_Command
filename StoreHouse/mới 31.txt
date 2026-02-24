@@ -1,0 +1,33 @@
+cmake_minimum_required(VERSION 3.10)
+project(MarketLog)
+
+# Bật C++17
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+# Thêm file nguồn
+add_executable(MarketLog main.cpp main.h)
+
+# Phải gọi add_executable trước khi sử dụng target_include_directories
+# target_include_directories(MarketLog PRIVATE
+#     ${CMAKE_SOURCE_DIR}
+# )
+
+
+
+
+
+#!/bin/bash
+set -e
+
+# Chạy CMake để cấu hình dự án
+cmake -S . -B build
+
+# Build chương trình
+cmake --build build -j$(nproc)
+
+# Chạy chương trình sau khi biên dịch xong
+./build/MarketLog
+
+# Giữ terminal mở (chỉ nếu muốn debug thủ công)
+read -p "Nhấn Enter để thoát..."
