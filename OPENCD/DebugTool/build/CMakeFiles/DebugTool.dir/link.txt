@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wall -Wextra -pedantic CMakeFiles/DebugTool.dir/src/main.cpp.o CMakeFiles/DebugTool.dir/src/DebugCore.cpp.o CMakeFiles/DebugTool.dir/src/GDBDebugger.cpp.o CMakeFiles/DebugTool.dir/src/GDBMIProtocol.cpp.o CMakeFiles/DebugTool.dir/src/ProcessHandle.cpp.o -o bin/DebugTool  -lpthread 

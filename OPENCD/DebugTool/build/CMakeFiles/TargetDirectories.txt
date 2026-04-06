@@ -1,0 +1,4 @@
+/home/ledat/Documents/Linux_Command/OPENCD/DebugTool/build/CMakeFiles/DebugTool.dir
+/home/ledat/Documents/Linux_Command/OPENCD/DebugTool/build/CMakeFiles/test.dir
+/home/ledat/Documents/Linux_Command/OPENCD/DebugTool/build/CMakeFiles/edit_cache.dir
+/home/ledat/Documents/Linux_Command/OPENCD/DebugTool/build/CMakeFiles/rebuild_cache.dir
