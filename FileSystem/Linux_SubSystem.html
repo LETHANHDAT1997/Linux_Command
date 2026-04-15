@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linux Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111318;
+    --border: #1e2430;
+    --border-bright: #2a3348;
+    --accent: #00e5ff;
+    --accent2: #ff6b35;
+    --accent3: #7fff6b;
+    --text: #c8d4e8;
+    --text-dim: #5a6a80;
+    --text-bright: #eaf0ff;
+    --kernel-bg: #0d1520;
+    --user-bg: #0f1a0f;
+    --syscall-bg: #1a1208;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 40px 20px;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: 
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,229,255,0.03) 39px, rgba(0,229,255,0.03) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(0,229,255,0.02) 39px, rgba(0,229,255,0.02) 40px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+    padding: 32px;
+    border: 1px solid var(--border-bright);
+    background: var(--surface);
+    position: relative;
+    overflow: hidden;
+  }
+
+  header::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: -60px; right: -60px;
+    height: 120px;
+    background: radial-gradient(ellipse, rgba(0,229,255,0.07) 0%, transparent 70%);
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(24px, 5vw, 40px);
+    color: var(--text-bright);
+    letter-spacing: -1px;
+  }
+
+  .logo span { color: var(--accent); }
+
+  .subtitle {
+    margin-top: 8px;
+    color: var(--text-dim);
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  /* ---- ZONE LABELS ---- */
+  .zone-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+
+  .zone-user .zone-label  { color: var(--accent3); border-left: 3px solid var(--accent3); }
+  .zone-syscall .zone-label { color: var(--accent2); border-left: 3px solid var(--accent2); }
+  .zone-kernel .zone-label  { color: var(--accent); border-left: 3px solid var(--accent); }
+
+  /* ---- ZONE WRAPPERS ---- */
+  .zone {
+    border: 1px solid var(--border);
+    margin-bottom: 4px;
+    position: relative;
+  }
+
+  .zone-user  { background: var(--user-bg); border-color: rgba(127,255,107,0.18); }
+  .zone-syscall { background: var(--syscall-bg); border-color: rgba(255,107,53,0.25); }
+  .zone-kernel { background: var(--kernel-bg); border-color: rgba(0,229,255,0.15); }
+
+  .zone-header {
+    padding: 12px 20px 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .zone-desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 10px 20px 14px;
+    line-height: 1.7;
+  }
+
+  /* ---- USER SPACE LAYERS ---- */
+  .user-layers {
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  .user-chip {
+    padding: 10px 12px;
+    border: 1px solid rgba(127,255,107,0.2);
+    background: rgba(127,255,107,0.04);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .user-chip:hover, .user-chip.active {
+    border-color: var(--accent3);
+    background: rgba(127,255,107,0.1);
+    color: var(--accent3);
+  }
+
+  .user-chip .chip-title {
+    font-weight: 700;
+    font-size: 12px;
+    color: inherit;
+  }
+
+  .user-chip .chip-sub {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  /* ---- SYSCALL ARROW ---- */
+  .syscall-zone {
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .arrow-down {
+    font-size: 28px;
+    color: var(--accent2);
+    animation: pulse-arrow 2s ease-in-out infinite;
+    line-height: 1;
+  }
+
+  @keyframes pulse-arrow {
+    0%, 100% { opacity: 1; transform: translateY(0); }
+    50% { opacity: 0.5; transform: translateY(4px); }
+  }
+
+  .syscall-detail {
+    flex: 1;
+  }
+
+  .syscall-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent2);
+  }
+
+  .syscall-subtitle {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  /* ---- KERNEL SUBSYSTEMS ---- */
+  .kernel-grid {
+    padding: 16px 20px 20px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .subsystem {
+    border: 1px solid var(--border-bright);
+    background: rgba(0,0,0,0.3);
+    overflow: hidden;
+    transition: border-color 0.2s;
+    cursor: pointer;
+  }
+
+  .subsystem:hover { border-color: var(--accent); }
+  .subsystem.open  { border-color: var(--accent); }
+
+  .subsystem-header {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    background: rgba(0,229,255,0.03);
+  }
+
+  .subsystem-header:hover { background: rgba(0,229,255,0.07); }
+
+  .sub-icon { font-size: 16px; width: 22px; text-align: center; }
+
+  .sub-name {
+    flex: 1;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-bright);
+    letter-spacing: 0.5px;
+  }
+
+  .sub-toggle {
+    font-size: 12px;
+    color: var(--text-dim);
+    transition: transform 0.25s;
+  }
+
+  .subsystem.open .sub-toggle { transform: rotate(180deg); color: var(--accent); }
+
+  .subsystem-body {
+    display: none;
+    padding: 14px;
+    border-top: 1px solid var(--border);
+    font-size: 11.5px;
+    line-height: 1.75;
+  }
+
+  .subsystem.open .subsystem-body { display: block; }
+
+  .subsystem-body p { color: var(--text); margin-bottom: 10px; }
+
+  .subsystem-body .ex-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--accent2);
+    text-transform: uppercase;
+    margin-top: 14px;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  pre {
+    background: #060a0f;
+    border: 1px solid var(--border-bright);
+    border-left: 3px solid var(--accent);
+    padding: 10px 14px;
+    font-size: 11px;
+    color: #8fbfff;
+    overflow-x: auto;
+    line-height: 1.7;
+    margin-bottom: 8px;
+  }
+
+  pre .cm  { color: var(--text-dim); }
+  pre .kw  { color: var(--accent); }
+  pre .str { color: var(--accent3); }
+  pre .num { color: #ffb347; }
+  pre .fn  { color: #c09bff; }
+
+  .tag-row {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
+  }
+
+  .tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border: 1px solid var(--border-bright);
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.02);
+  }
+
+  /* ---- DETAIL PANEL (user space) ---- */
+  .detail-panel {
+    margin: 0 20px 16px;
+    border: 1px solid rgba(127,255,107,0.25);
+    background: rgba(127,255,107,0.03);
+    padding: 14px 16px;
+    font-size: 11.5px;
+    line-height: 1.75;
+    display: none;
+  }
+
+  .detail-panel.show { display: block; }
+
+  .detail-panel .dp-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent3);
+    margin-bottom: 8px;
+  }
+
+  .detail-panel pre {
+    border-left-color: var(--accent3);
+  }
+
+  /* ---- SYSCALL PANEL ---- */
+  .syscall-examples {
+    padding: 0 20px 16px;
+    display: none;
+  }
+
+  .syscall-examples.show { display: block; }
+
+  .syscall-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+
+  .syscall-table th {
+    text-align: left;
+    padding: 7px 10px;
+    background: rgba(255,107,53,0.1);
+    color: var(--accent2);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border-bright);
+  }
+
+  .syscall-table td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+  }
+
+  .syscall-table tr:hover td { background: rgba(255,107,53,0.05); }
+
+  .sc-name { color: var(--accent2); font-weight: 700; }
+  .sc-num  { color: #ffb347; }
+
+  /* Hover instructions */
+  .hint {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 8px;
+    letter-spacing: 1px;
+  }
+
+  .separator {
+    border: none;
+    border-top: 1px dashed var(--border-bright);
+    margin: 4px 0;
+  }
+
+  @media (max-width: 600px) {
+    .user-layers { grid-template-columns: repeat(2, 1fr); }
+    .kernel-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo"><span>Linux</span> Architecture</div>
+    <div class="subtitle">Interactive Subsystem Reference</div>
+  </header>
+
+  <!-- ═══════════════ USER SPACE ═══════════════ -->
+  <div class="zone zone-user">
+    <div class="zone-header">
+      <div>
+        <div class="zone-label">User Space</div>
+        <div class="zone-desc" style="padding:0">
+          Unprivileged execution ring (Ring 3). Programs here cannot directly access hardware or kernel memory.
+          All hardware/OS interaction must go through the System Call interface.
+        </div>
+      </div>
+    </div>
+    <div class="zone-desc">
+      Everything you interact with — your shell, browser, Python scripts — runs here. The kernel enforces strict
+      isolation: a crash in user space cannot bring down the kernel. Memory is virtual and protected per-process.
+    </div>
+    <div class="user-layers">
+      <div class="user-chip" onclick="showUserDetail('glibc')">
+        <div class="chip-title">glibc</div>
+        <div class="chip-sub">C Standard Library</div>
+      </div>
+      <div class="user-chip" onclick="showUserDetail('shell')">
+        <div class="chip-title">Shell</div>
+        <div class="chip-sub">bash / zsh / fish</div>
+      </div>
+      <div class="user-chip" onclick="showUserDetail('app')">
+        <div class="chip-title">Applications</div>
+        <div class="chip-sub">Python, nginx, vim…</div>
+      </div>
+      <div class="user-chip" onclick="showUserDetail('program')">
+        <div class="chip-title">Programs</div>
+        <div class="chip-sub">Compiled binaries</div>
+      </div>
+    </div>
+    <div class="detail-panel" id="dp-glibc">
+      <div class="dp-title">glibc — GNU C Library</div>
+      <p>glibc is the bridge between user programs and the kernel. When your C program calls <code>printf()</code>
+      or <code>malloc()</code>, it's calling glibc. glibc translates these into the correct system calls, handles
+      buffering, locale, threading (pthreads), and math. Nearly every Linux binary links against it.</p>
+      <span class="ex-label">Example — printf() path through glibc</span>
+      <pre><span class="cm">/* Your program calls: */</span>
+<span class="fn">printf</span>(<span class="str">"Hello, world!\n"</span>);
+
+<span class="cm">/* glibc internally does (simplified): */</span>
+<span class="fn">write</span>(STDOUT_FILENO, buf, len);   <span class="cm">// calls write(2) syscall</span>
+<span class="cm">// → syscall instruction → kernel sys_write()</span></pre>
+      <span class="ex-label">Inspect glibc linkage</span>
+      <pre><span class="kw">ldd</span> /bin/ls            <span class="cm"># show shared libs, glibc is always present</span>
+<span class="kw">strace</span> ls /tmp        <span class="cm"># trace every syscall ls makes via glibc</span></pre>
+    </div>
+    <div class="detail-panel" id="dp-shell">
+      <div class="dp-title">Shell — bash / zsh / fish</div>
+      <p>A shell is a command interpreter running as a regular user-space process. It reads your commands,
+      forks child processes via <code>fork()+execve()</code>, sets up pipes using <code>pipe()</code>,
+      and handles job control via signals. The shell itself uses glibc and issues syscalls just like any program.</p>
+      <span class="ex-label">What happens when you type: ls | grep foo</span>
+      <pre><span class="cm"># Bash does approximately:</span>
+<span class="fn">pipe</span>(fds);          <span class="cm">// syscall: create pipe</span>
+<span class="fn">fork</span>();             <span class="cm">// syscall: clone process for "ls"</span>
+  <span class="fn">dup2</span>(fds[1], 1);  <span class="cm">// redirect ls stdout → pipe write end</span>
+  <span class="fn">execve</span>(<span class="str">"/bin/ls"</span>, ...);
+<span class="fn">fork</span>();             <span class="cm">// clone again for "grep"</span>
+  <span class="fn">dup2</span>(fds[0], 0);  <span class="cm">// redirect grep stdin ← pipe read end</span>
+  <span class="fn">execve</span>(<span class="str">"/bin/grep"</span>, ...);</pre>
+    </div>
+    <div class="detail-panel" id="dp-app">
+      <div class="dp-title">Applications — Python, nginx, browsers…</div>
+      <p>High-level applications sit furthest from the hardware. A Python script calls Python's runtime, which
+      calls glibc, which issues syscalls. nginx uses <code>epoll</code> syscalls for async I/O. Every application
+      is constrained to its virtual address space and cannot access another process's memory directly.</p>
+      <span class="ex-label">Python open() call chain</span>
+      <pre><span class="cm"># Python source:</span>
+f = <span class="fn">open</span>(<span class="str">"/etc/hostname"</span>, <span class="str">"r"</span>)
+
+<span class="cm"># CPython → glibc fopen() → sys_openat() syscall</span>
+<span class="cm"># Kernel checks DAC permissions, returns fd integer</span>
+<span class="kw">strace</span> -e openat python3 -c <span class="str">"open('/etc/hostname')"</span></pre>
+    </div>
+    <div class="detail-panel" id="dp-program">
+      <div class="dp-title">Programs — Compiled Binaries (ELF)</div>
+      <p>Linux executables use the ELF (Executable and Linkable Format). The kernel's <code>execve()</code>
+      handler reads the ELF header, maps segments into virtual memory, sets up the stack, and jumps to the
+      entry point. Dynamically linked programs also invoke the dynamic linker (<code>ld.so</code>) to resolve
+      shared library symbols.</p>
+      <span class="ex-label">Inspect an ELF binary</span>
+      <pre><span class="kw">file</span> /bin/bash          <span class="cm"># "ELF 64-bit LSB pie executable…"</span>
+<span class="kw">readelf</span> -h /bin/bash    <span class="cm"># ELF header: entry point, sections</span>
+<span class="kw">readelf</span> -l /bin/bash    <span class="cm"># Program headers: LOAD, DYNAMIC…</span>
+<span class="kw">objdump</span> -d /bin/ls      <span class="cm"># Disassemble to see actual instructions</span></pre>
+    </div>
+    <p class="hint">↑ click a component to expand details</p>
+  </div>
+
+  <!-- ═══════════════ ARROW / SYSCALL ═══════════════ -->
+  <div class="zone zone-syscall">
+    <div class="zone-header">
+      <div class="zone-label">System Call Interface</div>
+    </div>
+    <div class="syscall-zone">
+      <div class="arrow-down">⬇</div>
+      <div class="syscall-detail">
+        <div class="syscall-title">System Call Interface</div>
+        <div class="syscall-subtitle">The only legal crossing point between User Space and Kernel Space</div>
+      </div>
+      <button onclick="toggleSyscall()" style="
+        font-family: inherit; font-size: 10px; letter-spacing: 2px;
+        background: rgba(255,107,53,0.1); border: 1px solid rgba(255,107,53,0.4);
+        color: var(--accent2); padding: 6px 12px; cursor: pointer; text-transform: uppercase;">
+        SHOW TABLE
+      </button>
+    </div>
+    <div class="zone-desc" style="padding-top:0">
+      User space triggers a context switch into kernel mode via the <code>syscall</code> CPU instruction
+      (x86-64). A number in <code>rax</code> identifies which call (e.g. 0=read, 1=write, 2=open).
+      Arguments go in <code>rdi, rsi, rdx, r10, r8, r9</code>. The kernel validates all pointers before touching
+      user memory. On return, the CPU drops back to Ring 3.
+    </div>
+    <div class="syscall-examples" id="syscall-table">
+      <table class="syscall-table">
+        <tr><th>#</th><th>Name</th><th>What It Does</th><th>C Signature</th></tr>
+        <tr><td class="sc-num">0</td><td class="sc-name">read</td><td>Read bytes from a file descriptor</td><td><code>read(fd, buf, count)</code></td></tr>
+        <tr><td class="sc-num">1</td><td class="sc-name">write</td><td>Write bytes to a file descriptor</td><td><code>write(fd, buf, count)</code></td></tr>
+        <tr><td class="sc-num">2</td><td class="sc-name">open</td><td>Open/create a file, return fd</td><td><code>open(path, flags, mode)</code></td></tr>
+        <tr><td class="sc-num">3</td><td class="sc-name">close</td><td>Release a file descriptor</td><td><code>close(fd)</code></td></tr>
+        <tr><td class="sc-num">9</td><td class="sc-name">mmap</td><td>Map file/anonymous memory into address space</td><td><code>mmap(addr, len, prot, flags, fd, off)</code></td></tr>
+        <tr><td class="sc-num">12</td><td class="sc-name">brk</td><td>Expand/shrink the heap</td><td><code>brk(addr)</code></td></tr>
+        <tr><td class="sc-num">39</td><td class="sc-name">getpid</td><td>Return PID of calling process</td><td><code>getpid()</code></td></tr>
+        <tr><td class="sc-num">56</td><td class="sc-name">clone</td><td>Create new thread or process</td><td><code>clone(flags, stack, …)</code></td></tr>
+        <tr><td class="sc-num">57</td><td class="sc-name">fork</td><td>Duplicate the calling process</td><td><code>fork()</code></td></tr>
+        <tr><td class="sc-num">59</td><td class="sc-name">execve</td><td>Replace process image with new program</td><td><code>execve(path, argv, envp)</code></td></tr>
+        <tr><td class="sc-num">61</td><td class="sc-name">wait4</td><td>Wait for child process to change state</td><td><code>wait4(pid, wstatus, opts, rusage)</code></td></tr>
+        <tr><td class="sc-num">202</td><td class="sc-name">epoll_create</td><td>Create epoll instance for async I/O</td><td><code>epoll_create(size)</code></td></tr>
+        <tr><td class="sc-num">228</td><td class="sc-name">clock_gettime</td><td>Read a POSIX clock</td><td><code>clock_gettime(clkid, tp)</code></td></tr>
+      </table>
+      <pre style="margin:10px 0 0 0"><span class="kw">ausyscall</span> --dump           <span class="cm"># list all syscalls and numbers</span>
+<span class="kw">strace</span> -c <span class="kw">ls</span> /             <span class="cm"># profile syscall counts for a command</span>
+<span class="kw">cat</span> /usr/include/asm/unistd_64.h  <span class="cm"># raw syscall table</span></pre>
+    </div>
+  </div>
+
+  <!-- ═══════════════ KERNEL SPACE ═══════════════ -->
+  <div class="zone zone-kernel">
+    <div class="zone-header">
+      <div>
+        <div class="zone-label">Kernel Space</div>
+        <div class="zone-desc" style="padding:0">
+          Privileged execution (Ring 0). Full hardware access, no memory protection from itself.
+          A bug here can crash or corrupt the entire system. The kernel is not a process — it runs on behalf of processes.
+        </div>
+      </div>
+    </div>
+
+    <div class="kernel-grid">
+
+      <!-- Process Management -->
+      <div class="subsystem" onclick="toggle(this)">
+        <div class="subsystem-header">
+          <span class="sub-icon">⚙️</span>
+          <span class="sub-name">Process Management</span>
+          <span class="sub-toggle">▼</span>
+        </div>
+        <div class="subsystem-body">
+          <p>The kernel tracks every process in a <strong>task_struct</strong> — a C struct containing PID, state
+          (running/sleeping/zombie), open file descriptors, signal handlers, scheduling priority, memory map, and more.
+          The Completely Fair Scheduler (CFS) decides which process runs next on each CPU core using a
+          red-black tree ordered by virtual runtime.</p>
+          <p>Process states: <code>TASK_RUNNING</code> → runnable or running, <code>TASK_INTERRUPTIBLE</code> →
+          sleeping (wakes on signal), <code>TASK_UNINTERRUPTIBLE</code> → sleeping in kernel (disk I/O wait),
+          <code>TASK_ZOMBIE</code> → exited, awaiting parent's wait().</p>
+          <span class="ex-label">Inspect processes</span>
+          <pre><span class="kw">ps</span> aux                   <span class="cm"># snapshot: PID, state, CPU%, MEM%</span>
+<span class="kw">top</span> / <span class="kw">htop</span>               <span class="cm"># live view; press 'f' for fields</span>
+<span class="kw">cat</span> /proc/<span class="num">1</span>/status        <span class="cm"># init's task_struct info in text</span>
+<span class="kw">cat</span> /proc/<span class="num">1</span>/wchan         <span class="cm"># kernel fn where proc is sleeping</span>
+<span class="kw">ls</span> /proc/<span class="num">$$</span>/fd/           <span class="cm"># open file descriptors of current shell</span></pre>
+          <div class="tag-row">
+            <span class="tag">CFS Scheduler</span><span class="tag">task_struct</span>
+            <span class="tag">fork/exec/wait</span><span class="tag">Context Switch</span>
+            <span class="tag">Signals</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Memory Management -->
+      <div class="subsystem" onclick="toggle(this)">
+        <div class="subsystem-header">
+          <span class="sub-icon">🧠</span>
+          <span class="sub-name">Memory Management</span>
+          <span class="sub-toggle">▼</span>
+        </div>
+        <div class="subsystem-body">
+          <p>Each process has its own <strong>virtual address space</strong> (0 to 2⁴⁸ on x86-64). The MMU
+          hardware translates virtual addresses to physical RAM using multi-level page tables. The kernel manages
+          physical pages via the <strong>buddy allocator</strong> (for large blocks) and <strong>slab allocator</strong>
+          (for kernel objects). When physical memory is scarce, the kernel swaps pages to disk using an LRU-based
+          page replacement policy.</p>
+          <p>Copy-on-Write: after <code>fork()</code>, parent and child share the same physical pages marked
+          read-only — a page is only copied when one side writes to it. This makes fork() extremely cheap.</p>
+          <span class="ex-label">Inspect memory</span>
+          <pre><span class="kw">cat</span> /proc/meminfo         <span class="cm"># MemTotal, MemFree, Cached, SwapUsed…</span>
+<span class="kw">cat</span> /proc/<span class="num">$$</span>/maps         <span class="cm"># virtual address layout of this shell</span>
+<span class="kw">cat</span> /proc/<span class="num">$$</span>/smaps        <span class="cm"># per-VMA stats: RSS, PSS, shared…</span>
+<span class="kw">free</span> -h                   <span class="cm"># human-readable memory summary</span>
+<span class="kw">vmstat</span> <span class="num">1</span>                  <span class="cm"># paging activity per second</span></pre>
+          <div class="tag-row">
+            <span class="tag">Virtual Memory</span><span class="tag">Page Tables</span>
+            <span class="tag">Buddy/Slab</span><span class="tag">Copy-on-Write</span>
+            <span class="tag">OOM Killer</span><span class="tag">mmap</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- VFS -->
+      <div class="subsystem" onclick="toggle(this)">
+        <div class="subsystem-header">
+          <span class="sub-icon">📁</span>
+          <span class="sub-name">Virtual File System (VFS)</span>
+          <span class="sub-toggle">▼</span>
+        </div>
+        <div class="subsystem-body">
+          <p>VFS is an abstraction layer that gives every file system (ext4, xfs, tmpfs, procfs, sysfs…) a
+          uniform interface. It defines four key objects: <strong>superblock</strong> (mounted filesystem metadata),
+          <strong>inode</strong> (file metadata: permissions, timestamps, size), <strong>dentry</strong>
+          (directory entry / path component cache), and <strong>file</strong> (open file state for a process).</p>
+          <p><code>open("/etc/passwd")</code> → VFS looks up dentries → reaches inode → dispatches to ext4's
+          <code>read()</code> implementation → returns data. The calling code never knows which filesystem is beneath.</p>
+          <span class="ex-label">Explore the VFS</span>
+          <pre><span class="kw">mount</span>                     <span class="cm"># show mounted filesystems</span>
+<span class="kw">ls</span> /proc/<span class="num">$$</span>/fd/           <span class="cm"># file descriptors → VFS file objects</span>
+<span class="kw">stat</span> /etc/passwd          <span class="cm"># inode number, link count, times</span>
+<span class="kw">df</span> -Th                    <span class="cm"># fstype, usage per superblock</span>
+<span class="kw">cat</span> /proc/filesystems     <span class="cm"># all registered fs types in kernel</span>
+<span class="kw">ls</span> /proc/                 <span class="cm"># procfs: virtual files backed by kernel</span></pre>
+          <div class="tag-row">
+            <span class="tag">inode</span><span class="tag">dentry cache</span>
+            <span class="tag">ext4 / xfs / btrfs</span><span class="tag">procfs</span>
+            <span class="tag">sysfs</span><span class="tag">tmpfs</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Device Drivers -->
+      <div class="subsystem" onclick="toggle(this)">
+        <div class="subsystem-header">
+          <span class="sub-icon">🔌</span>
+          <span class="sub-name">Device Drivers</span>
+          <span class="sub-toggle">▼</span>
+        </div>
+        <div class="subsystem-body">
+          <p>Drivers are kernel code that know how to talk to specific hardware. Linux categorizes devices as
+          <strong>character</strong> (stream of bytes: terminals, serial ports), <strong>block</strong>
+          (random-access chunks: disks, SSDs), or <strong>network</strong> (packet-based: eth0, wlan0).
+          Every device gets a <em>major</em> (driver type) and <em>minor</em> (instance) number.
+          User-space accesses devices through <code>/dev</code> device files.</p>
+          <p>The <strong>udev</strong> daemon watches for hardware events via netlink sockets and automatically
+          creates/removes <code>/dev</code> nodes and loads modules with <code>modprobe</code>.</p>
+          <span class="ex-label">Inspect devices</span>
+          <pre><span class="kw">ls</span> -l /dev/sda /dev/tty0   <span class="cm"># block (b) and char (c) devices</span>
+<span class="kw">cat</span> /proc/devices          <span class="cm"># registered major numbers</span>
+<span class="kw">lsblk</span>                      <span class="cm"># block device tree</span>
+<span class="kw">lspci</span> -k                   <span class="cm"># PCI devices + which driver loaded</span>
+<span class="kw">udevadm</span> monitor            <span class="cm"># watch udev events in real-time</span>
+<span class="kw">dd</span> if=/dev/urandom bs=<span class="num">1</span> count=<span class="num">8</span> | xxd  <span class="cm"># read from char device</span></pre>
+          <div class="tag-row">
+            <span class="tag">char/block/net</span><span class="tag">major:minor</span>
+            <span class="tag">/dev nodes</span><span class="tag">udev</span><span class="tag">IRQ</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Networking Stack -->
+      <div class="subsystem" onclick="toggle(this)">
+        <div class="subsystem-header">
+          <span class="sub-icon">🌐</span>
+          <span class="sub-name">Networking Stack</span>
+          <span class="sub-toggle">▼</span>
+        </div>
+        <div class="subsystem-body">
+          <p>Linux implements a full BSD-compatible socket API on top of a layered networking stack.
+          <strong>Sockets</strong> are the user-space handle; beneath them sit the transport layer
+          (TCP/UDP via <code>net/ipv4/tcp.c</code>), IP layer (routing, NAT), and the NIC driver.
+          <strong>sk_buff</strong> (socket buffer) is the kernel struct that carries a packet through every layer.</p>
+          <p><strong>netfilter</strong> hooks into the packet path for iptables/nftables firewall rules and NAT.
+          <strong>eBPF</strong> programs can be attached at various hooks for ultra-fast packet processing (XDP)
+          without leaving the kernel.</p>
+          <span class="ex-label">Inspect the networking stack</span>
+          <pre><span class="kw">ip</span> addr show              <span class="cm"># interfaces and addresses</span>
+<span class="kw">ss</span> -tunaop               <span class="cm"># socket table (replaces netstat)</span>
+<span class="kw">cat</span> /proc/net/tcp        <span class="cm"># raw kernel TCP socket table</span>
+<span class="kw">ip</span> route show            <span class="cm"># kernel routing table</span>
+<span class="kw">iptables</span> -L -n -v        <span class="cm"># netfilter firewall rules</span>
+<span class="kw">tcpdump</span> -i eth0 -nn      <span class="cm"># capture packets at driver level</span></pre>
+          <div class="tag-row">
+            <span class="tag">sk_buff</span><span class="tag">TCP/UDP/IP</span>
+            <span class="tag">netfilter</span><span class="tag">eBPF / XDP</span>
+            <span class="tag">socket API</span><span class="tag">routing</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- IPC -->
+      <div class="subsystem" onclick="toggle(this)">
+        <div class="subsystem-header">
+          <span class="sub-icon">🔗</span>
+          <span class="sub-name">IPC — Inter-Process Communication</span>
+          <span class="sub-toggle">▼</span>
+        </div>
+        <div class="subsystem-body">
+          <p>Processes are isolated by design, so the kernel provides explicit channels for communication.
+          IPC mechanisms differ in performance, persistence, and synchronization needs:</p>
+          <p><strong>Pipes</strong> — unidirectional byte stream, kernel buffer (~64 KB), only between related processes.
+          <strong>Named pipes (FIFOs)</strong> — same but via filesystem path.
+          <strong>Unix sockets</strong> — full-duplex, datagram or stream, same host only.
+          <strong>Shared memory</strong> — fastest; processes map the same physical pages.
+          <strong>Message queues</strong> — typed, discrete messages, kernel-buffered.
+          <strong>Semaphores</strong> — synchronization primitives for shared resources.
+          <strong>Signals</strong> — asynchronous notifications (lightweight, no data payload).</p>
+          <span class="ex-label">Explore IPC</span>
+          <pre><span class="kw">ipcs</span>                    <span class="cm"># list SysV IPC objects (shm/msg/sem)</span>
+<span class="kw">ls</span> /proc/sysvipc/       <span class="cm"># kernel IPC tables</span>
+<span class="kw">ls</span> /dev/shm/            <span class="cm"># POSIX shared memory objects</span>
+<span class="cm"># Test a pipe:</span>
+<span class="kw">echo</span> <span class="str">"hello"</span> | <span class="kw">cat</span>      <span class="cm"># shell creates pipe, fork, connect</span>
+<span class="cm"># Unix socket in use by dbus:</span>
+<span class="kw">ss</span> -x                   <span class="cm"># list Unix domain sockets</span></pre>
+          <div class="tag-row">
+            <span class="tag">pipe/FIFO</span><span class="tag">Unix socket</span>
+            <span class="tag">shared memory</span><span class="tag">semaphore</span>
+            <span class="tag">signal</span><span class="tag">message queue</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security -->
+      <div class="subsystem" onclick="toggle(this)">
+        <div class="subsystem-header">
+          <span class="sub-icon">🛡️</span>
+          <span class="sub-name">Security (LSM / DAC / MAC)</span>
+          <span class="sub-toggle">▼</span>
+        </div>
+        <div class="subsystem-body">
+          <p><strong>DAC (Discretionary Access Control)</strong> — the classic Unix model: every file has owner UID/GID
+          and rwx permission bits. The kernel checks these on every open/exec.</p>
+          <p><strong>Linux Security Module (LSM)</strong> — a hook framework letting security modules (SELinux,
+          AppArmor, Smack) attach mandatory access control checks to every sensitive kernel operation.
+          SELinux labels every object (file, socket, process) with a security context and enforces a policy database.</p>
+          <p><strong>Capabilities</strong> — traditional root/non-root split replaced by ~40 granular capabilities
+          (e.g. <code>CAP_NET_BIND_SERVICE</code> to bind port &lt;1024, <code>CAP_SYS_PTRACE</code> to debug processes).</p>
+          <p><strong>Namespaces + cgroups</strong> — foundation of containers; namespaces isolate view of pid/net/mount/user,
+          cgroups limit CPU/memory/I/O.</p>
+          <span class="ex-label">Inspect security</span>
+          <pre><span class="kw">ls</span> -l /etc/shadow          <span class="cm"># DAC: only root can read</span>
+<span class="kw">getcap</span> /bin/ping           <span class="cm"># see capability on a file</span>
+<span class="kw">cat</span> /proc/<span class="num">$$</span>/status | <span class="kw">grep</span> Cap  <span class="cm"># hex caps of shell</span>
+<span class="kw">getenforce</span>                 <span class="cm"># SELinux mode: Enforcing/Permissive</span>
+<span class="kw">aa-status</span>                  <span class="cm"># AppArmor profiles loaded</span>
+<span class="kw">unshare</span> --user --pid --fork <span class="kw">bash</span>  <span class="cm"># enter new namespaces</span></pre>
+          <div class="tag-row">
+            <span class="tag">DAC / rwx bits</span><span class="tag">SELinux</span>
+            <span class="tag">AppArmor</span><span class="tag">Capabilities</span>
+            <span class="tag">Namespaces</span><span class="tag">cgroups</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interrupt Handling -->
+      <div class="subsystem" onclick="toggle(this)">
+        <div class="subsystem-header">
+          <span class="sub-icon">⚡</span>
+          <span class="sub-name">Interrupt Handling</span>
+          <span class="sub-toggle">▼</span>
+        </div>
+        <div class="subsystem-body">
+          <p>Hardware devices signal the CPU asynchronously via <strong>IRQ lines</strong>. When a NIC receives
+          a packet or a keyboard key is pressed, the CPU pauses current work, saves registers, and jumps to the
+          registered <strong>Interrupt Service Routine (ISR)</strong> in the kernel.</p>
+          <p>To avoid blocking other interrupts too long, Linux splits interrupt handling into a fast
+          <strong>top half</strong> (runs in IRQ context: saves data, acknowledges device) and a deferred
+          <strong>bottom half</strong> (runs later as a softirq, tasklet, or workqueue: does heavy processing).
+          <strong>Softirqs</strong> handle network Rx/Tx and timer ticks. The timer interrupt at HZ frequency (typically 250 Hz)
+          drives the scheduler tick.</p>
+          <span class="ex-label">Inspect interrupts</span>
+          <pre><span class="kw">cat</span> /proc/interrupts       <span class="cm"># IRQ # → count per CPU → name</span>
+<span class="kw">watch</span> -n1 <span class="kw">cat</span> /proc/interrupts  <span class="cm"># watch counts increment live</span>
+<span class="kw">cat</span> /proc/softirqs        <span class="cm"># softirq counts: NET_RX, TIMER…</span>
+<span class="cm"># Time a tight loop to see timer interrupt cost:</span>
+<span class="kw">cyclictest</span> -l <span class="num">10000</span> -m -n  <span class="cm"># real-time latency tester</span></pre>
+          <div class="tag-row">
+            <span class="tag">ISR / IRQ</span><span class="tag">Top Half</span>
+            <span class="tag">Bottom Half</span><span class="tag">Softirq</span>
+            <span class="tag">Tasklet</span><span class="tag">Workqueue</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Module System -->
+      <div class="subsystem" onclick="toggle(this)">
+        <div class="subsystem-header">
+          <span class="sub-icon">🧩</span>
+          <span class="sub-name">Module System (LKM)</span>
+          <span class="sub-toggle">▼</span>
+        </div>
+        <div class="subsystem-body">
+          <p>Loadable Kernel Modules (LKMs) allow drivers and subsystems to be compiled separately and inserted
+          into the running kernel without a reboot. Modules are ELF <code>.ko</code> files. <code>insmod</code>
+          loads the object, the kernel resolves symbols against the live kernel symbol table, and calls the
+          module's <code>init_module()</code>. <code>rmmod</code> calls <code>cleanup_module()</code> and unlinks it.</p>
+          <p>Modules run in <strong>Ring 0</strong> with full kernel privileges — a buggy module can crash the system.
+          <strong>modprobe</strong> is smarter than insmod: it reads <code>/lib/modules/$(uname -r)/modules.dep</code>
+          to auto-load dependencies. The kernel can auto-load modules on demand using <em>module aliases</em>
+          (e.g. plugging a USB device triggers udev → modprobe with the USB vendor:product alias).</p>
+          <span class="ex-label">Work with modules</span>
+          <pre><span class="kw">lsmod</span>                     <span class="cm"># loaded modules + size + use count</span>
+<span class="kw">modinfo</span> ext4              <span class="cm"># description, params, depends, alias</span>
+<span class="kw">modprobe</span> loop             <span class="cm"># load loop block driver + deps</span>
+<span class="kw">modprobe</span> -r loop          <span class="cm"># unload loop (if not in use)</span>
+<span class="kw">ls</span> /lib/modules/$(uname -r)/  <span class="cm"># all available .ko files</span>
+<span class="kw">dmesg</span> | <span class="kw">grep</span> -i module    <span class="cm"># kernel log: module load/unload events</span></pre>
+          <div class="tag-row">
+            <span class="tag">LKM / .ko</span><span class="tag">insmod/rmmod</span>
+            <span class="tag">modprobe</span><span class="tag">module aliases</span>
+            <span class="tag">symbol table</span><span class="tag">Ring 0</span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /kernel-grid -->
+  </div><!-- /zone-kernel -->
+
+  <div style="text-align:center; padding: 20px; font-size: 11px; color: var(--text-dim); letter-spacing: 1px;">
+    LINUX KERNEL · MONOLITHIC + MODULAR · <span style="color:var(--accent)">click any subsystem to expand</span>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+  function toggle(el) {
+    el.classList.toggle('open');
+  }
+
+  function showUserDetail(id) {
+    document.querySelectorAll('.detail-panel').forEach(p => {
+      if (!p.id.startsWith('syscall')) p.classList.remove('show');
+    });
+    document.querySelectorAll('.user-chip').forEach(c => c.classList.remove('active'));
+    const panel = document.getElementById('dp-' + id);
+    const chip = [...document.querySelectorAll('.user-chip')]
+      .find(c => c.querySelector('.chip-title').textContent.toLowerCase().includes(id));
+    if (panel) panel.classList.toggle('show');
+    if (chip) chip.classList.toggle('active');
+  }
+
+  function toggleSyscall() {
+    const el = document.getElementById('syscall-table');
+    const btn = el.previousElementSibling.querySelector('button');
+    el.classList.toggle('show');
+    btn.textContent = el.classList.contains('show') ? 'HIDE TABLE' : 'SHOW TABLE';
+  }
+</script>
+</body>
+</html>
