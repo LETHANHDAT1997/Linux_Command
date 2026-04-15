@@ -1,0 +1,405 @@
+Sơ đồ bạn đưa ra mô tả **cách Linux kernel quản lý File Descriptor của một process**. Đây là đường đi từ **process → file descriptor → I/O object trong kernel**.
+
+```
+task_struct
+   │
+   └── files_struct
+           │
+           └── fdtable
+                   │
+                   └── struct file *
+```
+
+Ta sẽ đi **từng tầng từ trên xuống dưới**.
+
+---
+
+# 1. `task_struct` – cấu trúc đại diện cho process / thread
+
+Trong Linux kernel, **mỗi process hoặc thread** được biểu diễn bằng:
+
+```
+struct task_struct
+```
+
+Nó chứa gần như toàn bộ thông tin của process:
+
+Ví dụ:
+
+```c
+struct task_struct {
+    pid_t pid;
+    struct files_struct *files;
+    struct mm_struct *mm;
+    struct signal_struct *signal;
+    ...
+};
+```
+
+Ý nghĩa:
+
+| Field  | Mục đích             |
+| ------ | -------------------- |
+| pid    | process ID           |
+| mm     | memory space         |
+| files  | bảng file descriptor |
+| signal | signal handling      |
+
+Điểm quan trọng ở đây là:
+
+```
+task_struct
+    └── files
+```
+
+Tức là **mỗi process có một bảng file descriptor riêng**.
+
+---
+
+# 2. `files_struct` – bảng quản lý file descriptor của process
+
+`files_struct` là **container quản lý tất cả FD của process**.
+
+```
+struct files_struct
+```
+
+Ví dụ:
+
+```c
+struct files_struct {
+    struct fdtable *fdt;
+    spinlock_t file_lock;
+    int next_fd;
+};
+```
+
+Vai trò:
+
+* giữ **bảng file descriptor**
+* quản lý **FD tiếp theo có thể cấp phát**
+* lock để thread-safe
+
+Mối quan hệ:
+
+```
+task_struct
+      │
+      └── files_struct
+```
+
+---
+
+# 3. `fdtable` – bảng ánh xạ FD → struct file
+
+Đây là **bảng thực sự chứa các FD**.
+
+```
+struct fdtable
+```
+
+Ví dụ:
+
+```c
+struct fdtable {
+    struct file **fd;
+    unsigned int max_fds;
+};
+```
+
+`fd` là:
+
+```
+struct file *fd[]
+```
+
+Tức là **mảng con trỏ tới struct file**.
+
+Ví dụ:
+
+```
+fdtable
+
+FD index      struct file *
+-----------------------------
+0             file(stdin)
+1             file(stdout)
+2             file(stderr)
+3             file(socket)
+4             file(/dev/i2c-1)
+```
+
+---
+
+# 4. `struct file` – đại diện cho I/O object đã open
+
+`struct file` là **kernel object đại diện cho một open file instance**.
+
+```
+struct file
+```
+
+Ví dụ:
+
+```c
+struct file {
+    struct inode *f_inode;
+    struct file_operations *f_op;
+    loff_t f_pos;
+    void *private_data;
+};
+```
+
+Ý nghĩa:
+
+| Field        | Mục đích       |
+| ------------ | -------------- |
+| f_inode      | inode của file |
+| f_op         | hàm read/write |
+| f_pos        | file offset    |
+| private_data | driver data    |
+
+---
+
+# 5. Quan hệ tổng thể
+
+Khi một process mở file:
+
+```c
+int fd = open("test.txt", O_RDONLY);
+```
+
+Kernel làm:
+
+### Bước 1 — tạo `struct file`
+
+```
+struct file
+```
+
+đại diện cho file đang open.
+
+---
+
+### Bước 2 — tìm FD trống
+
+Trong:
+
+```
+files_struct → fdtable
+```
+
+Ví dụ:
+
+```
+fd = 3
+```
+
+---
+
+### Bước 3 — gán pointer
+
+```
+fdtable->fd[3] = struct file *
+```
+
+---
+
+# 6. Minh họa bộ nhớ
+
+Ví dụ process có FD table:
+
+```
+task_struct
+     │
+     └── files_struct
+            │
+            └── fdtable
+                    │
+                    ├── fd[0] → struct file (stdin)
+                    ├── fd[1] → struct file (stdout)
+                    ├── fd[2] → struct file (stderr)
+                    └── fd[3] → struct file (/home/a.txt)
+```
+
+---
+
+# 7. Khi gọi `read(fd)`
+
+User code:
+
+```c
+read(3, buf, 100);
+```
+
+Kernel làm:
+
+### Step 1
+
+Lấy process hiện tại
+
+```
+current → task_struct
+```
+
+---
+
+### Step 2
+
+```
+task_struct->files
+```
+
+---
+
+### Step 3
+
+```
+files->fdtable
+```
+
+---
+
+### Step 4
+
+```
+struct file *file = fdtable->fd[3]
+```
+
+---
+
+### Step 5
+
+Kernel gọi:
+
+```
+file->f_op->read(...)
+```
+
+---
+
+# 8. Điểm cực kỳ quan trọng
+
+FD **không phải file**.
+
+FD chỉ là:
+
+```
+index trong fdtable
+```
+
+Ví dụ:
+
+```
+fd = 3
+```
+
+chỉ nghĩa là:
+
+```
+fdtable[3]
+```
+
+---
+
+# 9. Một file có thể có nhiều FD
+
+Ví dụ:
+
+```
+dup(fd)
+```
+
+```
+fdtable
+
+3 → struct file
+4 → struct file
+```
+
+Cả hai trỏ cùng:
+
+```
+struct file
+```
+
+nên:
+
+```
+file offset shared
+```
+
+---
+
+# 10. Nhưng nhiều process vẫn có thể share
+
+Nếu fork:
+
+```
+parent
+   │
+   └── files_struct
+           │
+           └── struct file
+```
+
+```
+child
+   │
+   └── files_struct
+           │
+           └── struct file
+```
+
+Cả hai trỏ cùng object.
+
+---
+
+# 11. Tổng kết toàn bộ stack
+
+Từ process đến hardware:
+
+```
+Process
+  │
+  └── task_struct
+          │
+          └── files_struct
+                  │
+                  └── fdtable
+                          │
+                          └── struct file
+                                  │
+                                  └── inode
+                                          │
+                                          └── filesystem / device
+```
+
+---
+
+# 12. Một câu mô tả cực chuẩn
+
+**File Descriptor chỉ là index.
+`struct file` mới là I/O object thực sự của kernel.**
+
+```
+FD → struct file → inode → filesystem/device
+```
+
+---
+
+Nếu bạn muốn, tôi có thể vẽ tiếp **sơ đồ đầy đủ nhất của Linux I/O stack**:
+
+```
+Process
+FD
+struct file
+dentry
+inode
+superblock
+filesystem driver
+block device
+disk
+```
+
+Hiểu sơ đồ này thì **Linux filesystem và I/O gần như clear hoàn toàn**.
