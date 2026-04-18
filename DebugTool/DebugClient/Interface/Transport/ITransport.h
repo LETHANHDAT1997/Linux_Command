@@ -2,6 +2,7 @@
 #define ITRANSPORT_H
 
 #include <string>
+#include <cstdint>
 
 class ITransport {
 public:

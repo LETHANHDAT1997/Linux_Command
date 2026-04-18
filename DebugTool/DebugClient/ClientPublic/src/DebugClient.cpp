@@ -8,7 +8,11 @@ DebugClient::DebugClient(std::unique_ptr<IProtocol> protocol)
 {
 }
 
-DebugClient::~DebugClient() = default;
+DebugClient::~DebugClient()
+{
+    disconnect();
+    terminate();
+}
 
 bool DebugClient::start(const std::vector<std::string>& argv)
 {
@@ -56,4 +60,15 @@ void DebugClient::halt()
 void DebugClient::step() 
 {
     protocol_->step();
+}
+
+void DebugClient::stop() 
+{
+    protocol_->reset();
+}
+
+void DebugClient::stopProcess() 
+{
+    disconnect();
+    terminate();
 }

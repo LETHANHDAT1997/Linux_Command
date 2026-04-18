@@ -22,7 +22,8 @@ public:
     void run();
     void halt();
     void step();
-
+    void stop();
+    void stopProcess();
 private:
     std::unique_ptr<IProtocol> protocol_;
     int m_stdinFd;

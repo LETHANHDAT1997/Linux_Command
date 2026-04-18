@@ -1,5 +1,6 @@
 #include "GDBProtocol.h"
-
+#include <unistd.h>
+#include <string>
 GDBProtocol::GDBProtocol():
 m_stdinFd(-1),
 m_stdoutFd(-1)

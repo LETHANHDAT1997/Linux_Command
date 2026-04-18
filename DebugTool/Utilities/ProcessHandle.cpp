@@ -6,41 +6,56 @@
 #include <thread>
 #include <chrono>
 
-bool ProcessHandle::isRunning() const {
+bool ProcessHandle::isRunning() const 
+{
     if (pid_ <= 0) return false;
     return ::waitpid(pid_, nullptr, WNOHANG) == 0;
 }
 
-void ProcessHandle::terminate() {
+void ProcessHandle::terminate() 
+{
     if (pid_ <= 0) return;
 
     ::kill(pid_, SIGTERM);
 
     // Poll up to 2 s before escalating to SIGKILL.
-    for (int i = 0; i < 20; ++i) {
+    bool terminated = false;
+    for (int i = 0; i < 20; ++i) 
+    {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         int status = 0;
-        if (::waitpid(pid_, &status, WNOHANG) == pid_) {
+        if (::waitpid(pid_, &status, WNOHANG) == pid_) 
+        {
             pid_ = -1;
-            goto close_pipes;
+            terminated = true;
+            break;
         }
     }
 
-    ::kill(pid_, SIGKILL);
-    ::waitpid(pid_, nullptr, 0);
-    pid_ = -1;
+    if (!terminated) 
+    {
+        ::kill(pid_, SIGKILL);
+        ::waitpid(pid_, nullptr, 0);
+        pid_ = -1;
+    }
 
-close_pipes:
-    auto closefd = [](int& fd) {
-        if (fd >= 0) { ::close(fd); fd = -1; }
-    };
+    auto closefd = [](int& fd) 
+                    {
+                        if (fd >= 0) { ::close(fd); fd = -1; }
+                    };
+
     closefd(stdinPipe_);
     closefd(stdoutPipe_);
     closefd(stderrPipe_);
 }
 
-bool ProcessHandle::spawnProcess(const std::vector<std::string>& argv) {
-    if (argv.empty()) return false;
+bool ProcessHandle::spawnProcess(const std::vector<std::string>& argv) 
+{
+    if (argv.empty())
+    {
+        std::runtime_error("No command provided to spawnProcess");
+        return false;
+    }
 
     int stdinP[2], stdoutP[2], stderrP[2];
 
@@ -51,12 +66,15 @@ bool ProcessHandle::spawnProcess(const std::vector<std::string>& argv) {
     if (::pipe(stderrP) < 0) { closePair(stdinP); closePair(stdoutP); return false; }
 
     pid_t pid = ::fork();
-    if (pid < 0) {
+    if (pid < 0) 
+    {
+        std::runtime_error("Failed to fork process");
         closePair(stdinP); closePair(stdoutP); closePair(stderrP);
         return false;
     }
 
-    if (pid == 0) {
+    if (pid == 0) 
+    {
         // ── Child process ────────────────────────────────────────────────────
         ::dup2(stdinP[0],  STDIN_FILENO);
         ::dup2(stdoutP[1], STDOUT_FILENO);

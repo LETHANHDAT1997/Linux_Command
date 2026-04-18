@@ -2,7 +2,7 @@
 #define IPROTOCOL_H
 
 #include <string>
-
+#include <cstdint>
 class IProtocol 
 {
 public:
