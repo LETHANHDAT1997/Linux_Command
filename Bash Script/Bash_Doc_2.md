@@ -45,6 +45,7 @@ Dưới đây là danh sách chi tiết và đầy đủ nhất toàn bộ các 
 * `$!` : PID của tiến trình chạy ngầm (background) gần nhất.
 * [cite_start]`$RANDOM` : Số ngẫu nhiên[cite: 108, 132].
 * `$SECONDS` : Số giây script đã chạy.
+* `$EUID`    : Kiểm tra quyền thực thi của BASH script, nếu trả về 0 là quyền root/sudo.
 
 ### 7. Cú pháp Mở rộng (Expansion) & Globbing
 * [cite_start]**Parameter:** `${var}`, `${var:-default}`, `${var:=default}`, `${var:+value}`, `${var:?error}`[cite: 109].
@@ -66,6 +67,7 @@ Dưới đây là danh sách chi tiết và đầy đủ nhất toàn bộ các 
 * `set -e` : Thoát ngay khi có lệnh lỗi.
 * `set -u` : Báo lỗi nếu gọi biến chưa khai báo.
 * `set -x` : Chế độ debug (in ra từng lệnh).
+* `set -o` : Trong pipeline (|), fail nếu bất kỳ lệnh nào trong chuỗi lệnh bị fail. VD grep "abc" file.txt | wc -l nếu grep fail thì toàn pipeline fail.
 * [cite_start]`set -euo pipefail` : Best practice kết hợp[cite: 112, 122].
 * [cite_start]`trap` : Lệnh bắt tín hiệu hệ thống (ví dụ bắt tín hiệu `SIGINT`)[cite: 111].
 
