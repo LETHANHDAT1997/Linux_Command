@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STL Container Operations — C++ Reference</title>
+<meta name="description" content="Bảng tra cứu thao tác STL C++ theo từng container: vector, list, deque, set, map, unordered containers, stack/queue.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg-body:#0b0f1a;
+  --bg-card:#12172a;
+  --bg-card-glass:rgba(18,23,42,.72);
+  --bg-table-head:rgba(30,38,66,.85);
+  --bg-row-hover:rgba(99,132,255,.08);
+  --bg-row-stripe:rgba(255,255,255,.015);
+  --bg-code:rgba(99,132,255,.1);
+  --border-main:rgba(99,132,255,.12);
+  --border-subtle:rgba(255,255,255,.06);
+  --border-code:rgba(99,132,255,.2);
+  --text-primary:#e8ecf4;
+  --text-secondary:#8b95b0;
+  --text-tertiary:#505b74;
+  --text-accent:#7c9aff;
+  --accent-gradient:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+  --accent-glow:rgba(102,126,234,.25);
+  --green:#34d399;
+  --blue:#60a5fa;
+  --gray:#4b5563;
+  --red:#f87171;
+  --radius:14px;
+  --radius-sm:8px;
+  --shadow-card:0 4px 32px rgba(0,0,0,.35), 0 0 0 1px rgba(99,132,255,.08);
+  --shadow-glow:0 0 40px rgba(102,126,234,.12);
+  --font-sans:'Inter',system-ui,-apple-system,sans-serif;
+  --font-mono:'JetBrains Mono','Fira Code',monospace;
+}
+
+body{
+  font-family:var(--font-sans);
+  background:var(--bg-body);
+  color:var(--text-primary);
+  min-height:100vh;
+  line-height:1.5;
+}
+
+/* Subtle animated background */
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 20%, rgba(102,126,234,.08) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(118,75,162,.06) 0%, transparent 50%);
+  pointer-events:none;
+  z-index:0;
+}
+
+h1{
+  font-size:clamp(1.4rem,3vw,2rem);
+  font-weight:700;
+  background:var(--accent-gradient);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  letter-spacing:-.02em;
+  margin-bottom:4px;
+}
+
+.subtitle{
+  font-size:13px;
+  color:var(--text-secondary);
+  font-weight:400;
+  margin-bottom:24px;
+}
+
+.wrap{
+  position:relative;
+  z-index:1;
+  max-width:1400px;
+  margin:0 auto;
+  padding:32px 24px;
+}
+
+/* ─── Tab Bar ──────────────────────────── */
+.tab-bar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:20px;
+}
+
+.tab{
+  padding:7px 16px;
+  border-radius:999px;
+  border:1px solid var(--border-main);
+  background:transparent;
+  color:var(--text-secondary);
+  font-family:var(--font-sans);
+  font-size:12.5px;
+  font-weight:500;
+  cursor:pointer;
+  transition:all .25s cubic-bezier(.4,0,.2,1);
+  white-space:nowrap;
+  user-select:none;
+  position:relative;
+  overflow:hidden;
+}
+
+.tab::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:999px;
+  background:var(--accent-gradient);
+  opacity:0;
+  transition:opacity .25s;
+}
+
+.tab:hover{
+  border-color:rgba(102,126,234,.35);
+  color:var(--text-primary);
+  transform:translateY(-1px);
+  box-shadow:0 4px 12px rgba(102,126,234,.15);
+}
+
+.tab.active{
+  border-color:transparent;
+  color:#fff;
+  font-weight:600;
+  box-shadow:0 4px 20px var(--accent-glow);
+}
+
+.tab.active::before{
+  opacity:1;
+}
+
+.tab span{
+  position:relative;
+  z-index:1;
+}
+
+/* ─── Legend ──────────────────────────── */
+.legend{
+  display:flex;
+  flex-wrap:wrap;
+  gap:16px;
+  margin-bottom:20px;
+  padding:12px 18px;
+  background:var(--bg-card-glass);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  border:1px solid var(--border-main);
+  border-radius:var(--radius-sm);
+  font-size:12px;
+  color:var(--text-secondary);
+}
+
+.leg{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.dot{
+  width:9px;
+  height:9px;
+  border-radius:50%;
+  flex-shrink:0;
+  box-shadow:0 0 6px currentColor;
+}
+
+.dot-y{background:var(--green);color:var(--green)}
+.dot-p{background:var(--blue);color:var(--blue)}
+.dot-n{background:var(--gray);color:var(--gray)}
+.dot-x{background:var(--red);color:var(--red)}
+
+/* ─── Table Card ──────────────────────── */
+.table-card{
+  background:var(--bg-card-glass);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border:1px solid var(--border-main);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow-card);
+  overflow:hidden;
+  animation:fadeUp .4s cubic-bezier(.4,0,.2,1);
+}
+
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(12px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+.scroll{
+  overflow-x:auto;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(99,132,255,.25) transparent;
+}
+
+.scroll::-webkit-scrollbar{height:6px}
+.scroll::-webkit-scrollbar-track{background:transparent}
+.scroll::-webkit-scrollbar-thumb{background:rgba(99,132,255,.25);border-radius:3px}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:12.5px;
+}
+
+thead tr{
+  background:var(--bg-table-head);
+}
+
+th{
+  padding:12px 14px;
+  text-align:left;
+  font-weight:600;
+  font-size:11.5px;
+  color:var(--text-accent);
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  border-bottom:1px solid var(--border-main);
+  white-space:nowrap;
+  position:relative;
+}
+
+th:first-child{
+  position:sticky;
+  left:0;
+  background:var(--bg-table-head);
+  z-index:2;
+}
+
+th:not(:last-child)::after{
+  content:'';
+  position:absolute;
+  right:0;
+  top:25%;
+  height:50%;
+  width:1px;
+  background:var(--border-main);
+}
+
+td{
+  padding:10px 14px;
+  border-bottom:1px solid var(--border-subtle);
+  vertical-align:top;
+  transition:background .15s;
+}
+
+td:first-child{
+  position:sticky;
+  left:0;
+  z-index:1;
+  font-size:12px;
+  font-weight:600;
+  color:var(--text-secondary);
+  white-space:nowrap;
+  background:var(--bg-card);
+  min-width:160px;
+}
+
+/* Stripe */
+tbody tr:nth-child(even) td{
+  background:var(--bg-row-stripe);
+}
+tbody tr:nth-child(even) td:first-child{
+  background:rgba(18,23,42,.95);
+}
+
+/* Hover */
+tbody tr{transition:background .15s}
+tbody tr:hover td{
+  background:var(--bg-row-hover);
+}
+tbody tr:hover td:first-child{
+  background:rgba(30,38,66,.9);
+  color:var(--text-primary);
+}
+
+/* ─── Code Chips ──────────────────────── */
+.api{
+  display:inline-block;
+  font-family:var(--font-mono);
+  font-size:10.5px;
+  background:var(--bg-code);
+  border:1px solid var(--border-code);
+  border-radius:5px;
+  padding:2px 7px;
+  margin:2px 2px;
+  color:var(--text-accent);
+  transition:all .15s;
+  line-height:1.6;
+}
+
+.api:hover{
+  background:rgba(99,132,255,.18);
+  border-color:rgba(99,132,255,.4);
+  box-shadow:0 0 8px rgba(99,132,255,.12);
+}
+
+.note{
+  font-size:10.5px;
+  color:var(--text-tertiary);
+  margin-top:3px;
+  font-style:italic;
+}
+
+.na{
+  color:var(--text-tertiary);
+  font-size:11.5px;
+}
+
+/* ─── Section Headers ─────────────────── */
+.section-hdr td{
+  font-weight:600;
+  font-size:12px;
+  color:var(--text-accent);
+  padding:8px 14px;
+  background:rgba(99,132,255,.06)!important;
+  border-top:2px solid var(--border-main);
+  letter-spacing:.02em;
+}
+
+/* ─── Responsive ──────────────────────── */
+@media(max-width:768px){
+  .wrap{padding:16px 12px}
+  .tab{padding:6px 12px;font-size:11.5px}
+  th,td{padding:8px 10px}
+  td:first-child{min-width:120px}
+}
+
+/* ─── Footer ──────────────────────────── */
+.footer-note{
+  margin-top:20px;
+  text-align:center;
+  font-size:11px;
+  color:var(--text-tertiary);
+}
+
+.footer-note a{
+  color:var(--text-accent);
+  text-decoration:none;
+}
+.footer-note a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Bảng thao tác STL C++ theo từng container</h2>
+
+<div class="wrap">
+  <h1>⚡ STL Container Operations</h1>
+  <p class="subtitle">Bảng tra cứu nhanh thao tác C++ STL — theo từng loại container</p>
+
+  <div class="tab-bar" id="tabs"></div>
+
+  <div class="legend">
+    <div class="leg"><div class="dot dot-y"></div>Hỗ trợ đầy đủ</div>
+    <div class="leg"><div class="dot dot-p"></div>Hỗ trợ một phần / O(n)</div>
+    <div class="leg"><div class="dot dot-n"></div>Không áp dụng</div>
+    <div class="leg"><div class="dot dot-x"></div>Không hỗ trợ</div>
+  </div>
+
+  <div class="table-card" id="tableCard">
+    <div class="scroll">
+      <table id="tbl">
+        <thead id="thead"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    C++ STL Reference · Sử dụng <a href="https://en.cppreference.com/" target="_blank">cppreference.com</a> để xem chi tiết
+  </div>
+</div>
+
+<script>
+const cats=[
+  "1. Trạng thái & thông tin","2. Truy cập & đọc","3. Cập nhật nội dung",
+  "4. Thêm phần tử","5. Xóa phần tử","6. Tìm kiếm",
+  "7. Thống kê","8. Biến đổi","9. So sánh & quan hệ",
+  "10. Ràng buộc & lỗi","11. Hiệu năng & an toàn"
+];
+const cols=["vector","list","deque","set/multiset","map/multimap","unordered_set/map","stack/queue/priority_queue"];
+const colShort=["vector","list","deque","set","map","unord.","stack/q"];
+function api(...codes){return codes.map(c=>`<span class="api">${c}</span>`).join('')}
+function note(t){return `<div class="note">${t}</div>`}
+const NA='<span class="na">—</span>';
+
+const sections={
+  "1. Trạng thái & thông tin":[
+    ["Khởi tạo / create",
+      api("vector<T> v","vector<T> v(n,val)","vector<T> v{1,2,3}"),
+      api("list<T> l","list<T> l{1,2}"),
+      api("deque<T> d","deque<T> d(n,val)"),
+      api("set<T> s","set<T> s{1,2,3}"),
+      api("map<K,V> m","map<K,V> m{{k,v}}"),
+      api("unordered_set<T> us","unordered_map<K,V> um"),
+      api("stack<T> st","queue<T> q","priority_queue<T> pq"),
+    ],
+    ["Hủy / reset / clear",
+      api("v.clear()","v = vector<T>()"),
+      api("l.clear()"),
+      api("d.clear()"),
+      api("s.clear()"),
+      api("m.clear()"),
+      api("us.clear()","um.clear()"),
+      `${api("st = stack<T>()")}${note("không có clear()")}`,
+    ],
+    ["isEmpty",
+      api("v.empty()"),api("l.empty()"),api("d.empty()"),api("s.empty()"),api("m.empty()"),api("us.empty()"),api("st.empty()","q.empty()","pq.empty()"),
+    ],
+    ["Kích thước / size",
+      `${api("v.size()","v.capacity()")}`,
+      api("l.size()"),api("d.size()"),api("s.size()"),api("m.size()"),api("us.size()","us.bucket_count()"),api("st.size()","q.size()","pq.size()"),
+    ],
+    ["Kiểm tra hợp lệ / null",
+      NA,NA,NA,NA,`${api("m.count(k)","m.contains(k)")}`,`${api("um.count(k)","um.contains(k)")}`,NA,
+    ],
+  ],
+  "2. Truy cập & đọc":[
+    ["Đọc giá trị (get/read)",
+      `${api("v[i]","v.at(i)")}${note("O(1)")}`,
+      `${api("l.front()","l.back()")}${note("random access O(n)")}`,
+      `${api("d[i]","d.at(i)")}${note("O(1)")}`,
+      `${api("*it","*s.begin()")}${note("sorted")}`,
+      `${api("m[k]","m.at(k)")}${note("m[k] tạo nếu không có")}`,
+      `${api("um[k]","um.at(k)")}`,
+      `${api("st.top()","q.front()","pq.top()")}${note("chỉ đọc đỉnh")}`,
+    ],
+    ["Truy cập đầu / cuối",
+      api("v.front()","v.back()"),
+      api("l.front()","l.back()"),
+      api("d.front()","d.back()"),
+      `${api("*s.begin()","*s.rbegin()")}`,
+      `${api("m.begin()->first",".second")}`,
+      `${api("us.begin()")}${note("không có thứ tự")}`,
+      `${api("st.top()","q.front()","pq.top()")}`,
+    ],
+    ["Iterator / duyệt",
+      api("v.begin()","v.end()","v.rbegin()"),
+      api("l.begin()","l.end()","l.rbegin()"),
+      api("d.begin()","d.end()"),
+      api("s.begin()","s.end()","s.rbegin()"),
+      api("m.begin()","m.end()"),
+      api("us.begin()","us.end()"),
+      `<span class="na">— không có iterator</span>`,
+    ],
+  ],
+  "3. Cập nhật nội dung":[
+    ["Gán / overwrite",
+      api("v[i]=x","v.at(i)=x"),
+      `<span class="na">qua iterator: </span>${api("*it=x")}`,
+      api("d[i]=x"),
+      `${api("s.erase(old)","s.insert(new)")}${note("set bất biến tại chỗ")}`,
+      api("m[k]=v","m.insert_or_assign(k,v)"),
+      api("um[k]=v","um.insert_or_assign(k,v)"),
+      `<span class="na">— không hỗ trợ</span>`,
+    ],
+    ["Sao chép clone",
+      api("vector<T> v2=v1","v2.assign(v1.begin(),v1.end())"),
+      api("list<T> l2=l1"),
+      api("deque<T> d2=d1"),
+      api("set<T> s2=s1"),
+      api("map<K,V> m2=m1"),
+      api("auto um2=um1"),
+      NA,
+    ],
+    ["Hoán đổi swap",
+      `${api("v1.swap(v2)","swap(v1,v2)")}${note("O(1)")}`,
+      api("l1.swap(l2)"),api("d1.swap(d2)"),api("s1.swap(s2)"),api("m1.swap(m2)"),api("um1.swap(um2)"),api("st1.swap(st2)"),
+    ],
+  ],
+  "4. Thêm phần tử":[
+    ["Thêm cuối (append)",
+      `${api("v.push_back(x)","v.emplace_back(x)")}${note("amortized O(1)")}`,
+      api("l.push_back(x)","l.emplace_back(x)"),
+      api("d.push_back(x)","d.emplace_back(x)"),
+      `${api("s.insert(x)","s.emplace(x)")}${note("tự sắp xếp")}`,
+      api("m.insert({k,v})","m.emplace(k,v)","m.try_emplace(k,v)"),
+      api("us.insert(x)","um.insert({k,v})","um.emplace(k,v)"),
+      api("st.push(x)","q.push(x)","pq.push(x)"),
+    ],
+    ["Thêm đầu",
+      `<span class="na">— O(n) nếu dùng </span>${api("insert(begin(),...)")}`,
+      api("l.push_front(x)","l.emplace_front(x)"),
+      api("d.push_front(x)","d.emplace_front(x)"),
+      `<span class="na">— tự sắp theo giá trị</span>`,
+      `<span class="na">— tự sắp theo key</span>`,
+      `<span class="na">— không có thứ tự</span>`,
+      `${api("q.push(x)")}${note("queue: thêm cuối, lấy đầu")}`,
+    ],
+    ["Thêm tại vị trí",
+      `${api("v.insert(it,x)","v.emplace(it,x)")}${note("O(n)")}`,
+      `${api("l.insert(it,x)")}${note("O(1) sau khi có it")}`,
+      api("d.insert(it,x)"),
+      `<span class="na">— vị trí do container quyết định</span>`,
+      `<span class="na">— vị trí do container quyết định</span>`,
+      `<span class="na">— vị trí ngẫu nhiên</span>`,
+      `<span class="na">— không hỗ trợ</span>`,
+    ],
+    ["Thêm nhiều (bulk)",
+      api("v.insert(it,first,last)","v.assign(n,val)"),
+      api("l.insert(it,first,last)"),
+      api("d.insert(it,first,last)"),
+      api("s.insert(first,last)"),
+      api("m.insert(first,last)"),
+      api("us.insert(first,last)"),
+      `<span class="na">— lặp push()</span>`,
+    ],
+  ],
+  "5. Xóa phần tử":[
+    ["Xóa cuối",
+      api("v.pop_back()"),api("l.pop_back()"),api("d.pop_back()"),
+      NA,NA,NA,
+      api("st.pop()","q.pop()","pq.pop()"),
+    ],
+    ["Xóa đầu",
+      `<span class="na">O(n): </span>${api("erase(begin())")}`,
+      api("l.pop_front()"),api("d.pop_front()"),NA,NA,NA,api("q.pop()"),
+    ],
+    ["Xóa tại vị trí / iterator",
+      `${api("v.erase(it)","v.erase(it1,it2)")}${note("O(n)")}`,
+      `${api("l.erase(it)")}${note("O(1)")}`,
+      api("d.erase(it)"),
+      api("s.erase(it)","s.erase(val)"),
+      api("m.erase(it)","m.erase(key)"),
+      api("us.erase(it)","us.erase(val)"),
+      `<span class="na">— không hỗ trợ</span>`,
+    ],
+    ["Xóa theo điều kiện",
+      `${api("erase_if(v,pred)")}${note("C++20, O(n)")}`,
+      `${api("l.remove(val)","l.remove_if(pred)")}${note("O(n)")}`,
+      api("erase_if(d,pred)"),
+      `${api("erase_if(s,pred)")}`,
+      `${api("erase_if(m,pred)")}`,
+      api("erase_if(us,pred)"),
+      `<span class="na">— không hỗ trợ</span>`,
+    ],
+    ["Xóa tất cả",
+      api("v.clear()"),api("l.clear()"),api("d.clear()"),api("s.clear()"),api("m.clear()"),api("us.clear()"),`${api("st=stack<T>()")}${note("reset toàn bộ")}`,
+    ],
+  ],
+  "6. Tìm kiếm":[
+    ["Tìm / kiểm tra tồn tại",
+      `${api("find(v.begin(),v.end(),x)")}${note("O(n) — dùng <algorithm>")}`,
+      `${api("find(l.begin(),l.end(),x)")}${note("O(n)")}`,
+      api("find(d.begin(),d.end(),x)"),
+      `${api("s.find(x)","s.count(x)","s.contains(x)")}${note("O(log n)")}`,
+      `${api("m.find(k)","m.count(k)","m.contains(k)")}${note("O(log n)")}`,
+      `${api("us.find(x)","us.count(x)","us.contains(x)")}${note("O(1) avg")}`,
+      `<span class="na">— không hỗ trợ</span>`,
+    ],
+    ["Tìm vị trí (indexOf)",
+      `${api("distance(v.begin(), find(...))")}${note("O(n)")}`,
+      api("distance(l.begin(), find(...))"),
+      api("distance(d.begin(), find(...))"),
+      `${api("s.lower_bound(x)","s.upper_bound(x)")}${note("trả iterator")}`,
+      `${api("m.lower_bound(k)","m.upper_bound(k)")}`,
+      `<span class="na">— không có thứ tự</span>`,
+      `<span class="na">— không hỗ trợ</span>`,
+    ],
+    ["findFirst / findAll theo điều kiện",
+      `${api("find_if(v.begin(),v.end(),pred)")}`,
+      api("find_if(l.begin(),l.end(),pred)"),
+      api("find_if(d.begin(),d.end(),pred)"),
+      `<span class="na">qua iterator + điều kiện</span>`,
+      `<span class="na">qua iterator + điều kiện</span>`,
+      `<span class="na">qua iterator + điều kiện</span>`,
+      `<span class="na">— không hỗ trợ</span>`,
+    ],
+  ],
+  "7. Thống kê & đo lường":[
+    ["min / max",
+      api("min_element(v.begin(),v.end())","max_element(...)"),
+      api("min_element(l.begin(),l.end())"),
+      api("min_element(d.begin(),d.end())"),
+      `${api("*s.begin()","*s.rbegin()")}${note("min/max tức thì")}`,
+      `${api("m.begin()->first","m.rbegin()->first")}`,
+      `${api("min_element(us.begin(),us.end())")}`,
+      `${api("pq.top()")}${note("priority_queue: max/min")}`,
+    ],
+    ["sum / count",
+      api("accumulate(v.begin(),v.end(),0)","count(v.begin(),v.end(),x)"),
+      api("accumulate(l.begin(),l.end(),0)"),
+      api("accumulate(d.begin(),d.end(),0)"),
+      api("s.size()","s.count(x)"),
+      api("m.size()","m.count(k)"),
+      api("us.size()","us.count(x)"),
+      api("st.size()"),
+    ],
+    ["countWhere",
+      api("count_if(v.begin(),v.end(),pred)"),
+      api("count_if(l.begin(),l.end(),pred)"),
+      api("count_if(d.begin(),d.end(),pred)"),
+      `<span class="na">qua iterator</span>`,`<span class="na">qua iterator</span>`,`<span class="na">qua iterator</span>`,`<span class="na">—</span>`,
+    ],
+  ],
+  "8. Biến đổi":[
+    ["Lọc (filter)",
+      `${api("copy_if(v.begin(),v.end(),out,pred)")}${note("C++20: views::filter")}`,
+      api("remove_if + l.erase(...)"),
+      api("copy_if(d.begin(),d.end(),out,pred)"),
+      api("erase_if(s,pred)"),api("erase_if(m,pred)"),api("erase_if(us,pred)"),
+      `<span class="na">—</span>`,
+    ],
+    ["Ánh xạ (map/transform)",
+      `${api("transform(v.begin(),v.end(),out,fn)")}${note("C++20: views::transform")}`,
+      api("transform(l.begin(),l.end(),out,fn)"),
+      api("transform(d.begin(),d.end(),out,fn)"),
+      `<span class="na">qua iterator</span>`,`<span class="na">qua iterator</span>`,`<span class="na">qua iterator</span>`,`<span class="na">—</span>`,
+    ],
+    ["Giảm / accumulate (reduce)",
+      api("accumulate(v.begin(),v.end(),init,fn)","reduce(par,...)"),
+      api("accumulate(l.begin(),l.end(),init,fn)"),
+      api("accumulate(d.begin(),d.end(),init,fn)"),
+      `<span class="na">qua iterator</span>`,`<span class="na">qua iterator</span>`,`<span class="na">qua iterator</span>`,`<span class="na">—</span>`,
+    ],
+    ["Sắp xếp (sort)",
+      `${api("sort(v.begin(),v.end())","stable_sort(...)","partial_sort(…)")}${note("O(n log n)")}`,
+      `${api("l.sort()","l.sort(cmp)")}${note("O(n log n)")}`,
+      `${api("sort(d.begin(),d.end())")}`,
+      `<span class="na">— luôn sorted (BST)</span>`,
+      `<span class="na">— luôn sorted by key</span>`,
+      `<span class="na">— không có thứ tự</span>`,
+      `<span class="na">— priority_queue tự quản</span>`,
+    ],
+    ["Đảo ngược (reverse)",
+      api("reverse(v.begin(),v.end())"),
+      api("l.reverse()"),
+      api("reverse(d.begin(),d.end())"),
+      `<span class="na">— dùng rbegin/rend</span>`,
+      `<span class="na">— dùng rbegin/rend</span>`,
+      `<span class="na">—</span>`,
+      `<span class="na">—</span>`,
+    ],
+    ["Loại trùng (deduplicate)",
+      `${api("unique(v.begin(),v.end())")}${note("cần sort trước")}`,
+      `${api("l.unique()")}${note("cần sort trước")}`,
+      api("unique(d.begin(),d.end())"),
+      `<span class="na">— multiset.unique(): không có; set tự unique</span>`,
+      `<span class="na">— map tự unique theo key</span>`,
+      `<span class="na">— unordered_set tự unique</span>`,
+      `<span class="na">—</span>`,
+    ],
+    ["Gộp / tách (merge, split)",
+      `${api("merge(a.begin(),a.end(),b.begin(),...,out)")}`,
+      `${api("l1.merge(l2)")}${note("O(n+m)")}`,
+      api("merge(...)"),
+      `${api("s1.merge(s2)")}${note("C++17")}`,
+      `${api("m1.merge(m2)")}${note("C++17")}`,
+      `${api("us1.merge(us2)")}${note("C++17")}`,
+      `<span class="na">—</span>`,
+    ],
+    ["Serialize / convert",
+      `${api("vector<T>(arr,arr+n)","string(v.begin(),v.end())")}`,
+      api("vector<T>(l.begin(),l.end())"),
+      api("vector<T>(d.begin(),d.end())"),
+      api("vector<T>(s.begin(),s.end())"),
+      `<span class="na">qua vòng lặp</span>`,
+      api("vector<T>(us.begin(),us.end())"),
+      `<span class="na">—</span>`,
+    ],
+  ],
+  "9. So sánh & quan hệ":[
+    ["So sánh bằng (equals)",
+      api("v1==v2","v1!=v2"),api("l1==l2"),api("d1==d2"),api("s1==s2"),api("m1==m2"),api("us1==us2"),api("st1==st2"),
+    ],
+    ["So sánh thứ tự (compare)",
+      api("v1<v2","v1>v2","v1<=>v2"),api("l1<l2"),api("d1<d2"),api("s1<s2"),api("m1<m2"),`<span class="na">— không định nghĩa</span>`,`<span class="na">—</span>`,
+    ],
+    ["Giao / hiệu / hợp (set ops)",
+      `${api("set_intersection(...)","set_union(...)","set_difference(...)")}${note("dùng với sorted range")}`,
+      api("set_intersection(l.begin(),...)")+note("cần sort"),
+      api("set_intersection(d.begin(),...)")+note("cần sort"),
+      `${api("set_intersection(s1.begin(),...)")}${note("iterator trực tiếp")}`,
+      `<span class="na">qua key so sánh thủ công</span>`,
+      `<span class="na">qua vòng lặp</span>`,
+      `<span class="na">—</span>`,
+    ],
+  ],
+  "10. Ràng buộc & lỗi":[
+    ["Kiểm tra range / at()",
+      `${api("v.at(i)")}${note("ném std::out_of_range")}`,
+      `${api("l.front()")}${note("UB nếu empty")}`,
+      api("d.at(i)"),
+      `${api("s.find(x)")}${note("trả end() nếu không có")}`,
+      `${api("m.at(k)")}${note("ném nếu k không có; m[k] tạo mới")}`,
+      api("um.at(k)"),
+      `${api("st.top()")}${note("UB nếu empty")}`,
+    ],
+    ["Overflow / reserve",
+      `${api("v.reserve(n)","v.shrink_to_fit()")}`,
+      `<span class="na">— linked list, không reserve</span>`,
+      api("d.shrink_to_fit()"),
+      `${api("s.max_size()")}`,
+      `${api("m.max_size()")}`,
+      `${api("us.reserve(n)","us.max_load_factor(f)")}`,
+      `<span class="na">—</span>`,
+    ],
+  ],
+  "11. Hiệu năng & an toàn":[
+    ["Độ phức tạp chính",
+      `<span class="note">access O(1) · insert/del cuối O(1) amort · insert giữa O(n)</span>`,
+      `<span class="note">access O(n) · insert/del O(1) khi có it · find O(n)</span>`,
+      `<span class="note">access O(1) · push/pop 2 đầu O(1) · insert giữa O(n)</span>`,
+      `<span class="note">insert/erase/find O(log n) · in-order duyệt O(n)</span>`,
+      `<span class="note">insert/erase/find O(log n)</span>`,
+      `<span class="note">insert/erase/find O(1) avg · O(n) worst</span>`,
+      `<span class="note">push/pop O(1) · pq: O(log n)</span>`,
+    ],
+    ["Thread-safety",
+      `<span class="note">Không: dùng mutex hoặc std::shared_mutex (C++17) để bảo vệ</span>`,
+      `<span class="note">Không — cần lock</span>`,
+      `<span class="note">Không — cần lock</span>`,
+      `<span class="note">Không — cần lock</span>`,
+      `<span class="note">Không — cần lock</span>`,
+      `<span class="note">Không — cần lock; rehash không an toàn</span>`,
+      `<span class="note">Không — cần lock</span>`,
+    ],
+    ["Bất biến (immutable)",
+      `${api("const vector<T>&")}${note("const ref ngăn ghi")}`,
+      api("const list<T>&"),api("const deque<T>&"),
+      `${api("const set<T>&")}${note("phần tử set luôn const")}`,
+      `${api("const map<K,V>&")}${note("key luôn const")}`,
+      api("const unordered_map<K,V>&"),
+      api("const stack<T>&"),
+    ],
+  ],
+};
+
+const tabCats=[...cats];
+let active=0;
+const tabBar=document.getElementById('tabs');
+tabCats.forEach((c,i)=>{
+  const b=document.createElement('button');
+  b.className='tab'+(i===0?' active':'');
+  b.innerHTML=`<span>${c}</span>`;
+  b.onclick=()=>{
+    active=i;
+    render();
+    document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',j===i));
+    // Re-trigger animation
+    const card=document.getElementById('tableCard');
+    card.style.animation='none';
+    card.offsetHeight; // force reflow
+    card.style.animation='fadeUp .4s cubic-bezier(.4,0,.2,1)';
+  };
+  tabBar.appendChild(b);
+});
+
+function render(){
+  const cat=tabCats[active];
+  const rows=sections[cat]||[];
+  const thead=document.getElementById('thead');
+  const tbody=document.getElementById('tbody');
+  thead.innerHTML=`<tr><th>Thao tác</th>${cols.map((c,i)=>`<th title="${cols[i]}">${colShort[i]}</th>`).join('')}</tr>`;
+  tbody.innerHTML=rows.map(r=>{
+    const [label,...cells]=r;
+    return `<tr><td>${label}</td>${cells.map(c=>`<td>${c}</td>`).join('')}</tr>`;
+  }).join('');
+}
+render();
+</script>
+</body>
+</html>
