@@ -1299,6 +1299,17 @@ gcc -o spawn_demo spawn_demo.c
 
 ## 9. Zombie & Orphan Process
 
+### Tại sao Parent cần gọi waitpid()?
+
+Việc Parent gọi `waitpid()` không chỉ để "chặn" luồng chạy, mà nó giải quyết 3 mục đích cốt lõi trong kiến trúc Linux:
+
+1. **Để dọn rác (Tránh thảm họa Zombie Process) — Quan trọng nhất:**
+   Khi child thoát (`exit`), kernel giải phóng RAM nhưng vẫn giữ lại một "vỏ rỗng" (Process Control Block) chứa exit code và PID. Vỏ rỗng này chờ Parent tới lấy. `waitpid()` chính là hành động "đến lấy kết quả và ký giấy khai tử". Nếu không gọi `waitpid()`, vỏ rỗng này biến thành Zombie. Quá nhiều Zombie sẽ làm cạn kiệt số lượng PID của hệ thống.
+2. **Để lấy kết quả chạy của Child (Exit Status):**
+   Parent cần biết child chạy thành công hay thất bại (ví dụ: lệnh `gcc` build code có lỗi không). Dữ liệu này được kernel nhét vào biến `status` của hàm `waitpid`.
+3. **Để đồng bộ hóa luồng (Synchronization):**
+   Giống như Terminal (`bash`), khi bạn gõ lệnh `ls`, Terminal sinh ra child chạy `ls` và phải gọi `waitpid()` để chờ `ls` in xong kết quả, sau đó mới in lại dấu nhắc lệnh `~$` cho bạn nhập tiếp.
+
 ### Zombie Process
 
 Khi child **đã thoát** nhưng parent **chưa gọi `wait()`**, child trở thành **zombie**.
