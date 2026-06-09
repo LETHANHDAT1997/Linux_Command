@@ -1,0 +1,2068 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IPC — Unix Domain Socket</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;color:#1a1a1a;background:#f5f5f0;font-size:14px;line-height:1.7}
+.container{max-width:860px;margin:0 auto;padding:2rem 1.5rem}
+h1{font-size:22px;font-weight:500;margin-bottom:4px}
+.sub{font-size:13px;color:#666;margin-bottom:1.5rem}
+
+.nav-bar{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid #ddd;margin-bottom:0;padding-bottom:0}
+.nav-btn{padding:8px 14px;font-size:13px;cursor:pointer;border-radius:6px 6px 0 0;border:1px solid transparent;color:#666;background:transparent;transition:all .15s;margin-bottom:-1px;white-space:nowrap}
+.nav-btn:hover{color:#1a1a1a;background:#eee}
+.nav-btn.active{color:#1a1a1a;font-weight:500;background:#fff;border-color:#ddd;border-bottom-color:#fff}
+.page{display:none;padding:1.5rem 0}.page.active{display:block}
+
+.chapter-title{font-size:18px;font-weight:500;margin-bottom:4px}
+.chapter-sub{font-size:13px;color:#666;margin-bottom:1.25rem}
+.section-label{font-size:11px;font-weight:500;letter-spacing:.06em;color:#888;text-transform:uppercase;margin:1.5rem 0 .6rem}
+
+.card{background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:1.25rem;margin-bottom:1rem}
+.card-title{font-size:15px;font-weight:500;margin-bottom:.5rem;display:flex;align-items:center;gap:8px}
+.card-body{font-size:13px;color:#555;line-height:1.7}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:600px){.grid2{grid-template-columns:1fr}}
+
+.code-block{background:#1e1e2e;border-radius:8px;padding:.875rem 1rem;margin:.6rem 0;overflow-x:auto}
+.code-block pre{font-family:'Courier New',monospace;font-size:12px;line-height:1.65;color:#cdd6f4;white-space:pre}
+.code-label{font-family:'Courier New',monospace;font-size:11px;color:#888;margin-bottom:.4rem}
+
+.api-box{border:1px solid #e0e0e0;border-radius:8px;margin:.75rem 0;overflow:hidden}
+.api-sig{font-family:'Courier New',monospace;font-size:12.5px;font-weight:500;padding:.75rem 1rem;background:#f8f8f8;border-bottom:1px solid #e0e0e0;color:#1a1a1a;white-space:pre}
+.api-param-row{display:grid;grid-template-columns:150px 1fr;border-bottom:1px solid #e0e0e0}
+.api-param-row:last-child{border-bottom:none}
+.api-param-name{font-family:'Courier New',monospace;font-size:12px;padding:.55rem 1rem;background:#f8f8f8;color:#185FA5;border-right:1px solid #e0e0e0}
+.api-param-desc{font-size:12px;padding:.55rem 1rem;color:#555;line-height:1.55}
+.api-return{font-size:12px;padding:.6rem 1rem;background:#f8f8f8;border-top:1px solid #e0e0e0;color:#666}
+.api-return span{font-family:'Courier New',monospace;color:#1a1a1a}
+
+.warn-box{background:#fff8e6;border:1px solid #e6a817;border-radius:8px;padding:.75rem 1rem;font-size:12.5px;color:#7a4f00;margin:.75rem 0;line-height:1.55}
+.info-box{background:#e8f3fd;border:1px solid #5b9bd5;border-radius:8px;padding:.75rem 1rem;font-size:12.5px;color:#1a4a7a;margin:.75rem 0;line-height:1.55}
+.emb-box{background:#e8f7ef;border:1px solid #2e9e6a;border-radius:8px;padding:.75rem 1rem;font-size:12.5px;color:#1a5c3a;margin:.75rem 0;line-height:1.55}
+.warn-box strong,.info-box strong,.emb-box strong{font-weight:500}
+
+.badge{display:inline-flex;align-items:center;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;vertical-align:middle}
+.badge-blue{background:#ddeeff;color:#185FA5}
+.badge-teal{background:#d0f0e8;color:#0d7a52}
+.badge-amber{background:#fff0d0;color:#8a5000}
+
+.ic{font-family:'Courier New',monospace;font-size:12px;background:#f0f0f0;padding:1px 5px;border-radius:3px;color:#1a1a1a}
+
+.step-list{display:flex;flex-direction:column;gap:6px;counter-reset:s}
+.step-item{display:flex;gap:10px;align-items:flex-start;counter-increment:s}
+.step-num{width:22px;height:22px;border-radius:50%;background:#f0f0f0;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0;margin-top:2px}
+.step-num::before{content:counter(s)}
+.step-body{flex:1;font-size:13px;color:#555;line-height:1.6}
+.step-body strong{color:#1a1a1a;font-weight:500}
+
+.divider{height:1px;background:#e5e5e5;margin:1.25rem 0}
+
+.compare-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.compare-table th{text-align:left;padding:7px 10px;font-weight:500;font-size:11px;color:#888;background:#f8f8f8;border-bottom:1px solid #e0e0e0}
+.compare-table td{padding:7px 10px;border-bottom:1px solid #e0e0e0;vertical-align:top;line-height:1.5}
+.compare-table tr:last-child td{border-bottom:none}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>IPC — Unix Domain Socket</h1>
+<p class="sub">Giao tiếp bidirectional giữa các process trên cùng một máy, qua file path thay vì IP:port.</p>
+
+<div class="nav-bar">
+  <button class="nav-btn active" onclick="go('concept',this)">1. Khái niệm</button>
+  <button class="nav-btn" onclick="go('lifecycle',this)">2. Vòng đời kết nối</button>
+  <button class="nav-btn" onclick="go('api',this)">3. API chi tiết</button>
+  <button class="nav-btn" onclick="go('code',this)">4. Code đầy đủ</button>
+  <button class="nav-btn" onclick="go('dgram',this)">5. SOCK_DGRAM</button>
+  <button class="nav-btn" onclick="go('embedded',this)">6. Embedded Linux</button>
+  <button class="nav-btn" onclick="go('advanced',this)">7. Nâng cao</button>
+  <button class="nav-btn" onclick="go('syncasync',this)">8. Đồng bộ / Bất đồng bộ</button>
+  <button class="nav-btn" onclick="go('macro',this)">9. Tra cứu macro</button>
+</div>
+
+<!-- PAGE 1 -->
+<div class="page active" id="page-concept">
+  <div class="chapter-title">Unix Domain Socket — socket không qua mạng</div>
+  <div class="chapter-sub">Giao tiếp bidirectional giữa các process trên cùng một máy, qua file path thay vì IP:port.</div>
+
+  <div class="section-label">So sánh trực quan với Pipe</div>
+  <div class="card">
+    <div class="card-body">
+      Pipe là <strong>ống nước một chiều</strong>: chỉ chảy từ A sang B, không thể gửi ngược lại trên cùng ống.<br><br>
+      Unix Socket là <strong>điện thoại</strong>: sau khi kết nối, cả hai bên đều có thể nói và nghe bất cứ lúc nào. Một server có thể nghe nhiều client gọi đến cùng lúc — mỗi cuộc gọi là một kênh riêng biệt.
+    </div>
+  </div>
+
+  <svg width="100%" viewBox="0 0 680 260" style="display:block;margin:.75rem 0">
+    <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <rect x="20" y="16" width="640" height="228" rx="12" fill="none" stroke="#ccc" stroke-width="1" stroke-dasharray="5 3"/>
+    <text font-family="system-ui" font-size="12" x="36" y="32" fill="#888">Filesystem: /tmp/app.sock</text>
+    <!-- Server -->
+    <rect x="270" y="44" width="140" height="64" rx="8" fill="#d0f0e8" stroke="#2e9e6a" stroke-width="1"/>
+    <text font-family="system-ui" font-size="13" font-weight="500" x="340" y="72" text-anchor="middle" fill="#1a5c3a">Server</text>
+    <text font-family="system-ui" font-size="11" x="340" y="92" text-anchor="middle" fill="#2e9e6a">bind + listen</text>
+    <!-- Socket file -->
+    <rect x="308" y="124" width="64" height="28" rx="4" fill="#f8f8f8" stroke="#ccc" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="340" y="138" text-anchor="middle" dominant-baseline="central" fill="#666">app.sock</text>
+    <line x1="340" y1="108" x2="340" y2="124" stroke="#ccc" stroke-width="1"/>
+    <!-- Client A -->
+    <rect x="44" y="168" width="130" height="54" rx="8" fill="#e8e6ff" stroke="#6b5cd6" stroke-width="1"/>
+    <text font-family="system-ui" font-size="13" font-weight="500" x="109" y="191" text-anchor="middle" fill="#3b2fa0">Client A</text>
+    <text font-family="system-ui" font-size="11" x="109" y="209" text-anchor="middle" fill="#6b5cd6">connect()</text>
+    <!-- Client B -->
+    <rect x="506" y="168" width="130" height="54" rx="8" fill="#e8e6ff" stroke="#6b5cd6" stroke-width="1"/>
+    <text font-family="system-ui" font-size="13" font-weight="500" x="571" y="191" text-anchor="middle" fill="#3b2fa0">Client B</text>
+    <text font-family="system-ui" font-size="11" x="571" y="209" text-anchor="middle" fill="#6b5cd6">connect()</text>
+    <!-- Arrows -->
+    <path d="M174 195 Q260 195 270 138" fill="none" stroke="#6b5cd6" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+    <text font-family="system-ui" font-size="11" x="210" y="183" fill="#6b5cd6">fd=5</text>
+    <path d="M506 195 Q420 195 410 138" fill="none" stroke="#6b5cd6" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+    <text font-family="system-ui" font-size="11" x="442" y="183" fill="#6b5cd6">fd=7</text>
+    <!-- Accept labels -->
+    <rect x="185" y="46" width="76" height="22" rx="4" fill="#f8f8f8" stroke="#ccc" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="223" y="57" text-anchor="middle" dominant-baseline="central" fill="#666">accept fd=5</text>
+    <rect x="419" y="46" width="76" height="22" rx="4" fill="#f8f8f8" stroke="#ccc" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="457" y="57" text-anchor="middle" dominant-baseline="central" fill="#666">accept fd=7</text>
+    <text font-family="system-ui" font-size="11" x="340" y="248" text-anchor="middle" fill="#888">Mỗi accept() trả về fd riêng — server giao tiếp với từng client độc lập</text>
+  </svg>
+
+  <div class="section-label">Pipe vs FIFO vs Unix Socket — khi nào dùng cái nào</div>
+  <div class="card">
+    <table class="compare-table">
+      <thead><tr><th>Tiêu chí</th><th>Pipe</th><th>FIFO</th><th>Unix Socket</th></tr></thead>
+      <tbody>
+        <tr><td>Hướng</td><td>1 chiều</td><td>1 chiều</td><td><strong>2 chiều</strong></td></tr>
+        <tr><td>Nhiều client cùng lúc</td><td>Không</td><td>Phức tạp</td><td><strong>Có (accept)</strong></td></tr>
+        <tr><td>Process không liên quan</td><td>Không</td><td>Có</td><td><strong>Có</strong></td></tr>
+        <tr><td>Truyền file descriptor</td><td>Không</td><td>Không</td><td><strong>Có (SCM_RIGHTS)</strong></td></tr>
+        <tr><td>Message boundary</td><td>Không</td><td>Không</td><td>DGRAM: Có / STREAM: Không</td></tr>
+        <tr><td>Độ phức tạp API</td><td>Thấp</td><td>Thấp</td><td>Trung bình</td></tr>
+        <tr><td>Cleanup cần thiết</td><td>Không</td><td>unlink()</td><td><strong>unlink() bắt buộc</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-label">Ba loại socket type</div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><span class="badge badge-blue">SOCK_STREAM</span></div>
+      <div class="card-body">Giống TCP: byte stream liên tục, không có message boundary. Gửi 100 bytes rồi 50 bytes, receiver có thể đọc 150 bytes một lần hoặc 30+120 bytes.<br><br>Đảm bảo thứ tự, không mất dữ liệu.<br><strong>Dùng khi:</strong> gửi dữ liệu lớn liên tục, stream protocol có header.</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-teal">SOCK_DGRAM</span></div>
+      <div class="card-body">Giống UDP: mỗi sendto() là 1 message riêng biệt — receiver nhận đúng 1 message mỗi lần recvfrom(). Giữ message boundary.<br><br><strong>Dùng khi:</strong> gửi lệnh ngắn, event notification, struct cố định, không cần kết nối trước.</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:0">
+    <div class="card-title"><span class="badge badge-amber">SOCK_SEQPACKET</span> — kết hợp ưu điểm cả hai</div>
+    <div class="card-body">
+      <span class="ic">SOCK_SEQPACKET</span> = <strong>connection-oriented + message boundary</strong>. Giống STREAM ở chỗ cần connect/accept, nhưng giống DGRAM ở chỗ giữ nguyên ranh giới message.<br><br>
+      Ví dụ: gửi 100 bytes rồi 50 bytes → receiver luôn nhận đúng 2 lần: 100 bytes và 50 bytes, không bao giờ bị gộp hay tách.<br><br>
+      <strong>Ưu điểm so với STREAM:</strong> không cần tự thiết kế framing protocol (thêm header length), kernel đã giữ boundary cho bạn.<br>
+      <strong>Ưu điểm so với DGRAM:</strong> có kết nối rõ ràng, flow control, đảm bảo thứ tự và không mất dữ liệu.<br><br>
+      <strong>Dùng khi:</strong> giao tiếp IPC dạng command-response, gửi struct cố định qua connection, cần cả reliability lẫn message boundary.
+    </div>
+  </div>
+
+  <div class="info-box"><strong>Chọn type nào?</strong> Nếu cần message rõ ràng (struct, JSON command) + có kết nối → <span class="ic">SOCK_SEQPACKET</span> là lựa chọn lý tưởng nhất. Nếu chỉ fire-and-forget → <span class="ic">SOCK_DGRAM</span>. Nếu stream data lớn (file, video) → <span class="ic">SOCK_STREAM</span>.</div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page" id="page-lifecycle">
+  <div class="chapter-title">Vòng đời kết nối SOCK_STREAM</div>
+  <div class="chapter-sub">Mỗi bước có lý do kỹ thuật rõ ràng — hiểu tại sao thì nhớ API mãi.</div>
+
+  <svg width="100%" viewBox="0 0 680 480" style="display:block;margin:.75rem 0">
+    <defs><marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <!-- Headers -->
+    <rect x="60" y="16" width="140" height="36" rx="6" fill="#d0f0e8" stroke="#2e9e6a" stroke-width="1"/>
+    <text font-family="system-ui" font-size="13" font-weight="500" x="130" y="34" text-anchor="middle" dominant-baseline="central" fill="#1a5c3a">Server</text>
+    <rect x="480" y="16" width="140" height="36" rx="6" fill="#e8e6ff" stroke="#6b5cd6" stroke-width="1"/>
+    <text font-family="system-ui" font-size="13" font-weight="500" x="550" y="34" text-anchor="middle" dominant-baseline="central" fill="#3b2fa0">Client</text>
+    <!-- Lifelines -->
+    <line x1="130" y1="52" x2="130" y2="460" stroke="#ddd" stroke-width="1" stroke-dasharray="4 3"/>
+    <line x1="550" y1="52" x2="550" y2="460" stroke="#ddd" stroke-width="1" stroke-dasharray="4 3"/>
+    <!-- Step boxes server -->
+    <rect x="60" y="68" width="140" height="30" rx="5" fill="#f8f8f8" stroke="#ddd" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="130" y="83" text-anchor="middle" dominant-baseline="central" fill="#1a1a1a">socket(AF_UNIX, SOCK_STREAM)</text>
+    <text font-family="system-ui" font-size="11" x="215" y="83" fill="#888"> → srv_fd</text>
+    <rect x="60" y="114" width="140" height="30" rx="5" fill="#f8f8f8" stroke="#ddd" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="130" y="129" text-anchor="middle" dominant-baseline="central" fill="#1a1a1a">bind("/tmp/app.sock")</text>
+    <text font-family="system-ui" font-size="11" x="215" y="129" fill="#888"> → socket file trên FS</text>
+    <rect x="60" y="160" width="140" height="30" rx="5" fill="#f8f8f8" stroke="#ddd" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="130" y="175" text-anchor="middle" dominant-baseline="central" fill="#1a1a1a">listen(srv_fd, backlog)</text>
+    <text font-family="system-ui" font-size="11" x="215" y="175" fill="#888"> → kernel tạo accept queue</text>
+    <!-- Client steps -->
+    <rect x="480" y="208" width="140" height="30" rx="5" fill="#f8f8f8" stroke="#ddd" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="550" y="223" text-anchor="middle" dominant-baseline="central" fill="#1a1a1a">socket(AF_UNIX, SOCK_STREAM)</text>
+    <rect x="480" y="254" width="140" height="30" rx="5" fill="#f8f8f8" stroke="#ddd" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="550" y="269" text-anchor="middle" dominant-baseline="central" fill="#1a1a1a">connect("/tmp/app.sock")</text>
+    <line x1="480" y1="269" x2="208" y2="269" stroke="#378ADD" stroke-width="1" marker-end="url(#ar2)" fill="none"/>
+    <text font-family="system-ui" font-size="11" x="344" y="261" text-anchor="middle" fill="#185FA5">kernel enqueue</text>
+    <!-- Accept -->
+    <rect x="60" y="302" width="140" height="30" rx="5" fill="#d0f0e8" stroke="#2e9e6a" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="130" y="317" text-anchor="middle" dominant-baseline="central" fill="#1a5c3a">accept() → cli_fd</text>
+    <text font-family="system-ui" font-size="11" x="215" y="317" fill="#888"> → fd mới cho client này</text>
+    <!-- send/recv -->
+    <line x1="208" y1="365" x2="480" y2="365" stroke="#378ADD" stroke-width="1.2" marker-end="url(#ar2)" fill="none"/>
+    <text font-family="system-ui" font-size="11" x="344" y="357" text-anchor="middle" fill="#185FA5">send(cli_fd, data)</text>
+    <line x1="480" y1="398" x2="208" y2="398" stroke="#6b5cd6" stroke-width="1.2" marker-end="url(#ar2)" fill="none"/>
+    <text font-family="system-ui" font-size="11" x="344" y="390" text-anchor="middle" fill="#6b5cd6">send(cli_sock, reply)</text>
+    <!-- close -->
+    <rect x="60" y="428" width="140" height="24" rx="4" fill="#f8f8f8" stroke="#ddd" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="130" y="440" text-anchor="middle" dominant-baseline="central" fill="#888">close(cli_fd)</text>
+    <rect x="480" y="428" width="140" height="24" rx="4" fill="#f8f8f8" stroke="#ddd" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="550" y="440" text-anchor="middle" dominant-baseline="central" fill="#888">close(cli_sock)</text>
+  </svg>
+
+  <div class="section-label">Tại sao cần đủ 4 bước phía server?</div>
+  <div class="step-list">
+    <div class="step-item"><div class="step-num"></div><div class="step-body"><strong>socket()</strong> — tạo endpoint trống trong kernel. Chưa có địa chỉ, chưa nghe gì cả. Trả về 1 file descriptor.</div></div>
+    <div class="step-item"><div class="step-num"></div><div class="step-body"><strong>bind()</strong> — gắn địa chỉ (path trên filesystem) vào endpoint. Tạo ra file <span class="ic">app.sock</span> trên disk. Nếu file đã tồn tại → lỗi <span class="ic">EADDRINUSE</span>.</div></div>
+    <div class="step-item"><div class="step-num"></div><div class="step-body"><strong>listen()</strong> — bật chế độ "đang nhận khách". Kernel tạo một <strong>accept queue</strong> với sức chứa tối đa <span class="ic">backlog</span> client đang chờ. Client connect trước khi server accept sẽ nằm trong queue này.</div></div>
+    <div class="step-item"><div class="step-num"></div><div class="step-body"><strong>accept()</strong> — lấy 1 client ra khỏi accept queue. Block cho đến khi có client. Trả về 1 fd <strong>mới</strong> riêng cho client đó — srv_fd vẫn tiếp tục nghe client mới. Đây là điểm khác biệt then chốt so với Pipe.</div></div>
+  </div>
+
+  <div class="info-box"><strong>accept queue &amp; backlog:</strong> <span class="ic">listen(fd, backlog)</span> — backlog là số kết nối kernel đã chấp nhận nhưng server chưa kịp <span class="ic">accept()</span>. Nếu queue đầy, client mới nhận <span class="ic">ECONNREFUSED</span>. Với embedded single-client: <span class="ic">backlog = 1</span> là đủ.</div>
+</div>
+
+<!-- PAGE 3 -->
+<div class="page" id="page-api">
+  <div class="chapter-title">API chi tiết — từng tham số</div>
+  <div class="chapter-sub">Tất cả API cần biết: socket, bind, listen, accept, connect, send, recv, sendto, recvfrom, sendmsg, recvmsg, close, shutdown, unlink, getsockopt, setsockopt, fcntl, poll, epoll, signalfd, socketpair.</div>
+
+  <div class="section-label">socket() — tạo endpoint</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;sys/socket.h&gt;
+int socket(int domain, int type, int protocol);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">domain</div>
+      <div class="api-param-desc"><span class="ic">AF_UNIX</span> (hay <span class="ic">AF_LOCAL</span> — cùng giá trị) = Unix Domain Socket, chỉ giao tiếp trên cùng máy, không qua network stack. Khác với <span class="ic">AF_INET</span> (IPv4) hay <span class="ic">AF_INET6</span> (IPv6).</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">type</div>
+      <div class="api-param-desc">
+        <span class="ic">SOCK_STREAM</span> — byte stream, có kết nối, đảm bảo thứ tự (như TCP)<br>
+        <span class="ic">SOCK_DGRAM</span> — datagram, không kết nối, giữ message boundary<br>
+        <span class="ic">SOCK_SEQPACKET</span> — có kết nối + giữ message boundary<br><br>
+        OR thêm flags:<br>
+        <span class="ic">SOCK_NONBLOCK</span> — non-blocking ngay khi tạo<br>
+        <span class="ic">SOCK_CLOEXEC</span> — tự đóng khi exec() — <strong>luôn dùng</strong>
+      </div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">protocol</div>
+      <div class="api-param-desc">Luôn là <span class="ic">0</span> với Unix socket.</div>
+    </div>
+    <div class="api-return">Trả về: fd ≥ 0 thành công, <span>-1</span> lỗi. <span>EMFILE</span>: hết fd, <span>ENFILE</span>: system limit</div>
+  </div>
+
+  <div class="section-label">bind() — gắn địa chỉ</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;sys/socket.h&gt;
+#include &lt;sys/un.h&gt;
+int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">addr</div>
+      <div class="api-param-desc">Con trỏ đến <span class="ic">struct sockaddr_un</span> — cast sang <span class="ic">(struct sockaddr *)</span>.<br>
+        <span class="ic">sun_family</span>: luôn là <span class="ic">AF_UNIX</span><br>
+        <span class="ic">sun_path</span>: chuỗi path — <strong>tối đa 108 ký tự trên Linux</strong>
+      </div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">addrlen</div>
+      <div class="api-param-desc">Dùng <span class="ic">sizeof(struct sockaddr_un)</span> là đủ và an toàn.</div>
+    </div>
+    <div class="api-return">Trả về: <span>0</span> thành công, <span>-1</span> lỗi. <span>EADDRINUSE</span>: socket file đã tồn tại → cần <span>unlink()</span> trước</div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">Khởi tạo struct sockaddr_un đúng chuẩn</div>
+    <pre>#include &lt;sys/un.h&gt;
+#include &lt;string.h&gt;
+
+#define SOCK_PATH "/tmp/myapp.sock"
+
+struct sockaddr_un addr;
+memset(&addr, 0, sizeof(addr));        /* Xóa toàn bộ struct trước */
+addr.sun_family = AF_UNIX;
+strncpy(addr.sun_path, SOCK_PATH,
+        sizeof(addr.sun_path) - 1);    /* Không tràn 108 ký tự */
+
+unlink(SOCK_PATH);                     /* Xóa socket file cũ nếu còn */
+
+if (bind(srv_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+    perror("bind");
+    close(srv_fd);
+    return -1;
+}</pre>
+  </div>
+
+  <div class="warn-box"><strong>Tại sao bắt buộc memset(&addr, 0, ...) trước khi dùng?</strong><br>
+    <span class="ic">struct sockaddr_un</span> có trường <span class="ic">sun_path[108]</span>. Nếu không memset, các byte sau chuỗi path thực tế sẽ chứa <strong>rác từ stack</strong>. Kernel so sánh toàn bộ sun_path khi matching socket → nếu có rác, connect() từ client sẽ không khớp với bind() của server dù path nhìn giống nhau. Đây là bug rất khó debug vì mọi thứ trông đúng nhưng <span class="ic">connect()</span> trả về <span class="ic">ECONNREFUSED</span>.</div>
+
+  <div class="section-label">listen() và accept4()</div>
+  <div class="api-box">
+    <div class="api-sig">int listen(int sockfd, int backlog);
+int accept4(int sockfd, struct sockaddr *addr, socklen_t *addrlen, int flags);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">backlog</div>
+      <div class="api-param-desc">Số kết nối tối đa trong accept queue chờ server gọi accept(). Bị cap bởi <span class="ic">/proc/sys/net/core/somaxconn</span> (mặc định 128). Embedded single-client: <span class="ic">backlog = 1</span>.</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">flags (accept4)</div>
+      <div class="api-param-desc"><span class="ic">SOCK_CLOEXEC</span> | <span class="ic">SOCK_NONBLOCK</span> — <strong>dùng accept4() thay accept()</strong> để set flags atomic, tránh race condition trong multi-thread.</div>
+    </div>
+    <div class="api-return">accept4 trả về: fd mới ≥ 0, <span>-1</span> lỗi. <span>EAGAIN</span>: non-blocking và chưa có client</div>
+  </div>
+
+  <div class="section-label">send() và recv() — flags quan trọng</div>
+  <div class="api-box">
+    <div class="api-sig">ssize_t send(int sockfd, const void *buf, size_t len, int flags);
+ssize_t recv(int sockfd,       void *buf, size_t len, int flags);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">flags (send)</div>
+      <div class="api-param-desc">
+        <span class="ic">0</span> — mặc định, giống write()<br>
+        <span class="ic">MSG_NOSIGNAL</span> — không gửi SIGPIPE khi peer đóng. <strong>Luôn dùng trong daemon.</strong><br>
+        <span class="ic">MSG_DONTWAIT</span> — non-blocking cho lần này (không đổi trạng thái socket)
+      </div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">flags (recv)</div>
+      <div class="api-param-desc">
+        <span class="ic">0</span> — mặc định<br>
+        <span class="ic">MSG_WAITALL</span> — block cho đến khi đủ len bytes. Hữu ích khi biết trước kích thước.<br>
+        <span class="ic">MSG_PEEK</span> — xem dữ liệu mà không xóa khỏi buffer
+      </div>
+    </div>
+    <div class="api-return">Trả về: bytes đọc/ghi, <span>0</span> = peer đóng (EOF), <span>-1</span> lỗi</div>
+  </div>
+
+  <div class="warn-box"><strong>MSG_NOSIGNAL là bắt buộc với daemon:</strong> Khi client đột ngột thoát, lần send() kế tiếp từ server sẽ nhận SIGPIPE — mặc định kill process. Dùng <span class="ic">MSG_NOSIGNAL</span> để send() trả về -1 với errno=EPIPE thay vì crash.</div>
+
+  <div class="section-label">Xử lý partial send/recv — lỗi phổ biến nhất</div>
+  <div class="card">
+    <div class="card-body">
+      Với <span class="ic">SOCK_STREAM</span>, <span class="ic">send()</span> có thể <strong>chỉ gửi một phần</strong> dữ liệu, đặc biệt khi buffer kernel đầy. Ví dụ: gửi 1000 bytes nhưng send() chỉ trả về 600. Nếu không kiểm tra, <strong>400 bytes còn lại bị mất</strong> — đây là bug rất phổ biến.<br><br>
+      Tương tự, <span class="ic">recv()</span> có thể trả về ít hơn len bytes ngay cả khi dữ liệu đang đến. Cần vòng lặp để đảm bảo nhận đủ.
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-label">send_all() — đảm bảo gửi hết data, dùng thay send() trực tiếp</div>
+    <pre>/* Gửi đúng 'len' bytes. Trả về 0 nếu thành công, -1 nếu lỗi */
+int send_all(int fd, const void *buf, size_t len) {
+    const char *p = (const char *)buf;
+    size_t remaining = len;
+
+    while (remaining > 0) {
+        ssize_t n = send(fd, p, remaining, MSG_NOSIGNAL);
+        if (n == -1) {
+            if (errno == EINTR) continue;   /* bị signal ngắt, thử lại */
+            return -1;                       /* lỗi thật: EPIPE, ECONNRESET... */
+        }
+        p += n;
+        remaining -= (size_t)n;
+    }
+    return 0;
+}
+
+/* Nhận đúng 'len' bytes. Trả về 0 nếu đủ, -1 lỗi, 1 nếu peer đóng sớm */
+int recv_all(int fd, void *buf, size_t len) {
+    char *p = (char *)buf;
+    size_t remaining = len;
+
+    while (remaining > 0) {
+        ssize_t n = recv(fd, p, remaining, 0);
+        if (n == -1) {
+            if (errno == EINTR) continue;
+            return -1;
+        }
+        if (n == 0) return 1;  /* peer đóng kết nối trước khi gửi đủ */
+        p += n;
+        remaining -= (size_t)n;
+    }
+    return 0;
+}</pre>
+  </div>
+  <div class="info-box"><strong>Khi nào KHÔNG cần send_all?</strong> Với <span class="ic">SOCK_DGRAM</span> và <span class="ic">SOCK_SEQPACKET</span>, kernel đảm bảo gửi toàn bộ hoặc lỗi — không có partial send. Chỉ <span class="ic">SOCK_STREAM</span> mới cần pattern này.</div>
+
+  <div class="section-label">Errno quan trọng — bảng tra cứu nhanh</div>
+  <div class="card">
+    <table class="compare-table">
+      <thead><tr><th>Hàm</th><th>errno</th><th>Nguyên nhân</th><th>Cách xử lý</th></tr></thead>
+      <tbody>
+        <tr><td>bind()</td><td><span class="ic">EADDRINUSE</span></td><td>Socket file đã tồn tại từ lần chạy trước</td><td><span class="ic">unlink()</span> trước bind()</td></tr>
+        <tr><td>bind()</td><td><span class="ic">EROFS</span></td><td>Filesystem read-only (embedded)</td><td>Mount tmpfs cho /var/run</td></tr>
+        <tr><td>bind()</td><td><span class="ic">EACCES</span></td><td>Không có quyền ghi vào thư mục chứa socket</td><td>Đổi path hoặc chạy với quyền phù hợp</td></tr>
+        <tr><td>connect()</td><td><span class="ic">ENOENT</span></td><td>Socket file không tồn tại — server chưa chạy</td><td>Kiểm tra server, retry với backoff</td></tr>
+        <tr><td>connect()</td><td><span class="ic">ECONNREFUSED</span></td><td>Socket file tồn tại nhưng không ai listen</td><td>Server crash mà chưa cleanup, cần restart server</td></tr>
+        <tr><td>accept()</td><td><span class="ic">EAGAIN</span></td><td>Non-blocking và chưa có client nào</td><td>Bình thường, dùng select/poll/epoll để chờ</td></tr>
+        <tr><td>send()</td><td><span class="ic">EPIPE</span></td><td>Peer đã đóng kết nối</td><td>Close fd, log, tiếp tục serve client khác</td></tr>
+        <tr><td>recv()</td><td><span class="ic">ECONNRESET</span></td><td>Peer reset kết nối đột ngột</td><td>Giống xử lý recv()=0: close fd</td></tr>
+        <tr><td>socket()</td><td><span class="ic">EMFILE</span></td><td>Process đã mở hết fd cho phép</td><td>Tăng ulimit -n hoặc đóng fd không dùng</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!--  CÁC API CÒN THIẾU — BỔ SUNG ĐẦY ĐỦ BÊN DƯỚI  -->
+  <!-- ═══════════════════════════════════════════════════ -->
+
+  <div class="section-label">connect() — kết nối đến server (phía client)</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;sys/socket.h&gt;
+#include &lt;sys/un.h&gt;
+int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">sockfd</div>
+      <div class="api-param-desc">fd trả về từ <span class="ic">socket()</span>. Phải cùng domain (<span class="ic">AF_UNIX</span>) và type (<span class="ic">SOCK_STREAM</span> hoặc <span class="ic">SOCK_SEQPACKET</span>) với server.</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">addr</div>
+      <div class="api-param-desc">Con trỏ đến <span class="ic">struct sockaddr_un</span> với <span class="ic">sun_path</span> trỏ đến <strong>cùng path</strong> mà server đã bind(). Phải memset trước khi dùng.</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">addrlen</div>
+      <div class="api-param-desc"><span class="ic">sizeof(struct sockaddr_un)</span>. Với abstract socket: <span class="ic">offsetof(struct sockaddr_un, sun_path) + 1 + strlen(name)</span>.</div>
+    </div>
+    <div class="api-return">Trả về: <span>0</span> thành công, <span>-1</span> lỗi. <span>ENOENT</span>: socket file không tồn tại. <span>ECONNREFUSED</span>: không ai listen. <span>EACCES</span>: không đủ quyền</div>
+  </div>
+  <div class="info-box"><strong>Blocking vs Non-blocking connect():</strong> Mặc định, connect() block cho đến khi server accept. Với <span class="ic">SOCK_NONBLOCK</span>, connect() return ngay -1 với <span class="ic">errno = EINPROGRESS</span>. Dùng <span class="ic">poll()</span> hoặc <span class="ic">epoll</span> theo dõi <span class="ic">POLLOUT</span> để biết khi nào kết nối hoàn tất.</div>
+
+  <div class="section-label">close() và shutdown() — đóng kết nối</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;unistd.h&gt;
+int close(int fd);
+
+#include &lt;sys/socket.h&gt;
+int shutdown(int sockfd, int how);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">close(fd)</div>
+      <div class="api-param-desc">Đóng file descriptor. Nếu là fd cuối cùng tham chiếu socket này → kernel giải phóng tài nguyên. Peer nhận <span class="ic">recv() = 0</span> (EOF).<br><br><strong>Chú ý:</strong> close() đóng cả 2 chiều (đọc + ghi) cùng lúc. Nếu socket buffer còn data chưa gửi, kernel cố gắng gửi hết trước khi đóng (<span class="ic">SO_LINGER</span> kiểm soát hành vi này).</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">how (shutdown)</div>
+      <div class="api-param-desc">
+        <span class="ic">SHUT_RD</span> (0) — đóng chiều đọc. recv() sau đó return 0<br>
+        <span class="ic">SHUT_WR</span> (1) — đóng chiều ghi. Peer nhận EOF. <strong>Dùng khi đã gửi xong nhưng chưa muốn đóng fd.</strong><br>
+        <span class="ic">SHUT_RDWR</span> (2) — đóng cả hai chiều, giống close() nhưng <strong>không giải phóng fd</strong> — fd vẫn tồn tại, cần close() riêng
+      </div>
+    </div>
+    <div class="api-return">Trả về: <span>0</span> thành công, <span>-1</span> lỗi</div>
+  </div>
+  <div class="warn-box"><strong>close() vs shutdown():</strong> <span class="ic">close()</span> đóng fd luôn — không thể dùng lại. <span class="ic">shutdown(SHUT_WR)</span> chỉ đóng chiều ghi nhưng vẫn có thể recv() data từ peer. Pattern quan trọng: client gửi xong → <span class="ic">shutdown(fd, SHUT_WR)</span> → server nhận EOF và biết client gửi hết → server reply → client recv() reply → close().</div>
+
+  <div class="section-label">unlink() — xóa socket file</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;unistd.h&gt;
+int unlink(const char *pathname);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">pathname</div>
+      <div class="api-param-desc">Path đến socket file cần xóa. <strong>Bắt buộc gọi trước bind()</strong> nếu file có thể tồn tại từ lần chạy trước. Nếu không xóa → bind() lỗi <span class="ic">EADDRINUSE</span>.<br><br>Cũng bắt buộc gọi khi server thoát (trong cleanup hoặc signal handler) để dọn dẹp.</div>
+    </div>
+    <div class="api-return">Trả về: <span>0</span> thành công, <span>-1</span> lỗi. <span>ENOENT</span>: file không tồn tại — bình thường, có thể ignore</div>
+  </div>
+  <div class="info-box"><strong>Abstract socket không cần unlink():</strong> Nếu <span class="ic">sun_path[0] = '\0'</span> (abstract namespace), không có file thật trên FS → không cần cleanup. Kernel tự dọn khi tất cả fd đóng.</div>
+
+  <div class="divider"></div>
+
+  <div class="section-label">sendto() và recvfrom() — cho SOCK_DGRAM</div>
+  <div class="api-box">
+    <div class="api-sig">ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
+               const struct sockaddr *dest_addr, socklen_t addrlen);
+
+ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
+                 struct sockaddr *src_addr, socklen_t *addrlen);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">dest_addr (sendto)</div>
+      <div class="api-param-desc">Địa chỉ đích — con trỏ đến <span class="ic">struct sockaddr_un</span> của receiver. Với DGRAM, mỗi sendto() phải chỉ rõ gửi đến đâu vì không có kết nối trước.</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">src_addr (recvfrom)</div>
+      <div class="api-param-desc">Kernel điền địa chỉ sender vào đây. Có thể <span class="ic">NULL</span> nếu không cần biết ai gửi. Nếu muốn reply, cần lưu địa chỉ này để sendto() lại.</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">addrlen (recvfrom)</div>
+      <div class="api-param-desc">Con trỏ — khởi tạo = <span class="ic">sizeof(struct sockaddr_un)</span>. Kernel ghi lại kích thước thật của địa chỉ sender.</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">flags</div>
+      <div class="api-param-desc">Giống send()/recv(): <span class="ic">0</span> mặc định, <span class="ic">MSG_DONTWAIT</span> non-blocking, <span class="ic">MSG_NOSIGNAL</span> tránh SIGPIPE.</div>
+    </div>
+    <div class="api-return">Trả về: bytes gửi/nhận. DGRAM đảm bảo <strong>atomic</strong>: gửi toàn bộ hoặc lỗi, không partial. <span>-1</span> lỗi. <span>ENOBUFS</span>: receiver buffer đầy</div>
+  </div>
+  <div class="warn-box"><strong>Client DGRAM muốn nhận reply phải bind():</strong> Nếu client không bind() một path, server không biết gửi reply về đâu (<span class="ic">src_addr</span> trong recvfrom() sẽ rỗng). Client cần bind một path tạm: <span class="ic">/tmp/client_XXXX.sock</span> rồi unlink() khi kết thúc.</div>
+
+  <div class="section-label">sendmsg() và recvmsg() — ancillary data, SCM_RIGHTS</div>
+  <div class="api-box">
+    <div class="api-sig">ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags);
+ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">struct msghdr</div>
+      <div class="api-param-desc">
+        <span class="ic">msg_iov</span> / <span class="ic">msg_iovlen</span> — data chính (scatter/gather I/O). <strong>Phải có ít nhất 1 byte data thật.</strong><br>
+        <span class="ic">msg_control</span> — buffer cho ancillary data (control message)<br>
+        <span class="ic">msg_controllen</span> — kích thước buffer<br>
+        <span class="ic">msg_name</span> / <span class="ic">msg_namelen</span> — địa chỉ đích (cho DGRAM, NULL cho STREAM)
+      </div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">struct cmsghdr</div>
+      <div class="api-param-desc">
+        Header của mỗi control message trong ancillary data:<br>
+        <span class="ic">cmsg_level</span> = <span class="ic">SOL_SOCKET</span><br>
+        <span class="ic">cmsg_type</span> = <span class="ic">SCM_RIGHTS</span> (truyền fd) hoặc <span class="ic">SCM_CREDENTIALS</span> (truyền credentials)<br>
+        <span class="ic">cmsg_len</span> = <span class="ic">CMSG_LEN(sizeof(int))</span> cho 1 fd<br><br>
+        Dùng macro: <span class="ic">CMSG_FIRSTHDR()</span>, <span class="ic">CMSG_DATA()</span>, <span class="ic">CMSG_SPACE()</span>, <span class="ic">CMSG_LEN()</span>
+      </div>
+    </div>
+    <div class="api-return">Trả về: bytes data (không tính ancillary), <span>-1</span> lỗi. Ancillary data chỉ đi kèm — không tính vào return value</div>
+  </div>
+  <div class="info-box"><strong>Khi nào dùng sendmsg/recvmsg:</strong><br>
+    — Truyền file descriptor giữa process (<span class="ic">SCM_RIGHTS</span>) → xem code chi tiết ở tab "7. Nâng cao"<br>
+    — Truyền credentials (<span class="ic">SCM_CREDENTIALS</span>) cho DGRAM<br>
+    — Scatter/gather I/O: gửi data từ nhiều buffer rời rạc trong 1 lần system call<br>
+    Nếu không cần ancillary data, dùng send()/recv() đơn giản hơn.</div>
+
+  <div class="divider"></div>
+
+  <div class="section-label">getsockopt() / setsockopt() — tùy chỉnh socket</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;sys/socket.h&gt;
+int getsockopt(int sockfd, int level, int optname,
+               void *optval, socklen_t *optlen);
+int setsockopt(int sockfd, int level, int optname,
+               const void *optval, socklen_t optlen);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">level</div>
+      <div class="api-param-desc">Luôn là <span class="ic">SOL_SOCKET</span> cho các option dưới đây.</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">SO_PEERCRED</div>
+      <div class="api-param-desc"><strong>Chỉ getsockopt.</strong> Lấy PID/UID/GID của peer (client) sau accept(). <span class="ic">optval</span> = <span class="ic">struct ucred *</span>. Kernel cung cấp — <strong>client không thể giả mạo</strong>. Linux-only. Chỉ với SOCK_STREAM/SEQPACKET.</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">SO_RCVBUF</div>
+      <div class="api-param-desc">Kích thước receive buffer (bytes). <span class="ic">optval</span> = <span class="ic">int *</span>. Kernel nhân đôi giá trị set. Mặc định: <span class="ic">cat /proc/sys/net/core/rmem_default</span>. Quan trọng với DGRAM: buffer đầy → message bị drop.</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">SO_SNDBUF</div>
+      <div class="api-param-desc">Kích thước send buffer (bytes). Ảnh hưởng lượng data có thể ghi trước khi send() block (hoặc EAGAIN nếu non-blocking).</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">SO_PASSCRED</div>
+      <div class="api-param-desc">Bật nhận credentials qua ancillary data (SCM_CREDENTIALS) trong recvmsg(). Cần thiết cho SOCK_DGRAM vì không có SO_PEERCRED. <span class="ic">optval</span> = <span class="ic">int *</span> (1 = bật).</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">SO_LINGER</div>
+      <div class="api-param-desc">Kiểm soát hành vi close() khi buffer còn data: <span class="ic">struct linger { int l_onoff; int l_linger; }</span>. Nếu bật: close() block tối đa <span class="ic">l_linger</span> giây chờ gửi hết. Nếu hết thời gian → drop data.</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">SO_REUSEADDR</div>
+      <div class="api-param-desc"><strong>Không có tác dụng với AF_UNIX.</strong> Đây là lỗi phổ biến khi copy code từ TCP socket. Với Unix socket, luôn dùng <span class="ic">unlink()</span> thay vì SO_REUSEADDR.</div>
+    </div>
+    <div class="api-return">Trả về: <span>0</span> thành công, <span>-1</span> lỗi</div>
+  </div>
+
+  <div class="section-label">fcntl() — thay đổi thuộc tính fd</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;fcntl.h&gt;
+int fcntl(int fd, int cmd, ... /* arg */);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">F_GETFL / F_SETFL</div>
+      <div class="api-param-desc">
+        Đọc/ghi file status flags. Flags quan trọng cho socket:<br>
+        <span class="ic">O_NONBLOCK</span> — bật chế độ non-blocking<br>
+        <span class="ic">O_ASYNC</span> — bật signal-driven I/O (SIGIO khi data đến)<br><br>
+        <strong>Pattern chuẩn:</strong> <span class="ic">int fl = fcntl(fd, F_GETFL, 0); fcntl(fd, F_SETFL, fl | O_NONBLOCK);</span>
+      </div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">F_SETOWN</div>
+      <div class="api-param-desc">Đặt process nhận SIGIO/SIGURG. <span class="ic">fcntl(fd, F_SETOWN, getpid())</span>. Chỉ cần nếu dùng O_ASYNC (signal-driven I/O).</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">F_SETFD</div>
+      <div class="api-param-desc">Set fd flags — thường để set <span class="ic">FD_CLOEXEC</span>. Nhưng nên dùng <span class="ic">SOCK_CLOEXEC</span> khi tạo socket thay vì fcntl() riêng — atomic, tránh race condition.</div>
+    </div>
+    <div class="api-return">Trả về: phụ thuộc cmd. F_GETFL trả flags, F_SETFL trả <span>0</span>/-1</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section-label">poll() — I/O multiplexing cơ bản</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;poll.h&gt;
+int poll(struct pollfd *fds, nfds_t nfds, int timeout);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">struct pollfd</div>
+      <div class="api-param-desc">
+        <span class="ic">int fd</span> — file descriptor cần theo dõi. Đặt <span class="ic">-1</span> để bỏ qua entry<br>
+        <span class="ic">short events</span> — sự kiện quan tâm (input):<br>
+        &nbsp;&nbsp;<span class="ic">POLLIN</span> — có data đọc được hoặc accept() ready<br>
+        &nbsp;&nbsp;<span class="ic">POLLOUT</span> — có thể ghi mà không block<br>
+        <span class="ic">short revents</span> — sự kiện thực tế xảy ra (output, kernel điền):<br>
+        &nbsp;&nbsp;<span class="ic">POLLIN</span>, <span class="ic">POLLOUT</span> — như trên<br>
+        &nbsp;&nbsp;<span class="ic">POLLHUP</span> — peer đóng kết nối (luôn được report, không cần đăng ký)<br>
+        &nbsp;&nbsp;<span class="ic">POLLERR</span> — lỗi trên fd (luôn được report)
+      </div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">nfds</div>
+      <div class="api-param-desc">Số phần tử trong mảng fds. Kiểu <span class="ic">nfds_t</span> (unsigned long).</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">timeout</div>
+      <div class="api-param-desc"><span class="ic">-1</span> = block vô hạn. <span class="ic">0</span> = return ngay (poll mode). <span class="ic">&gt;0</span> = timeout milliseconds.</div>
+    </div>
+    <div class="api-return">Trả về: số fd có sự kiện (>0), <span>0</span> timeout, <span>-1</span> lỗi. <span>EINTR</span>: bị signal ngắt — nên retry</div>
+  </div>
+
+  <div class="section-label">epoll — I/O multiplexing hiệu năng cao (Linux-only)</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;sys/epoll.h&gt;
+int epoll_create1(int flags);
+int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
+int epoll_wait(int epfd, struct epoll_event *events,
+               int maxevents, int timeout);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">epoll_create1</div>
+      <div class="api-param-desc">Tạo epoll instance. <span class="ic">flags</span>: <span class="ic">EPOLL_CLOEXEC</span> (luôn dùng) hoặc <span class="ic">0</span>. Trả về epoll fd — dùng cho epoll_ctl() và epoll_wait(). <strong>Cần close() khi kết thúc.</strong></div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">epoll_ctl — op</div>
+      <div class="api-param-desc">
+        <span class="ic">EPOLL_CTL_ADD</span> — đăng ký fd mới<br>
+        <span class="ic">EPOLL_CTL_MOD</span> — thay đổi events quan tâm<br>
+        <span class="ic">EPOLL_CTL_DEL</span> — gỡ fd (event có thể NULL)
+      </div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">struct epoll_event</div>
+      <div class="api-param-desc">
+        <span class="ic">uint32_t events</span> — bitmask sự kiện:<br>
+        &nbsp;&nbsp;<span class="ic">EPOLLIN</span> — có data đọc / accept ready<br>
+        &nbsp;&nbsp;<span class="ic">EPOLLOUT</span> — có thể ghi<br>
+        &nbsp;&nbsp;<span class="ic">EPOLLET</span> — Edge-Triggered: chỉ thông báo khi <strong>trạng thái thay đổi</strong>, không lặp lại. Phải đọc hết data trong 1 lần (loop recv đến EAGAIN). Hiệu quả hơn nhưng khó dùng đúng.<br>
+        &nbsp;&nbsp;<span class="ic">EPOLLONESHOT</span> — chỉ trigger 1 lần, cần EPOLL_CTL_MOD để re-arm<br>
+        &nbsp;&nbsp;<span class="ic">EPOLLRDHUP</span> — peer đóng chiều ghi (half-close). Cần Linux ≥ 2.6.17<br><br>
+        <span class="ic">epoll_data_t data</span> — union chứa user data. Thường dùng <span class="ic">.fd</span> để biết fd nào có event, hoặc <span class="ic">.ptr</span> trỏ đến struct context tự định nghĩa.
+      </div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">epoll_wait</div>
+      <div class="api-param-desc"><span class="ic">events</span>: mảng output, kernel điền vào. <span class="ic">maxevents</span>: kích thước mảng. <span class="ic">timeout</span>: -1 block, 0 non-block, >0 ms.</div>
+    </div>
+    <div class="api-return">epoll_wait trả về: số event (>0), <span>0</span> timeout, <span>-1</span> lỗi. Chỉ trả về fd thực sự có sự kiện — O(1) per event</div>
+  </div>
+  <div class="warn-box"><strong>Level-Triggered vs Edge-Triggered:</strong><br>
+    <strong>LT (mặc định):</strong> epoll_wait() thông báo <strong>liên tục</strong> khi fd có data chưa đọc. An toàn, dễ dùng. Nếu recv() chưa đọc hết, lần epoll_wait() sau vẫn thông báo.<br>
+    <strong>ET (EPOLLET):</strong> chỉ thông báo <strong>1 lần</strong> khi trạng thái đổi (không data → có data). Phải đọc hết (loop đến EAGAIN), nếu không data còn lại sẽ "mất". Hiệu quả hơn nhưng bug nếu quên đọc hết.<br>
+    <strong>Khuyên dùng:</strong> LT cho hầu hết trường hợp. ET chỉ khi cần tối ưu hiệu năng tối đa.</div>
+
+  <div class="section-label">signalfd() — signal thành file descriptor</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;sys/signalfd.h&gt;
+int signalfd(int fd, const sigset_t *mask, int flags);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">fd</div>
+      <div class="api-param-desc"><span class="ic">-1</span> để tạo mới. Hoặc fd cũ từ signalfd() trước để thay đổi mask.</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">mask</div>
+      <div class="api-param-desc">Tập signal muốn nhận qua fd. Phải <span class="ic">sigprocmask(SIG_BLOCK, &mask, NULL)</span> <strong>trước</strong> khi tạo signalfd — nếu không signal vẫn bị xử lý theo cách truyền thống.</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">flags</div>
+      <div class="api-param-desc"><span class="ic">SFD_CLOEXEC</span> (luôn dùng) | <span class="ic">SFD_NONBLOCK</span> (tùy chọn).</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">Đọc signal</div>
+      <div class="api-param-desc"><span class="ic">read(sfd, &info, sizeof(info))</span> với <span class="ic">struct signalfd_siginfo info</span>. Trường quan trọng: <span class="ic">info.ssi_signo</span> (signal number), <span class="ic">info.ssi_pid</span> (sender PID).</div>
+    </div>
+    <div class="api-return">Trả về: fd mới ≥ 0, <span>-1</span> lỗi. fd có thể dùng với poll()/epoll — POLLIN khi có signal</div>
+  </div>
+
+  <div class="section-label">Các API tiện ích khác</div>
+  <div class="api-box">
+    <div class="api-sig">/* Tạo cặp socket đã kết nối sẵn — thay thế pipe() */
+#include &lt;sys/socket.h&gt;
+int socketpair(int domain, int type, int protocol, int sv[2]);
+
+/* Tạo timer fd — dùng với epoll */
+#include &lt;sys/timerfd.h&gt;
+int timerfd_create(int clockid, int flags);
+int timerfd_settime(int fd, int flags,
+                    const struct itimerspec *new_value,
+                    struct itimerspec *old_value);
+
+/* Tạo event fd — notification giữa threads */
+#include &lt;sys/eventfd.h&gt;
+int eventfd(unsigned int initval, int flags);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">socketpair()</div>
+      <div class="api-param-desc">Tạo 2 socket đã kết nối với nhau. Ghi vào <span class="ic">sv[0]</span> → đọc từ <span class="ic">sv[1]</span> và ngược lại. Giống pipe() nhưng <strong>bidirectional</strong>. Thường dùng giao tiếp parent/child sau fork(). Chỉ hỗ trợ <span class="ic">AF_UNIX</span>.<br><br>Ví dụ: <span class="ic">socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv)</span></div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">timerfd_create()</div>
+      <div class="api-param-desc">Tạo timer thành fd — đọc bằng read(), kết hợp với epoll. <span class="ic">clockid</span>: <span class="ic">CLOCK_MONOTONIC</span> (khuyên dùng). Khi timer hết hạn, fd trở nên readable → epoll thông báo.</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">eventfd()</div>
+      <div class="api-param-desc">Counter-based notification giữa threads/processes. write() tăng counter, read() đọc và reset. Kết hợp với epoll để thread chính biết khi worker hoàn thành. Nhẹ hơn pipe() (1 fd thay vì 2).</div>
+    </div>
+    <div class="api-return">socketpair: 0 thành công. timerfd/eventfd: fd ≥ 0 thành công, -1 lỗi</div>
+  </div>
+
+  <div class="emb-box"><strong>Triết lý Linux: "Everything is a file descriptor"</strong><br>
+    Socket, signal, timer, event notification — tất cả đều là fd. Tất cả đều có thể đưa vào <span class="ic">epoll</span>. Đây là lý do epoll là trung tâm của mọi daemon hiện đại: 1 event loop duy nhất quản lý mọi thứ.</div>
+
+</div>
+
+<!-- PAGE 4 -->
+<div class="page" id="page-code">
+  <div class="chapter-title">Code đầy đủ, chạy được</div>
+  <div class="chapter-sub">Server echo + client gửi tin nhắn. Mỗi dòng đều có giải thích.</div>
+
+  <div class="code-block">
+    <div class="code-label">unix_server.c — gcc unix_server.c -o server</div>
+    <pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;errno.h&gt;
+#include &lt;sys/socket.h&gt;
+#include &lt;sys/un.h&gt;
+
+#define SOCK_PATH "/tmp/echo.sock"
+#define BUF_SIZE  256
+
+int main(void) {
+    /* ── Bước 1: Tạo socket ─────────────────────────── */
+    int srv_fd = socket(AF_UNIX,
+                        SOCK_STREAM | SOCK_CLOEXEC, 0);
+    /* SOCK_CLOEXEC: tự đóng nếu process gọi exec()
+       Không cần fcntl() riêng — atomic và an toàn hơn */
+    if (srv_fd == -1) { perror("socket"); exit(1); }
+
+    /* ── Bước 2: Bind ───────────────────────────────── */
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, SOCK_PATH, sizeof(addr.sun_path)-1);
+
+    unlink(SOCK_PATH);   /* Xóa socket file cũ nếu còn từ lần trước */
+
+    if (bind(srv_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+        perror("bind"); close(srv_fd); exit(1);
+    }
+
+    /* ── Bước 3: Listen ─────────────────────────────── */
+    if (listen(srv_fd, 5) == -1) {
+        perror("listen"); close(srv_fd); exit(1);
+    }
+    printf("Server dang lang nghe tai %s\n", SOCK_PATH);
+
+    /* ── Vòng lặp: nhận từng client ─────────────────── */
+    while (1) {
+        int cli_fd = accept4(srv_fd, NULL, NULL,
+                             SOCK_CLOEXEC);
+        /* accept4 với SOCK_CLOEXEC: fd mới cũng tự đóng khi exec
+           Dùng accept4() thay accept() để set flag atomic */
+        if (cli_fd == -1) { perror("accept4"); continue; }
+
+        printf("Client ket noi, fd=%d\n", cli_fd);
+
+        char buf[BUF_SIZE];
+        ssize_t n = recv(cli_fd, buf, sizeof(buf)-1, 0);
+
+        if (n > 0) {
+            buf[n] = '\0';
+            printf("Nhan: \"%s\"\n", buf);
+
+            /* Echo lại — MSG_NOSIGNAL tránh SIGPIPE */
+            if (send(cli_fd, buf, n, MSG_NOSIGNAL) == -1) {
+                if (errno == EPIPE)
+                    printf("Client dong truoc khi nhan\n");
+                else
+                    perror("send");
+            }
+        } else if (n == 0) {
+            printf("Client dong ket noi (EOF)\n");
+        } else {
+            perror("recv");
+        }
+
+        close(cli_fd);   /* Đóng kết nối client này */
+        /* srv_fd vẫn mở — vòng lặp tiếp tục accept */
+    }
+
+    close(srv_fd);
+    unlink(SOCK_PATH);
+    return 0;
+}</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">unix_client.c — gcc unix_client.c -o client</div>
+    <pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;sys/socket.h&gt;
+#include &lt;sys/un.h&gt;
+
+#define SOCK_PATH "/tmp/echo.sock"
+
+int main(int argc, char *argv[]) {
+    const char *msg = (argc > 1) ? argv[1] : "Xin chao server!";
+
+    /* ── Tạo socket ──────────────────────────────────── */
+    int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    if (fd == -1) { perror("socket"); exit(1); }
+
+    /* ── Connect ─────────────────────────────────────── */
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, SOCK_PATH, sizeof(addr.sun_path)-1);
+
+    if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+        /* ENOENT       = server chưa chạy (socket file không tồn tại)
+           ECONNREFUSED = server đang chạy nhưng không accept */
+        perror("connect"); close(fd); exit(1);
+    }
+    printf("Da ket noi den %s\n", SOCK_PATH);
+
+    /* ── Gửi ─────────────────────────────────────────── */
+    ssize_t sent = send(fd, msg, strlen(msg), MSG_NOSIGNAL);
+    if (sent == -1) { perror("send"); close(fd); exit(1); }
+    printf("Da gui: \"%s\" (%zd bytes)\n", msg, sent);
+
+    /* ── Nhận echo ───────────────────────────────────── */
+    char buf[256];
+    ssize_t n = recv(fd, buf, sizeof(buf)-1, 0);
+    if (n > 0) {
+        buf[n] = '\0';
+        printf("Echo tu server: \"%s\"\n", buf);
+    }
+
+    close(fd);
+    return 0;
+}</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">Cách chạy và kiểm tra</div>
+    <pre># Terminal 1:
+./server
+# Server dang lang nghe tai /tmp/echo.sock
+
+# Terminal 2:
+./client "Hello embedded"
+# Da ket noi den /tmp/echo.sock
+# Da gui: "Hello embedded" (14 bytes)
+# Echo tu server: "Hello embedded"
+
+# Terminal 1 in thêm:
+# Client ket noi, fd=4
+# Nhan: "Hello embedded"
+# Client dong ket noi (EOF)
+
+# Kiểm tra socket file — ký tự 's' đầu tiên = socket file:
+ls -la /tmp/echo.sock
+# srwxr-xr-x 1 user group 0 Jun 09 ... /tmp/echo.sock
+
+# Debug: xem process nào đang giữ socket
+ss -xl | grep echo.sock</pre>
+  </div>
+</div>
+
+<!-- PAGE 5 -->
+<div class="page" id="page-dgram">
+  <div class="chapter-title">SOCK_DGRAM — message-based, không cần kết nối</div>
+  <div class="chapter-sub">Không có accept(), mỗi sendto() là 1 message riêng biệt, giữ nguyên boundary.</div>
+
+  <div class="section-label">Khác biệt cơ bản so với SOCK_STREAM</div>
+  <div class="card">
+    <div class="card-body">
+      Với SOCK_STREAM phải trải qua connect → accept → send/recv → close. Phức tạp nhưng có kết nối rõ ràng.<br><br>
+      Với SOCK_DGRAM: không cần kết nối. Client chỉ cần biết path của server rồi <strong>sendto()</strong> thẳng. Mỗi sendto() là 1 message trọn vẹn — không bao giờ bị tách hoặc gộp với message khác.<br><br>
+      Ưu điểm lớn: <strong>message boundary được giữ nguyên</strong>. Gửi struct 32 bytes → nhận đúng 32 bytes, không cần framing protocol.
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><span class="badge badge-amber">Hạn chế của DGRAM</span></div>
+      <div class="card-body">
+        — Có giới hạn kích thước message (~200 KB)<br>
+        — Nếu receiver không đọc kịp, message có thể bị drop<br>
+        — Không có flow control tự động<br>
+        — Để server reply, client cũng phải bind() một path
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-teal">Khi nào dùng DGRAM</span></div>
+      <div class="card-body">
+        — Gửi struct nhỏ, event notification<br>
+        — Nhiều client → 1 server, không cần reply<br>
+        — Logging daemon (nhiều process ghi log vào 1 socket)<br>
+        — Embedded: sensor → controller (fire-and-forget)
+      </div>
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">dgram_server.c — nhận struct từ nhiều client, không cần kết nối</div>
+    <pre>#include &lt;sys/socket.h&gt;
+#include &lt;sys/un.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+
+#define SERVER_PATH "/tmp/sensor.sock"
+
+typedef struct {
+    int   sensor_id;
+    float value;
+    long  timestamp;
+} SensorData;
+
+int main(void) {
+    int fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strncpy(addr.sun_path, SERVER_PATH, sizeof(addr.sun_path)-1);
+
+    unlink(SERVER_PATH);
+    bind(fd, (struct sockaddr *)&addr, sizeof(addr));
+    /* Không cần listen() — DGRAM không có kết nối */
+
+    printf("Sensor server dang lang nghe...\n");
+
+    SensorData data;
+    struct sockaddr_un client_addr;
+    socklen_t client_len = sizeof(client_addr);
+
+    while (1) {
+        /* recvfrom() nhận đúng 1 message, biết địa chỉ client */
+        ssize_t n = recvfrom(fd, &data, sizeof(data), 0,
+                             (struct sockaddr *)&client_addr,
+                             &client_len);
+        if (n == (ssize_t)sizeof(data)) {
+            printf("Sensor %d: %.2f (t=%ld)\n",
+                   data.sensor_id, data.value, data.timestamp);
+        }
+    }
+    close(fd);
+    unlink(SERVER_PATH);
+    return 0;
+}</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">dgram_client.c — gửi struct trực tiếp, không cần connect</div>
+    <pre>#include &lt;sys/socket.h&gt;
+#include &lt;sys/un.h&gt;
+#include &lt;time.h&gt;
+#include &lt;string.h&gt;
+#include &lt;unistd.h&gt;
+
+#define SERVER_PATH "/tmp/sensor.sock"
+
+typedef struct {
+    int sensor_id; float value; long timestamp;
+} SensorData;
+
+int main(void) {
+    int fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+    /* Client không cần bind() nếu chỉ gửi, không cần reply */
+
+    struct sockaddr_un srv;
+    memset(&srv, 0, sizeof(srv));
+    srv.sun_family = AF_UNIX;
+    strncpy(srv.sun_path, SERVER_PATH, sizeof(srv.sun_path)-1);
+
+    SensorData d = {
+        .sensor_id = 3,
+        .value     = 24.7f,
+        .timestamp = (long)time(NULL)
+    };
+
+    /* sendto() gửi toàn bộ struct trong 1 lần — atomic */
+    sendto(fd, &d, sizeof(d), 0,
+           (struct sockaddr *)&srv, sizeof(srv));
+
+    close(fd);
+    return 0;
+}</pre>
+  </div>
+
+  <div class="info-box"><strong>Gửi struct trực tiếp — chú ý endianness:</strong> Trên cùng máy không cần lo. Nhưng nếu sau này mở rộng sang network socket (AF_INET), cần chuyển về network byte order bằng <span class="ic">htonl()</span> / <span class="ic">ntohl()</span>. Viết code embedded với thói quen này ngay từ đầu.</div>
+
+  <div class="warn-box"><strong>DGRAM cũng có thể mất message:</strong> Trên cùng máy, DGRAM gần như reliable, nhưng nếu receiver chưa đọc kịp và socket receive buffer đầy, kernel sẽ <strong>drop message mới</strong> (không báo lỗi cho sender!). Tăng buffer: <span class="ic">setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size))</span>. Trên embedded, giá trị mặc định thường là 212992 bytes (<span class="ic">cat /proc/sys/net/core/rmem_default</span>).</div>
+</div>
+
+<!-- PAGE 6 -->
+<div class="page" id="page-embedded">
+  <div class="chapter-title">Unix Socket trong Embedded Linux</div>
+  <div class="chapter-sub">Pattern thực tế, ràng buộc và ưu tiên khi dùng trên thiết bị nhúng.</div>
+
+  <div class="section-label">Khi nào chuyển từ Pipe sang Unix Socket</div>
+  <div class="card">
+    <div class="card-body">
+      Pipe đủ khi giao tiếp đơn giản 1:1 giữa parent/child. Chuyển sang Unix Socket khi:<br><br>
+      — Cần <strong>nhiều client</strong> kết nối đến 1 daemon (nhiều process gửi lệnh đến manager)<br>
+      — Cần <strong>reply</strong> từ server về client (bidirectional)<br>
+      — Hai process không có quan hệ cha-con và cần giao tiếp lâu dài<br>
+      — Cần truyền file descriptor qua <span class="ic">SCM_RIGHTS</span>
+    </div>
+  </div>
+
+  <div class="section-label">Pattern: daemon nhận lệnh từ nhiều client với select()</div>
+  <div class="code-block">
+    <div class="code-label">daemon_server.c — non-blocking, select(), pattern chuẩn embedded</div>
+    <pre>#include &lt;sys/select.h&gt;
+#include &lt;sys/socket.h&gt;
+#include &lt;sys/un.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;signal.h&gt;
+#include &lt;string.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;errno.h&gt;
+
+#define SOCK_PATH  "/var/run/myapp/control.sock"
+#define MAX_CLIENTS 8
+
+static volatile int running = 1;
+void on_term(int s) { (void)s; running = 0; }
+
+int main(void) {
+    signal(SIGTERM, on_term);
+    signal(SIGINT,  on_term);
+    signal(SIGPIPE, SIG_IGN);  /* Bắt buộc: tránh crash khi client thoát */
+
+    int srv = socket(AF_UNIX,
+                     SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+    struct sockaddr_un addr = { .sun_family = AF_UNIX };
+    strncpy(addr.sun_path, SOCK_PATH, sizeof(addr.sun_path)-1);
+    unlink(SOCK_PATH);
+    bind(srv, (struct sockaddr *)&addr, sizeof(addr));
+    listen(srv, MAX_CLIENTS);
+
+    int clients[MAX_CLIENTS];
+    for (int i = 0; i < MAX_CLIENTS; i++) clients[i] = -1;
+
+    printf("Daemon ready: %s\n", SOCK_PATH);
+
+    while (running) {
+        /* Xây fd_set mỗi vòng lặp */
+        fd_set rfds;
+        FD_ZERO(&rfds);
+        FD_SET(srv, &rfds);
+        int maxfd = srv;
+
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+            if (clients[i] != -1) {
+                FD_SET(clients[i], &rfds);
+                if (clients[i] > maxfd) maxfd = clients[i];
+            }
+        }
+
+        struct timeval tv = { .tv_sec = 1 };  /* Timeout 1s → kiểm tra running */
+        int ready = select(maxfd + 1, &rfds, NULL, NULL, &tv);
+        if (ready == -1) {
+            if (errno == EINTR) continue;  /* Signal ngắt, bình thường */
+            break;
+        }
+
+        /* Có client mới kết nối? */
+        if (FD_ISSET(srv, &rfds)) {
+            int cli = accept4(srv, NULL, NULL, SOCK_CLOEXEC);
+            if (cli != -1) {
+                for (int i = 0; i < MAX_CLIENTS; i++) {
+                    if (clients[i] == -1) { clients[i] = cli; break; }
+                }
+            }
+        }
+
+        /* Đọc từ các client đang kết nối */
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+            if (clients[i] == -1 || !FD_ISSET(clients[i], &rfds))
+                continue;
+
+            char buf[128];
+            ssize_t n = recv(clients[i], buf, sizeof(buf)-1, 0);
+            if (n <= 0) {
+                /* n==0: client đóng bình thường; n==-1: lỗi */
+                close(clients[i]);
+                clients[i] = -1;
+            } else {
+                buf[n] = '\0';
+                printf("Lenh tu client[%d]: %s\n", i, buf);
+                send(clients[i], "OK", 2, MSG_NOSIGNAL);
+            }
+        }
+    }
+
+    close(srv);
+    unlink(SOCK_PATH);
+    printf("Daemon dung.\n");
+    return 0;
+}</pre>
+  </div>
+
+  <div class="section-label">Ràng buộc thực tế trên embedded</div>
+  <div class="grid2">
+    <div>
+      <div class="emb-box"><strong>sun_path tối đa 108 ký tự:</strong> Giới hạn của <span class="ic">struct sockaddr_un</span> trên Linux. Path dài hơn bị cắt silently khi strncpy. Thường dùng <span class="ic">/var/run/app/x.sock</span> hoặc <span class="ic">/tmp/x.sock</span>.</div>
+      <div class="emb-box" style="margin-top:.75rem"><strong>/var/run cần mount tmpfs:</strong> Trên embedded rootfs read-only, <span class="ic">/var/run</span> cần được mount tmpfs trong init script. Nếu không, bind() lỗi EROFS. Kiểm tra: <span class="ic">mount | grep tmpfs</span></div>
+    </div>
+    <div>
+      <div class="warn-box"><strong>unlink() khi khởi động lại:</strong> Nếu daemon crash mà không cleanup, socket file còn trên FS. Lần sau, bind() lỗi EADDRINUSE. Luôn <span class="ic">unlink(path)</span> trước bind() — pattern bắt buộc.</div>
+      <div class="warn-box" style="margin-top:.75rem"><strong>Permission socket file:</strong> Socket file kế thừa umask. Nếu client chạy user khác cần dùng <span class="ic">chmod()</span> sau bind(). Hoặc dùng abstract namespace để tránh vấn đề permission hoàn toàn.</div>
+    </div>
+  </div>
+
+  <div class="section-label">Abstract namespace — không có file trên filesystem</div>
+  <div class="code-block">
+    <div class="code-label">Abstract socket — tự cleanup khi tất cả fd đóng, không cần unlink</div>
+    <pre>struct sockaddr_un addr;
+memset(&addr, 0, sizeof(addr));
+addr.sun_family = AF_UNIX;
+
+/* sun_path[0] = '\0' → abstract namespace.
+   Tên thực sự bắt đầu từ sun_path[1] */
+strncpy(addr.sun_path + 1, "myapp_ctrl",
+        sizeof(addr.sun_path) - 2);
+
+/* addrlen phải tính đúng: +1 cho byte '\0' đầu */
+socklen_t addrlen = offsetof(struct sockaddr_un, sun_path)
+                    + 1 + strlen("myapp_ctrl");
+
+bind(srv, (struct sockaddr *)&addr, addrlen);
+
+/* Ưu điểm:
+   - Không cần unlink() — tự biến mất khi tất cả fd đóng
+   - Không bị ảnh hưởng bởi permission filesystem
+   - Không để lại vết nếu crash
+   Nhược điểm:
+   - Linux-specific (không có trên macOS/BSD)
+   - Không thể debug bằng ls, ss -xl hiển thị @ trước tên */</pre>
+  </div>
+
+  <div class="emb-box"><strong>Bước tiếp theo:</strong> Sau Unix Socket, IPC tiếp theo nên học là <strong>Shared Memory (mmap + POSIX shm)</strong> — throughput cao nhất vì zero-copy, cần thiết khi truyền dữ liệu lớn như frame ảnh từ camera hoặc buffer audio. Sau đó là <strong>Message Queue</strong> cho pattern publish-subscribe.</div>
+</div>
+
+<!-- PAGE 7 -->
+<div class="page" id="page-advanced">
+  <div class="chapter-title">Chủ đề nâng cao</div>
+  <div class="chapter-sub">SCM_RIGHTS truyền fd, SO_PEERCRED xác thực client, hiệu năng so với TCP loopback, SOCK_SEQPACKET thực chiến.</div>
+
+  <div class="section-label">SCM_RIGHTS — truyền file descriptor giữa các process</div>
+  <div class="card">
+    <div class="card-body">
+      Đây là khả năng <strong>duy nhất của Unix Socket</strong> mà không IPC nào khác có: truyền một file descriptor đang mở từ process A sang process B. Process B nhận được một fd mới trỏ đến <strong>cùng file/socket/device</strong> mà A đang mở.<br><br>
+      <strong>Ứng dụng thực tế:</strong><br>
+      — Process cha mở device (<span class="ic">/dev/spi0</span>), truyền fd cho process con không có quyền root<br>
+      — Supervisor mở log file, truyền fd cho worker process (worker không cần biết path)<br>
+      — Web server nhận connection, truyền client fd sang worker process để xử lý<br><br>
+      Cơ chế: dùng <span class="ic">sendmsg()</span> với <span class="ic">struct msghdr</span> chứa ancillary data (<span class="ic">struct cmsghdr</span>) có type <span class="ic">SCM_RIGHTS</span>. Kernel sẽ duplicate fd sang process nhận.
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-label">send_fd() — gửi 1 file descriptor qua Unix Socket</div>
+    <pre>#include &lt;sys/socket.h&gt;
+#include &lt;string.h&gt;
+
+/* Gửi fd_to_send qua socket 'sock'. Trả về 0 thành công, -1 lỗi */
+int send_fd(int sock, int fd_to_send) {
+    /* Cần gửi ít nhất 1 byte data thật — nếu không sendmsg sẽ lỗi */
+    char dummy = 'F';
+    struct iovec iov = { .iov_base = &dummy, .iov_len = 1 };
+
+    /* Buffer cho ancillary data — chứa 1 int (fd) */
+    char cmsg_buf[CMSG_SPACE(sizeof(int))];
+    memset(cmsg_buf, 0, sizeof(cmsg_buf));
+
+    struct msghdr msg = {
+        .msg_iov     = &iov,
+        .msg_iovlen  = 1,
+        .msg_control    = cmsg_buf,
+        .msg_controllen = sizeof(cmsg_buf)
+    };
+
+    /* Điền ancillary header */
+    struct cmsghdr *cmsg  = CMSG_FIRSTHDR(&msg);
+    cmsg->cmsg_level = SOL_SOCKET;
+    cmsg->cmsg_type  = SCM_RIGHTS;       /* "Tôi đang gửi file descriptor" */
+    cmsg->cmsg_len   = CMSG_LEN(sizeof(int));
+    *(int *)CMSG_DATA(cmsg) = fd_to_send; /* fd thực sự */
+
+    return (sendmsg(sock, &msg, 0) == -1) ? -1 : 0;
+}</pre>
+  </div>
+  <div class="code-block">
+    <div class="code-label">recv_fd() — nhận file descriptor từ process khác</div>
+    <pre>/* Nhận fd từ socket 'sock'. Trả về fd nhận được, hoặc -1 nếu lỗi */
+int recv_fd(int sock) {
+    char dummy;
+    struct iovec iov = { .iov_base = &dummy, .iov_len = 1 };
+
+    char cmsg_buf[CMSG_SPACE(sizeof(int))];
+
+    struct msghdr msg = {
+        .msg_iov        = &iov,
+        .msg_iovlen     = 1,
+        .msg_control    = cmsg_buf,
+        .msg_controllen = sizeof(cmsg_buf)
+    };
+
+    if (recvmsg(sock, &msg, 0) == -1) return -1;
+
+    struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+    if (cmsg == NULL ||
+        cmsg->cmsg_level != SOL_SOCKET ||
+        cmsg->cmsg_type  != SCM_RIGHTS) {
+        return -1;   /* Không phải SCM_RIGHTS message */
+    }
+
+    int received_fd;
+    memcpy(&received_fd, CMSG_DATA(cmsg), sizeof(int));
+    return received_fd;
+
+    /* Lưu ý: fd nhận được là số MỚI trong process nhận,
+       có thể khác số fd ở process gửi. Nhưng trỏ cùng file. */
+}</pre>
+  </div>
+  <div class="info-box"><strong>Sử dụng thực tế:</strong> Process A mở <span class="ic">/dev/i2c-1</span> với quyền root, rồi gửi fd qua Unix Socket cho process B chạy non-root. Process B dùng fd này để đọc/ghi I2C trực tiếp mà không cần quyền root. Đây là pattern <strong>privilege separation</strong> rất phổ biến trong embedded security.</div>
+
+  <div class="divider"></div>
+
+  <div class="section-label">SO_PEERCRED — xác thực client là ai</div>
+  <div class="card">
+    <div class="card-body">
+      Khi server accept một kết nối, nó có thể hỏi kernel: <strong>"Client này là process nào, chạy với user/group gì?"</strong> — mà <strong>client không thể giả mạo</strong> thông tin này (kernel tự cung cấp).<br><br>
+      Rất quan trọng trong embedded khi server daemon cần từ chối lệnh từ process không đủ quyền.
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-label">Kiểm tra UID/GID/PID của client sau accept()</div>
+    <pre>#include &lt;sys/socket.h&gt;
+
+/* Sau khi accept(), kiểm tra credentials của client */
+struct ucred cred;
+socklen_t cred_len = sizeof(cred);
+
+if (getsockopt(cli_fd, SOL_SOCKET, SO_PEERCRED,
+               &cred, &cred_len) == -1) {
+    perror("getsockopt SO_PEERCRED");
+} else {
+    printf("Client: PID=%d, UID=%d, GID=%d\n",
+           cred.pid, cred.uid, cred.gid);
+
+    /* Chỉ cho phép root hoặc user cụ thể */
+    if (cred.uid != 0 && cred.uid != 1000) {
+        const char *deny = "Permission denied";
+        send(cli_fd, deny, strlen(deny), MSG_NOSIGNAL);
+        close(cli_fd);
+        return;  /* Từ chối client */
+    }
+}
+
+/* struct ucred được định nghĩa trong &lt;sys/socket.h&gt;:
+   struct ucred {
+       pid_t pid;   // PID của process client
+       uid_t uid;   // User ID thực (real UID)
+       gid_t gid;   // Group ID thực (real GID)
+   };
+   Linux-specific. Trên BSD dùng getpeereid() thay thế. */</pre>
+  </div>
+  <div class="warn-box"><strong>SO_PEERCRED chỉ hoạt động với SOCK_STREAM và SOCK_SEQPACKET</strong> (connection-oriented). Với SOCK_DGRAM, dùng <span class="ic">SO_PASSCRED</span> + <span class="ic">SCM_CREDENTIALS</span> trong ancillary data của recvmsg() — phức tạp hơn đáng kể.</div>
+
+  <div class="divider"></div>
+
+  <div class="section-label">Hiệu năng: Unix Socket vs TCP loopback (127.0.0.1)</div>
+  <div class="card">
+    <div class="card-body">
+      Cả hai đều giao tiếp trên cùng máy, nhưng Unix Socket nhanh hơn đáng kể vì bỏ qua toàn bộ TCP/IP network stack.
+    </div>
+  </div>
+  <div class="card">
+    <table class="compare-table">
+      <thead><tr><th>Tiêu chí</th><th>Unix Socket</th><th>TCP loopback (127.0.0.1)</th></tr></thead>
+      <tbody>
+        <tr><td>Latency (round-trip)</td><td><strong>~2-5 μs</strong></td><td>~10-30 μs</td></tr>
+        <tr><td>Throughput</td><td><strong>~8-12 GB/s</strong></td><td>~4-6 GB/s</td></tr>
+        <tr><td>CPU overhead mỗi message</td><td><strong>Thấp</strong> (không qua IP/TCP stack)</td><td>Cao (checksum, routing, congestion control)</td></tr>
+        <tr><td>Bước xử lý trong kernel</td><td>Copy buffer trực tiếp giữa socket</td><td>Đi qua loopback interface → IP → TCP → socket</td></tr>
+        <tr><td>File descriptor passing</td><td><strong>Có (SCM_RIGHTS)</strong></td><td>Không</td></tr>
+        <tr><td>Credential checking</td><td><strong>Có (SO_PEERCRED)</strong></td><td>Không</td></tr>
+        <tr><td>Truy cập từ máy khác</td><td>Không</td><td><strong>Có (nếu đổi bind address)</strong></td></tr>
+        <tr><td>Debug tools</td><td><span class="ic">ss -xl</span>, <span class="ic">socat</span></td><td><span class="ic">ss -tl</span>, <span class="ic">tcpdump</span>, <span class="ic">wireshark</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="info-box"><strong>Lý do Unix Socket nhanh hơn:</strong> Khi gửi data qua TCP loopback, kernel phải: tính TCP checksum → đóng gói IP header → routing decision (dù luôn là loopback) → xử lý congestion control → giải mã ngược lại. Unix Socket bỏ qua <strong>tất cả</strong> các bước này — chỉ copy buffer trực tiếp từ sender socket sang receiver socket trong kernel space.</div>
+
+  <div class="divider"></div>
+
+  <div class="section-label">SOCK_SEQPACKET — code ví dụ thực chiến</div>
+  <div class="card">
+    <div class="card-body">
+      <span class="ic">SOCK_SEQPACKET</span> kết hợp sự tin cậy của STREAM với message boundary của DGRAM. Không cần thiết kế framing protocol. Rất phù hợp để gửi struct command/response.
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-label">seqpacket_example.c — gửi/nhận struct với ranh giới tự động</div>
+    <pre>/* Cả server và client đều dùng struct này */
+typedef struct {
+    uint8_t  cmd;       /* 0=PING, 1=SET_LED, 2=GET_TEMP */
+    uint8_t  reserved;
+    uint16_t payload;
+} Command;
+
+typedef struct {
+    uint8_t  status;    /* 0=OK, 1=ERROR */
+    uint8_t  reserved;
+    uint16_t value;
+} Response;
+
+/* === Server side === */
+int srv = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
+/* bind(), listen() giống SOCK_STREAM */
+
+int cli = accept4(srv, NULL, NULL, SOCK_CLOEXEC);
+
+Command cmd;
+ssize_t n = recv(cli, &cmd, sizeof(cmd), 0);
+/* n == sizeof(Command) LUÔN ĐÚNG nếu client gửi đúng 1 struct.
+   Không bao giờ nhận nửa struct — kernel đảm bảo message boundary.
+   Nếu n == 0 → client đóng kết nối */
+
+if (n == sizeof(cmd)) {
+    Response resp = { .status = 0, .value = 42 };
+    send(cli, &resp, sizeof(resp), MSG_NOSIGNAL);
+    /* Client nhận đúng sizeof(Response), không hơn không kém */
+}
+
+/* === Client side === */
+int fd = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
+/* connect() giống SOCK_STREAM */
+
+Command cmd = { .cmd = 2 };  /* GET_TEMP */
+send(fd, &cmd, sizeof(cmd), 0);
+
+Response resp;
+recv(fd, &resp, sizeof(resp), 0);
+printf("Temperature: %d\n", resp.value);
+
+/* Ưu điểm so với SOCK_STREAM:
+   - Không cần header length prefix
+   - Không cần recv_all() loop
+   - Không sợ 2 message bị gộp lại
+   Ưu điểm so với SOCK_DGRAM:
+   - Có kết nối rõ ràng (biết khi nào peer disconnect)
+   - Reliable — không mất message
+   - Có flow control */</pre>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section-label">Debug và troubleshoot Unix Socket</div>
+  <div class="code-block">
+    <div class="code-label">Các lệnh debug hữu ích</div>
+    <pre># Xem tất cả Unix Socket đang listen
+ss -xlp
+# x = unix, l = listening, p = show process
+
+# Xem socket cụ thể
+ss -xl | grep myapp.sock
+
+# Xem process nào đang giữ socket file
+lsof /tmp/myapp.sock
+# hoặc
+fuser /tmp/myapp.sock
+
+# Kiểm tra loại file — phải bắt đầu bằng 's'
+ls -la /tmp/myapp.sock
+# srwxr-xr-x 1 root root 0 Jun 09 ... /tmp/myapp.sock
+#  ↑ 's' = socket file
+
+# Test gửi data bằng socat (rất hữu ích khi debug)
+socat - UNIX-CONNECT:/tmp/myapp.sock
+# Gõ text rồi Enter để gửi, Ctrl+D để đóng
+
+# Abstract socket (bắt đầu bằng @)
+ss -xlp | grep @myapp
+
+# Xem socket buffer đang chứa bao nhiêu data
+ss -xl -e | grep myapp.sock
+# Cột Recv-Q và Send-Q cho biết bytes đang chờ
+
+# Xem giới hạn buffer size
+cat /proc/sys/net/core/rmem_default   # receive buffer mặc định
+cat /proc/sys/net/core/wmem_default   # send buffer mặc định
+cat /proc/sys/net/core/rmem_max       # receive buffer tối đa
+
+# Trace system calls (debug khi connect thất bại)
+strace -e trace=socket,bind,connect,accept4 ./client</pre>
+  </div>
+
+  <div class="emb-box"><strong>Tóm tắt chọn socket type:</strong><br>
+  — Gửi data lớn, streaming → <span class="ic">SOCK_STREAM</span><br>
+  — Gửi struct/command nhỏ, cần message boundary, cần connection → <span class="ic">SOCK_SEQPACKET</span> ★ khuyên dùng cho IPC<br>
+  — Fire-and-forget, nhiều sender → 1 receiver, không cần reply → <span class="ic">SOCK_DGRAM</span><br>
+  — Cần truy cập từ máy khác → Dùng TCP socket (<span class="ic">AF_INET</span>) thay vì Unix Socket</div>
+</div>
+
+<!-- PAGE 8 -->
+<div class="page" id="page-syncasync">
+  <div class="chapter-title">Đồng bộ hay Bất đồng bộ? — Socket nhận dữ liệu thế nào</div>
+  <div class="chapter-sub">Mặc định là blocking (đồng bộ). Có 4 cách chuyển sang bất đồng bộ — signal chỉ là 1 trong số đó và ít dùng nhất.</div>
+
+  <div class="section-label">Mặc định: Blocking I/O (đồng bộ)</div>
+  <div class="card">
+    <div class="card-body">
+      Khi gọi <span class="ic">recv(fd, buf, len, 0)</span>, kernel sẽ <strong>block process</strong> — process chuyển sang trạng thái SLEEP và <strong>không chiếm CPU</strong>. Kernel đánh dấu "process này đang chờ dữ liệu trên fd này". Khi data đến, kernel đánh thức process, copy data vào buf, recv() return.<br><br>
+      <strong>Tương tự cho accept():</strong> nếu chưa có client nào connect, accept() block cho đến khi có.<br><br>
+      <strong>Đây là cách đơn giản nhất và đủ dùng cho:</strong> single-client, protocol request-response tuần tự, embedded đơn giản.
+    </div>
+  </div>
+
+  <svg width="100%" viewBox="0 0 680 200" style="display:block;margin:.75rem 0">
+    <defs><marker id="ar3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <text font-family="system-ui" font-size="12" font-weight="500" x="30" y="20" fill="#1a5c3a">Blocking recv()</text>
+    <text font-family="system-ui" font-size="12" font-weight="500" x="380" y="20" fill="#1a5c3a">Non-blocking recv()</text>
+    <!-- Blocking side -->
+    <rect x="30" y="34" width="300" height="150" rx="8" fill="#f8f8f8" stroke="#ddd" stroke-width="1"/>
+    <rect x="50" y="50" width="80" height="24" rx="4" fill="#d0f0e8" stroke="#2e9e6a" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="90" y="62" text-anchor="middle" dominant-baseline="central" fill="#1a5c3a">recv()</text>
+    <line x1="130" y1="62" x2="155" y2="62" stroke="#888" stroke-width="1" marker-end="url(#ar3)"/>
+    <rect x="158" y="50" width="80" height="24" rx="4" fill="#fff0d0" stroke="#e6a817" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="198" y="62" text-anchor="middle" dominant-baseline="central" fill="#8a5000">SLEEP</text>
+    <text font-family="system-ui" font-size="10" x="198" y="90" text-anchor="middle" fill="#888">process không chạy</text>
+    <text font-family="system-ui" font-size="10" x="198" y="104" text-anchor="middle" fill="#888">không chiếm CPU</text>
+    <text font-family="system-ui" font-size="10" x="198" y="118" text-anchor="middle" fill="#888">kernel theo dõi fd</text>
+    <line x1="198" y1="128" x2="198" y2="140" stroke="#2e9e6a" stroke-width="1" marker-end="url(#ar3)"/>
+    <text font-family="system-ui" font-size="10" x="198" y="138" text-anchor="end" fill="#2e9e6a" dx="-10">data đến!</text>
+    <rect x="158" y="144" width="80" height="24" rx="4" fill="#d0f0e8" stroke="#2e9e6a" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="198" y="156" text-anchor="middle" dominant-baseline="central" fill="#1a5c3a">return n</text>
+    <!-- Non-blocking side -->
+    <rect x="380" y="34" width="280" height="150" rx="8" fill="#f8f8f8" stroke="#ddd" stroke-width="1"/>
+    <rect x="395" y="50" width="80" height="24" rx="4" fill="#e8e6ff" stroke="#6b5cd6" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="435" y="62" text-anchor="middle" dominant-baseline="central" fill="#3b2fa0">recv()</text>
+    <line x1="475" y1="62" x2="500" y2="62" stroke="#888" stroke-width="1" marker-end="url(#ar3)"/>
+    <text font-family="system-ui" font-size="10" x="555" y="62" text-anchor="middle" dominant-baseline="central" fill="#d04040">-1, EAGAIN</text>
+    <rect x="395" y="82" width="80" height="24" rx="4" fill="#e8e6ff" stroke="#6b5cd6" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="435" y="94" text-anchor="middle" dominant-baseline="central" fill="#3b2fa0">recv()</text>
+    <line x1="475" y1="94" x2="500" y2="94" stroke="#888" stroke-width="1" marker-end="url(#ar3)"/>
+    <text font-family="system-ui" font-size="10" x="555" y="94" text-anchor="middle" dominant-baseline="central" fill="#d04040">-1, EAGAIN</text>
+    <rect x="395" y="114" width="80" height="24" rx="4" fill="#e8e6ff" stroke="#6b5cd6" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="435" y="126" text-anchor="middle" dominant-baseline="central" fill="#3b2fa0">recv()</text>
+    <line x1="475" y1="126" x2="500" y2="126" stroke="#888" stroke-width="1" marker-end="url(#ar3)"/>
+    <text font-family="system-ui" font-size="10" x="555" y="126" text-anchor="middle" dominant-baseline="central" fill="#2e9e6a">n bytes ✓</text>
+    <text font-family="system-ui" font-size="10" x="435" y="155" text-anchor="middle" fill="#888">liên tục gọi → tốn CPU!</text>
+  </svg>
+
+  <div class="warn-box"><strong>Blocking ≠ lãng phí CPU.</strong> Process đang block <strong>không chiếm CPU</strong> — kernel chuyển nó sang hàng đợi SLEEP. CPU chạy process khác. Chỉ khi data đến, kernel mới đánh thức process. Đây là thiết kế hiệu quả, không phải "chờ bận" (busy-wait).</div>
+
+  <div class="divider"></div>
+
+  <div class="section-label">4 cách chuyển sang bất đồng bộ</div>
+  <div class="card">
+    <table class="compare-table">
+      <thead><tr><th>Phương pháp</th><th>Cách hoạt động</th><th>Ưu điểm</th><th>Nhược điểm</th><th>Dùng khi</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="ic">O_NONBLOCK</span></td>
+          <td>recv() return ngay -1 (EAGAIN) nếu chưa có data</td>
+          <td>Đơn giản, không block</td>
+          <td>Phải tự poll liên tục → <strong>tốn CPU</strong></td>
+          <td>Kết hợp với select/epoll, không dùng đơn lẻ</td>
+        </tr>
+        <tr>
+          <td><span class="ic">select()</span> / <span class="ic">poll()</span></td>
+          <td>Block chờ <strong>nhiều fd cùng lúc</strong>, tỉnh khi bất kỳ fd nào sẵn sàng</td>
+          <td>1 thread serve nhiều client, portable</td>
+          <td>select: giới hạn 1024 fd. poll: O(n) mỗi lần</td>
+          <td>Server cần serve vài chục client</td>
+        </tr>
+        <tr>
+          <td><span class="ic">epoll</span></td>
+          <td>Kernel thông báo chỉ những fd <strong>thực sự có sự kiện</strong></td>
+          <td>O(1) per event, scale tốt</td>
+          <td>Linux-only, phức tạp hơn select</td>
+          <td>Server scale lớn, embedded hiệu năng cao</td>
+        </tr>
+        <tr>
+          <td><span class="ic">SIGIO</span> (signal)</td>
+          <td>Kernel <strong>bắn signal</strong> khi data đến → chạy signal handler</td>
+          <td>Không cần poll loop</td>
+          <td><strong>Rất khó dùng đúng</strong>, race condition, chỉ 1 fd/process</td>
+          <td>Hầu như không dùng trong thực tế</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section-label">Cách 1: Non-blocking — O_NONBLOCK</div>
+  <div class="card">
+    <div class="card-body">
+      Đặt socket ở chế độ non-blocking: mọi operation trả về ngay lập tức. Nếu chưa có data, <span class="ic">recv()</span> trả -1 với <span class="ic">errno = EAGAIN</span>. Nếu accept queue rỗng, <span class="ic">accept()</span> cũng trả -1/EAGAIN.<br><br>
+      <strong>Hai cách bật:</strong><br>
+      — Khi tạo socket: <span class="ic">socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0)</span><br>
+      — Sau khi tạo: <span class="ic">fcntl(fd, F_SETFL, O_NONBLOCK)</span>
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-label">Non-blocking recv — phải tự kiểm tra EAGAIN</div>
+    <pre>#include &lt;fcntl.h&gt;
+#include &lt;errno.h&gt;
+
+/* Cách 1: bật khi tạo socket */
+int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+
+/* Cách 2: bật sau bằng fcntl */
+int flags = fcntl(fd, F_GETFL, 0);
+fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+
+/* Đọc dữ liệu — không block */
+char buf[256];
+ssize_t n = recv(fd, buf, sizeof(buf), 0);
+
+if (n > 0) {
+    /* Có data → xử lý */
+    buf[n] = '\0';
+    printf("Nhận: %s\n", buf);
+} else if (n == 0) {
+    /* Peer đóng kết nối */
+    printf("Client disconnected\n");
+} else {  /* n == -1 */
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        /* CHƯA có data — bình thường, không phải lỗi */
+        /* Làm việc khác rồi thử lại sau */
+    } else {
+        perror("recv");  /* Lỗi thật */
+    }
+}</pre>
+  </div>
+  <div class="warn-box"><strong>Không dùng non-blocking đơn lẻ với busy-wait loop!</strong><br>
+    <span class="ic">while (1) { n = recv(...); if (n == -1 && errno == EAGAIN) continue; }</span><br>
+    Vòng lặp này chạy liên tục <strong>100% CPU</strong> mà không nhận được gì. Trên embedded, pin hết nhanh, CPU nóng. Luôn kết hợp non-blocking với <span class="ic">select/poll/epoll</span> hoặc thêm <span class="ic">usleep()</span> — nhưng select/epoll là cách đúng.</div>
+
+  <div class="divider"></div>
+
+  <div class="section-label">Cách 2: select() / poll() — I/O Multiplexing ★ phổ biến nhất</div>
+  <div class="card">
+    <div class="card-body">
+      <span class="ic">select()</span> cho phép process <strong>block chờ nhiều fd cùng lúc</strong>. Khi bất kỳ fd nào có data (hoặc timeout), select() return và cho biết fd nào sẵn sàng.<br><br>
+      <strong>Cơ chế kernel:</strong> process gọi select() → kernel đặt process vào wait queue của TẤT CẢ các fd → khi data đến trên bất kỳ fd nào → kernel đánh thức process → select() return.<br><br>
+      Đây là cách server phục vụ nhiều client mà <strong>chỉ cần 1 thread</strong>. Đã dùng trong ví dụ daemon ở tab "6. Embedded Linux".
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-label">poll() — đơn giản hơn select(), không giới hạn 1024 fd</div>
+    <pre>#include &lt;poll.h&gt;
+
+/* Theo dõi server socket + 1 client socket cùng lúc */
+struct pollfd fds[2];
+fds[0].fd     = srv_fd;    /* server socket — chờ client mới */
+fds[0].events = POLLIN;    /* POLLIN = có data đọc được hoặc có connect mới */
+fds[1].fd     = cli_fd;    /* client đã kết nối — chờ data */
+fds[1].events = POLLIN;
+
+while (running) {
+    /* Block tối đa 1000ms, hoặc tỉnh ngay khi có sự kiện */
+    int ready = poll(fds, 2, 1000);
+
+    if (ready == -1) {
+        if (errno == EINTR) continue;  /* signal ngắt */
+        break;
+    }
+    if (ready == 0) {
+        /* Timeout — không có sự kiện nào trong 1s */
+        continue;
+    }
+
+    /* Kiểm tra từng fd */
+    if (fds[0].revents & POLLIN) {
+        /* Có client mới connect → accept() sẽ KHÔNG block */
+        int new_cli = accept4(srv_fd, NULL, NULL, SOCK_CLOEXEC);
+        /* ... */
+    }
+    if (fds[1].revents & POLLIN) {
+        /* Client gửi data → recv() sẽ KHÔNG block */
+        ssize_t n = recv(cli_fd, buf, sizeof(buf), 0);
+        /* ... */
+    }
+    if (fds[1].revents & (POLLHUP | POLLERR)) {
+        /* Client đóng hoặc lỗi */
+        close(cli_fd);
+    }
+}
+
+/* POLLIN  = có data đọc được (hoặc accept ready)
+   POLLOUT = có thể ghi mà không block
+   POLLHUP = peer đóng kết nối
+   POLLERR = lỗi trên fd */</pre>
+  </div>
+  <div class="info-box"><strong>select() vs poll():</strong> Cả hai làm cùng 1 việc. <span class="ic">select()</span> giới hạn <span class="ic">FD_SETSIZE</span> (thường 1024) fd và phải rebuild fd_set mỗi lần gọi. <span class="ic">poll()</span> không giới hạn số fd và API sạch hơn. Trên embedded, <strong>poll() được khuyên dùng hơn select()</strong> cho code mới.</div>
+
+  <div class="divider"></div>
+
+  <div class="section-label">Cách 3: epoll — hiệu năng cao nhất (Linux-only)</div>
+  <div class="card">
+    <div class="card-body">
+      <span class="ic">select/poll</span> mỗi lần gọi phải quét <strong>toàn bộ danh sách fd</strong> — O(n). Với 1000 client mà chỉ 5 client có data, vẫn phải kiểm tra 1000 fd.<br><br>
+      <span class="ic">epoll</span> dùng cơ chế <strong>callback trong kernel</strong>: khi data đến trên fd nào, kernel thêm fd đó vào "ready list". <span class="ic">epoll_wait()</span> chỉ trả về <strong>những fd thực sự có sự kiện</strong> — O(1) per event.<br><br>
+      Trên embedded, epoll quan trọng khi daemon cần xử lý nhiều nguồn dữ liệu (socket + serial + GPIO + timer) trên 1 thread.
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-label">epoll — server socket + timerfd trên cùng event loop</div>
+    <pre>#include &lt;sys/epoll.h&gt;
+
+int epfd = epoll_create1(EPOLL_CLOEXEC);
+
+/* Đăng ký server socket */
+struct epoll_event ev;
+ev.events  = EPOLLIN;       /* Quan tâm: có client mới */
+ev.data.fd = srv_fd;
+epoll_ctl(epfd, EPOLL_CTL_ADD, srv_fd, &ev);
+
+/* Đăng ký thêm client fd sau khi accept */
+/* ev.data.fd = cli_fd;
+   epoll_ctl(epfd, EPOLL_CTL_ADD, cli_fd, &ev); */
+
+/* Event loop */
+struct epoll_event events[16];  /* Nhận tối đa 16 sự kiện/lần */
+
+while (running) {
+    /* Block tối đa 1000ms */
+    int nfds = epoll_wait(epfd, events, 16, 1000);
+
+    for (int i = 0; i < nfds; i++) {
+        if (events[i].data.fd == srv_fd) {
+            /* Client mới → accept */
+            int cli = accept4(srv_fd, NULL, NULL, SOCK_CLOEXEC);
+            if (cli != -1) {
+                ev.events  = EPOLLIN;
+                ev.data.fd = cli;
+                epoll_ctl(epfd, EPOLL_CTL_ADD, cli, &ev);
+            }
+        } else {
+            /* Data từ client */
+            char buf[256];
+            ssize_t n = recv(events[i].data.fd, buf, sizeof(buf), 0);
+            if (n <= 0) {
+                /* Client đóng hoặc lỗi → gỡ khỏi epoll */
+                epoll_ctl(epfd, EPOLL_CTL_DEL,
+                          events[i].data.fd, NULL);
+                close(events[i].data.fd);
+            } else {
+                buf[n] = '\0';
+                printf("Nhận: %s\n", buf);
+                send(events[i].data.fd, "OK", 2, MSG_NOSIGNAL);
+            }
+        }
+    }
+}
+close(epfd);
+
+/* Ưu điểm epoll trên embedded:
+   - 1 thread xử lý socket + serial + GPIO + timerfd
+   - Không cần tạo nhiều thread → tiết kiệm RAM
+   - O(1) per event → hiệu quả với nhiều fd */</pre>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section-label">Cách 4: SIGIO — bắn signal khi có data</div>
+  <div class="card">
+    <div class="card-body">
+      <strong>Đúng, kernel CÓ THỂ bắn signal khi có data</strong> — cơ chế gọi là <strong>Signal-driven I/O</strong>. Khi data đến trên socket, kernel gửi <span class="ic">SIGIO</span> (hoặc <span class="ic">SIGPOLL</span>) đến process. Process đang làm việc khác sẽ bị ngắt, chạy signal handler, rồi quay lại công việc.<br><br>
+      <strong>Nhưng trong thực tế gần như không ai dùng.</strong> Lý do:
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-label">Thiết lập SIGIO — hoạt động nhưng KHÔNG khuyên dùng</div>
+    <pre>#include &lt;signal.h&gt;
+#include &lt;fcntl.h&gt;
+
+static volatile int data_ready = 0;
+
+void sigio_handler(int sig) {
+    (void)sig;
+    data_ready = 1;
+    /* CẢNH BÁO: trong signal handler chỉ được gọi
+       async-signal-safe functions!
+       KHÔNG được gọi: printf, malloc, recv, send, mutex...
+       Chỉ set flag rồi return */
+}
+
+int main(void) {
+    int fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+    /* ... connect() ... */
+
+    /* Bước 1: Đăng ký signal handler */
+    struct sigaction sa;
+    sa.sa_handler = sigio_handler;
+    sa.sa_flags = 0;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGIO, &sa, NULL);
+
+    /* Bước 2: Đặt process owner của fd */
+    fcntl(fd, F_SETOWN, getpid());
+
+    /* Bước 3: Bật async notification */
+    int flags = fcntl(fd, F_GETFL, 0);
+    fcntl(fd, F_SETFL, flags | O_ASYNC | O_NONBLOCK);
+
+    /* Bây giờ khi data đến → kernel gửi SIGIO → handler chạy */
+
+    while (running) {
+        if (data_ready) {
+            data_ready = 0;
+            char buf[256];
+            ssize_t n = recv(fd, buf, sizeof(buf), 0);
+            if (n > 0) {
+                buf[n] = '\0';
+                printf("Nhận: %s\n", buf);
+            }
+        }
+        /* Làm việc khác... */
+        do_other_work();
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-amber">Tại sao SIGIO gần như không dùng?</span></div>
+    <div class="card-body">
+      <strong>1. Chỉ 1 fd per process (traditional SIGIO):</strong> Nếu có 10 socket, SIGIO chỉ cho biết "có data ở đâu đó" — không biết fd nào! Phải kiểm tra tất cả. <span class="ic">F_SETSIG</span> + <span class="ic">sigqueue</span> cải thiện nhưng phức tạp.<br><br>
+      <strong>2. Signal handler hạn chế nghiêm trọng:</strong> Trong handler chỉ được gọi <a href="https://man7.org/linux/man-pages/man7/signal-safety.7.html" style="color:#185FA5">async-signal-safe functions</a>. Không được <span class="ic">printf</span>, <span class="ic">malloc</span>, <span class="ic">recv</span>, không lock mutex. Chỉ có thể set flag.<br><br>
+      <strong>3. Race condition:</strong> Signal có thể đến giữa lúc kiểm tra flag → mất signal. Cần <span class="ic">pselect()</span> hoặc <span class="ic">signalfd()</span> để xử lý đúng.<br><br>
+      <strong>4. Khó debug:</strong> Signal handler chạy asynchronous, breakpoint không hoạt động bình thường, timing-dependent bug.<br><br>
+      <strong>Kết luận:</strong> Dùng <span class="ic">epoll</span> thay SIGIO trong mọi trường hợp. Nếu muốn signal-style nhưng an toàn, dùng <span class="ic">signalfd()</span> — biến signal thành fd, đọc bằng read() bình thường.
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section-label">signalfd() — signal nhưng an toàn</div>
+  <div class="card">
+    <div class="card-body">
+      <span class="ic">signalfd()</span> biến signal thành <strong>file descriptor</strong> — đọc bằng <span class="ic">read()</span> bình thường, có thể kết hợp với <span class="ic">epoll</span>. Không cần signal handler, không có race condition.<br><br>
+      Ứng dụng: đặt SIGTERM/SIGINT vào epoll cùng socket → 1 event loop xử lý cả signal lẫn data.
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-label">signalfd + epoll — xử lý signal cùng event loop</div>
+    <pre>#include &lt;sys/signalfd.h&gt;
+#include &lt;sys/epoll.h&gt;
+#include &lt;signal.h&gt;
+
+/* Block signal truyền thống — bắt buộc khi dùng signalfd */
+sigset_t mask;
+sigemptyset(&mask);
+sigaddset(&mask, SIGTERM);
+sigaddset(&mask, SIGINT);
+sigprocmask(SIG_BLOCK, &mask, NULL);  /* Block để signal không kill process */
+
+/* Tạo signalfd — đọc signal bằng read() */
+int sig_fd = signalfd(-1, &mask, SFD_CLOEXEC);
+
+/* Thêm vào epoll cùng socket */
+struct epoll_event ev;
+ev.events  = EPOLLIN;
+ev.data.fd = sig_fd;  /* fd này sẽ readable khi có SIGTERM/SIGINT */
+epoll_ctl(epfd, EPOLL_CTL_ADD, sig_fd, &ev);
+
+/* Trong event loop */
+for (int i = 0; i < nfds; i++) {
+    if (events[i].data.fd == sig_fd) {
+        /* Signal đến — đọc như data bình thường */
+        struct signalfd_siginfo info;
+        read(sig_fd, &info, sizeof(info));
+        printf("Nhận signal %d, thoát...\n", info.ssi_signo);
+        running = 0;
+    } else if (events[i].data.fd == srv_fd) {
+        /* Client mới connect */
+    } else {
+        /* Data từ client */
+    }
+}
+
+/* Kết quả: 1 epoll_wait() xử lý tất cả:
+   - Socket server (client mới)
+   - Socket client (data)
+   - Signal (shutdown gracefully)
+   - timerfd (periodic task)
+   - eventfd (thread notification)
+   Tất cả đều là fd → tất cả đều vào epoll */</pre>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section-label">Tổng kết — khi nào dùng gì</div>
+  <div class="card">
+    <table class="compare-table">
+      <thead><tr><th>Tình huống</th><th>Dùng</th><th>Lý do</th></tr></thead>
+      <tbody>
+        <tr><td>1 client, protocol tuần tự</td><td><span class="ic">blocking recv()</span></td><td>Đơn giản nhất, đủ dùng</td></tr>
+        <tr><td>Vài client (2-20)</td><td><span class="ic">poll()</span></td><td>Portable, API sạch, đủ hiệu năng</td></tr>
+        <tr><td>Nhiều client hoặc nhiều nguồn I/O</td><td><strong><span class="ic">epoll</span></strong></td><td>O(1), scale tốt, 1 thread cho mọi thứ</td></tr>
+        <tr><td>Embedded daemon (socket + serial + GPIO)</td><td><strong><span class="ic">epoll</span></strong></td><td>1 event loop xử lý mọi fd, tiết kiệm RAM</td></tr>
+        <tr><td>Cần xử lý signal gracefully</td><td><span class="ic">signalfd</span> + <span class="ic">epoll</span></td><td>Signal thành fd, xử lý đồng nhất</td></tr>
+        <tr><td>Bất kỳ trường hợp nào</td><td style="color:#d04040"><strong>KHÔNG dùng SIGIO</strong></td><td>Quá nhiều hạn chế, dùng epoll thay</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="emb-box"><strong>Pattern chuẩn embedded Linux hiện đại:</strong> 1 thread chính chạy <span class="ic">epoll_wait()</span> loop, quản lý tất cả fd (socket + serial + timerfd + signalfd + eventfd). Không tạo thread riêng cho mỗi client. Không dùng signal handler. Đây là kiến trúc của systemd, nginx, và hầu hết daemon Linux production.</div>
+</div>
+
+<!-- PAGE 9 -->
+<div class="page" id="page-macro">
+  <div class="chapter-title">Tra cứu macro — không cần nhớ, chỉ cần biết tìm ở đâu</div>
+  <div class="chapter-sub">Macro (biến IN HOA) là hằng số được định nghĩa trong header file. Không ai nhớ hết — cách làm việc đúng là biết tra cứu nhanh.</div>
+
+  <div class="code-block">
+    <div class="code-label">Cách tra cứu trên Linux — 3 lệnh cần nhớ</div>
+    <pre># 1. man page — nguồn chính xác nhất, có giải thích đầy đủ
+man 2 socket        # AF_UNIX, SOCK_STREAM, SOCK_CLOEXEC...
+man 2 send          # MSG_NOSIGNAL, MSG_DONTWAIT, MSG_PEEK...
+man 2 recv          # MSG_WAITALL, MSG_PEEK...
+man 2 poll          # POLLIN, POLLOUT, POLLHUP...
+man 2 epoll_ctl     # EPOLLIN, EPOLLET, EPOLLONESHOT...
+man 7 unix          # Tổng quan Unix socket — TẤT CẢ option
+man 7 epoll         # Level-triggered vs Edge-triggered
+man 3 errno         # EAGAIN, EPIPE, EADDRINUSE...
+man 2 fcntl         # F_SETFL, O_NONBLOCK, O_ASYNC...
+
+# 2. Tìm định nghĩa trong header file
+grep -rn "MSG_NOSIGNAL" /usr/include/
+# → /usr/include/bits/socket.h:304: MSG_NOSIGNAL = 0x4000
+
+# 3. Xem giá trị số của macro
+echo '#include &lt;sys/socket.h&gt;
+#include &lt;stdio.h&gt;
+int main(){printf("%d\n",MSG_NOSIGNAL);}' | gcc -x c - -o /tmp/m && /tmp/m
+# → 16384</pre>
+  </div>
+
+  <div class="section-label">&lt;sys/socket.h&gt; — socket domain, type, options</div>
+  <div class="card">
+    <table class="compare-table">
+      <thead><tr><th>Macro</th><th>Giá trị</th><th>Ý nghĩa</th><th>Dùng ở đâu</th></tr></thead>
+      <tbody>
+        <tr style="background:#f0faf5"><td colspan="4" style="font-weight:500;color:#1a5c3a;font-size:11px">Domain — loại socket</td></tr>
+        <tr><td><span class="ic">AF_UNIX</span></td><td>1</td><td>Unix Domain Socket (local IPC)</td><td>socket() param 1</td></tr>
+        <tr><td><span class="ic">AF_LOCAL</span></td><td>1</td><td>Tên khác của AF_UNIX — hoàn toàn giống</td><td>socket() param 1</td></tr>
+        <tr><td><span class="ic">AF_INET</span></td><td>2</td><td>IPv4 network socket</td><td>socket() param 1</td></tr>
+        <tr><td><span class="ic">AF_INET6</span></td><td>10</td><td>IPv6 network socket</td><td>socket() param 1</td></tr>
+
+        <tr style="background:#f0faf5"><td colspan="4" style="font-weight:500;color:#1a5c3a;font-size:11px">Type — kiểu truyền dữ liệu</td></tr>
+        <tr><td><span class="ic">SOCK_STREAM</span></td><td>1</td><td>Byte stream, có kết nối, đảm bảo thứ tự (như TCP)</td><td>socket() param 2</td></tr>
+        <tr><td><span class="ic">SOCK_DGRAM</span></td><td>2</td><td>Datagram, không kết nối, giữ message boundary</td><td>socket() param 2</td></tr>
+        <tr><td><span class="ic">SOCK_SEQPACKET</span></td><td>5</td><td>Có kết nối + giữ message boundary</td><td>socket() param 2</td></tr>
+
+        <tr style="background:#f0faf5"><td colspan="4" style="font-weight:500;color:#1a5c3a;font-size:11px">Flags — OR vào type khi tạo socket</td></tr>
+        <tr><td><span class="ic">SOCK_NONBLOCK</span></td><td>0x800</td><td>Non-blocking ngay khi tạo</td><td>socket() / accept4()</td></tr>
+        <tr><td><span class="ic">SOCK_CLOEXEC</span></td><td>0x80000</td><td>Tự đóng fd khi exec() — <strong>luôn dùng</strong></td><td>socket() / accept4()</td></tr>
+
+        <tr style="background:#f0faf5"><td colspan="4" style="font-weight:500;color:#1a5c3a;font-size:11px">Socket options — cho setsockopt/getsockopt</td></tr>
+        <tr><td><span class="ic">SOL_SOCKET</span></td><td>1</td><td>Level cho option chung (không phải protocol-specific)</td><td>setsockopt() param 2</td></tr>
+        <tr><td><span class="ic">SO_PEERCRED</span></td><td>17</td><td>Lấy PID/UID/GID của peer</td><td>getsockopt() only</td></tr>
+        <tr><td><span class="ic">SO_RCVBUF</span></td><td>8</td><td>Kích thước receive buffer</td><td>setsockopt()</td></tr>
+        <tr><td><span class="ic">SO_SNDBUF</span></td><td>7</td><td>Kích thước send buffer</td><td>setsockopt()</td></tr>
+        <tr><td><span class="ic">SO_PASSCRED</span></td><td>16</td><td>Bật nhận credentials (cho DGRAM)</td><td>setsockopt()</td></tr>
+        <tr><td><span class="ic">SO_LINGER</span></td><td>13</td><td>Kiểm soát close() khi buffer còn data</td><td>setsockopt()</td></tr>
+        <tr><td><span class="ic">SO_REUSEADDR</span></td><td>2</td><td>Reuse address — <strong>vô tác dụng với AF_UNIX!</strong></td><td>Đừng dùng</td></tr>
+        <tr><td><span class="ic">SO_RCVTIMEO</span></td><td>20</td><td>Thiết lập thời gian timeout nhận dữ liệu (recv)</td><td>setsockopt()</td></tr>
+        <tr><td><span class="ic">SO_SNDTIMEO</span></td><td>21</td><td>Thiết lập thời gian timeout gửi dữ liệu (send)</td><td>setsockopt()</td></tr>
+        <tr><td><span class="ic">SO_ERROR</span></td><td>4</td><td>Lấy và xóa lỗi socket hiện tại đang chờ xử lý</td><td>getsockopt() only</td></tr>
+        <tr><td><span class="ic">SO_PEERSEC</span></td><td>31</td><td>Lấy security context (SELinux/Smack label) của peer</td><td>getsockopt() only</td></tr>
+        <tr><td><span class="ic">SO_TYPE</span></td><td>3</td><td>Lấy kiểu socket (SOCK_STREAM, SOCK_DGRAM...)</td><td>getsockopt() only</td></tr>
+
+        <tr style="background:#f0faf5"><td colspan="4" style="font-weight:500;color:#1a5c3a;font-size:11px">send/recv flags</td></tr>
+        <tr><td><span class="ic">MSG_NOSIGNAL</span></td><td>0x4000</td><td>Không bắn SIGPIPE khi peer đóng — <strong>luôn dùng</strong></td><td>send() param 4</td></tr>
+        <tr><td><span class="ic">MSG_DONTWAIT</span></td><td>0x40</td><td>Non-blocking cho lần gọi này (không đổi socket state)</td><td>send()/recv() param 4</td></tr>
+        <tr><td><span class="ic">MSG_WAITALL</span></td><td>0x100</td><td>Block đến khi đủ len bytes</td><td>recv() param 4</td></tr>
+        <tr><td><span class="ic">MSG_PEEK</span></td><td>0x2</td><td>Xem data mà không xóa khỏi buffer</td><td>recv() param 4</td></tr>
+
+        <tr style="background:#f0faf5"><td colspan="4" style="font-weight:500;color:#1a5c3a;font-size:11px">shutdown() — how parameter</td></tr>
+        <tr><td><span class="ic">SHUT_RD</span></td><td>0</td><td>Đóng chiều đọc</td><td>shutdown() param 2</td></tr>
+        <tr><td><span class="ic">SHUT_WR</span></td><td>1</td><td>Đóng chiều ghi — peer nhận EOF</td><td>shutdown() param 2</td></tr>
+        <tr><td><span class="ic">SHUT_RDWR</span></td><td>2</td><td>Đóng cả hai chiều</td><td>shutdown() param 2</td></tr>
+
+        <tr style="background:#f0faf5"><td colspan="4" style="font-weight:500;color:#1a5c3a;font-size:11px">Ancillary data — sendmsg/recvmsg</td></tr>
+        <tr><td><span class="ic">SCM_RIGHTS</span></td><td>1</td><td>Truyền file descriptor giữa process</td><td>cmsghdr.cmsg_type</td></tr>
+        <tr><td><span class="ic">SCM_CREDENTIALS</span></td><td>2</td><td>Truyền PID/UID/GID (cho DGRAM)</td><td>cmsghdr.cmsg_type</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-label">CMSG Macros — Xử lý Ancillary Data (truyền fd / credentials)</div>
+  <div class="card">
+    <table class="compare-table">
+      <thead><tr><th>Macro</th><th>Mục đích</th><th>Ý nghĩa</th><th>Ví dụ sử dụng</th></tr></thead>
+      <tbody>
+        <tr><td><span class="ic">CMSG_FIRSTHDR()</span></td><td>Lấy header đầu tiên</td><td>Trả về con trỏ `struct cmsghdr *` đầu tiên trong `struct msghdr *` để đọc</td><td>CMSG_FIRSTHDR(&msg)</td></tr>
+        <tr><td><span class="ic">CMSG_NXTHDR()</span></td><td>Duyệt header tiếp theo</td><td>Trả về con trỏ đến header tiếp theo (NULL nếu hết)</td><td>CMSG_NXTHDR(&msg, cmsg)</td></tr>
+        <tr><td><span class="ic">CMSG_DATA()</span></td><td>Lấy con trỏ payload</td><td>Trả về con trỏ `unsigned char *` trỏ đến vùng dữ liệu thực tế (fd hoặc credentials)</td><td>*(int *)CMSG_DATA(cmsg)</td></tr>
+        <tr><td><span class="ic">CMSG_LEN()</span></td><td>Tính cmsg_len</td><td>Tính kích thước byte của header + payload (không tính padding cuối)</td><td>CMSG_LEN(sizeof(int))</td></tr>
+        <tr><td><span class="ic">CMSG_SPACE()</span></td><td>Tính dung lượng buffer</td><td>Tính tổng kích thước cần để cấp phát buffer (bao gồm tất cả padding)</td><td>char buf[CMSG_SPACE(sizeof(int))]</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-label">&lt;poll.h&gt; — poll events</div>
+  <div class="card">
+    <table class="compare-table">
+      <thead><tr><th>Macro</th><th>Giá trị</th><th>Ý nghĩa</th><th>Ghi chú</th></tr></thead>
+      <tbody>
+        <tr><td><span class="ic">POLLIN</span></td><td>0x001</td><td>Có data đọc được / accept() ready</td><td>Set vào events, kiểm tra revents</td></tr>
+        <tr><td><span class="ic">POLLOUT</span></td><td>0x004</td><td>Có thể ghi mà không block</td><td>Set vào events, kiểm tra revents</td></tr>
+        <tr><td><span class="ic">POLLHUP</span></td><td>0x010</td><td>Peer đóng kết nối</td><td><strong>Luôn được report</strong> — không cần set</td></tr>
+        <tr><td><span class="ic">POLLERR</span></td><td>0x008</td><td>Lỗi trên fd</td><td><strong>Luôn được report</strong> — không cần set</td></tr>
+        <tr><td><span class="ic">POLLNVAL</span></td><td>0x020</td><td>fd không hợp lệ (chưa open hoặc đã close)</td><td>Bug trong code — check lại fd</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-label">&lt;sys/epoll.h&gt; — epoll events và operations</div>
+  <div class="card">
+    <table class="compare-table">
+      <thead><tr><th>Macro</th><th>Ý nghĩa</th><th>Ghi chú</th></tr></thead>
+      <tbody>
+        <tr style="background:#f0faf5"><td colspan="3" style="font-weight:500;color:#1a5c3a;font-size:11px">Events</td></tr>
+        <tr><td><span class="ic">EPOLLIN</span></td><td>Có data đọc / accept ready</td><td>Tương đương POLLIN</td></tr>
+        <tr><td><span class="ic">EPOLLOUT</span></td><td>Có thể ghi</td><td>Tương đương POLLOUT</td></tr>
+        <tr><td><span class="ic">EPOLLET</span></td><td>Edge-Triggered mode</td><td>Chỉ trigger khi trạng thái thay đổi. Phải đọc hết đến EAGAIN</td></tr>
+        <tr><td><span class="ic">EPOLLONESHOT</span></td><td>Chỉ trigger 1 lần</td><td>Cần EPOLL_CTL_MOD để re-arm</td></tr>
+        <tr><td><span class="ic">EPOLLRDHUP</span></td><td>Peer đóng chiều ghi (half-close)</td><td>Linux ≥ 2.6.17</td></tr>
+        <tr><td><span class="ic">EPOLLHUP</span></td><td>Peer đóng kết nối hoàn toàn</td><td>Luôn được report</td></tr>
+        <tr><td><span class="ic">EPOLLERR</span></td><td>Lỗi trên fd</td><td>Luôn được report</td></tr>
+
+        <tr style="background:#f0faf5"><td colspan="3" style="font-weight:500;color:#1a5c3a;font-size:11px">Operations</td></tr>
+        <tr><td><span class="ic">EPOLL_CTL_ADD</span></td><td>Đăng ký fd mới vào epoll</td><td>Lỗi EEXIST nếu fd đã có</td></tr>
+        <tr><td><span class="ic">EPOLL_CTL_MOD</span></td><td>Thay đổi events quan tâm</td><td>Dùng sau EPOLLONESHOT để re-arm</td></tr>
+        <tr><td><span class="ic">EPOLL_CTL_DEL</span></td><td>Gỡ fd khỏi epoll</td><td>event param có thể NULL</td></tr>
+        <tr><td><span class="ic">EPOLL_CLOEXEC</span></td><td>Tự đóng epoll fd khi exec()</td><td>Luôn dùng</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-label">&lt;fcntl.h&gt; — file control</div>
+  <div class="card">
+    <table class="compare-table">
+      <thead><tr><th>Macro</th><th>Ý nghĩa</th><th>Dùng với</th></tr></thead>
+      <tbody>
+        <tr><td><span class="ic">F_GETFL</span></td><td>Đọc file status flags hiện tại</td><td>fcntl(fd, F_GETFL, 0)</td></tr>
+        <tr><td><span class="ic">F_SETFL</span></td><td>Ghi file status flags</td><td>fcntl(fd, F_SETFL, flags | O_NONBLOCK)</td></tr>
+        <tr><td><span class="ic">F_SETOWN</span></td><td>Đặt process nhận SIGIO</td><td>fcntl(fd, F_SETOWN, getpid())</td></tr>
+        <tr><td><span class="ic">F_SETFD</span></td><td>Set fd flags (FD_CLOEXEC)</td><td>Nên dùng SOCK_CLOEXEC thay thế</td></tr>
+        <tr><td><span class="ic">O_NONBLOCK</span></td><td>Bật non-blocking I/O</td><td>fcntl F_SETFL hoặc socket() type flag</td></tr>
+        <tr><td><span class="ic">O_ASYNC</span></td><td>Bật signal-driven I/O (SIGIO)</td><td>fcntl F_SETFL — hầu như không dùng</td></tr>
+        <tr><td><span class="ic">FD_CLOEXEC</span></td><td>Đóng fd khi exec()</td><td>fcntl F_SETFD — dùng SOCK_CLOEXEC thay</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-label">&lt;errno.h&gt; — mã lỗi</div>
+  <div class="card">
+    <table class="compare-table">
+      <thead><tr><th>Macro</th><th>Số</th><th>Ý nghĩa</th><th>Hàm thường gặp</th></tr></thead>
+      <tbody>
+        <tr><td><span class="ic">EAGAIN</span></td><td>11</td><td>Thử lại — non-blocking mà chưa có data</td><td>recv, accept, send</td></tr>
+        <tr><td><span class="ic">EWOULDBLOCK</span></td><td>11</td><td>Giống EAGAIN (cùng giá trị trên Linux)</td><td>recv, accept</td></tr>
+        <tr><td><span class="ic">EINTR</span></td><td>4</td><td>Bị signal ngắt — luôn retry</td><td>Mọi blocking call</td></tr>
+        <tr><td><span class="ic">EPIPE</span></td><td>32</td><td>Ghi vào pipe/socket đã đóng</td><td>send, write</td></tr>
+        <tr><td><span class="ic">ECONNREFUSED</span></td><td>111</td><td>Không ai listen trên socket</td><td>connect</td></tr>
+        <tr><td><span class="ic">ECONNRESET</span></td><td>104</td><td>Peer reset kết nối đột ngột</td><td>recv, send</td></tr>
+        <tr><td><span class="ic">ENOENT</span></td><td>2</td><td>File/socket không tồn tại</td><td>connect, unlink</td></tr>
+        <tr><td><span class="ic">EADDRINUSE</span></td><td>98</td><td>Địa chỉ đã được bind</td><td>bind</td></tr>
+        <tr><td><span class="ic">EACCES</span></td><td>13</td><td>Không đủ quyền</td><td>bind, connect</td></tr>
+        <tr><td><span class="ic">EMFILE</span></td><td>24</td><td>Process mở hết fd (ulimit -n)</td><td>socket, accept</td></tr>
+        <tr><td><span class="ic">ENFILE</span></td><td>23</td><td>System mở hết fd</td><td>socket</td></tr>
+        <tr><td><span class="ic">EROFS</span></td><td>30</td><td>Filesystem read-only</td><td>bind (embedded)</td></tr>
+        <tr><td><span class="ic">EINPROGRESS</span></td><td>115</td><td>Non-blocking connect đang tiến hành</td><td>connect</td></tr>
+        <tr><td><span class="ic">ENOBUFS</span></td><td>105</td><td>Buffer đầy — DGRAM message bị drop</td><td>sendto</td></tr>
+        <tr><td><span class="ic">EMSGSIZE</span></td><td>90</td><td>Tin nhắn quá lớn để gửi atomically (cho DGRAM/SEQPACKET)</td><td>send, sendto</td></tr>
+        <tr><td><span class="ic">ENOTCONN</span></td><td>107</td><td>Socket chưa được kết nối (chưa connect/accept)</td><td>send, recv</td></tr>
+        <tr><td><span class="ic">ENOTSOCK</span></td><td>88</td><td>File descriptor không phải là một socket</td><td>Mọi socket call</td></tr>
+        <tr><td><span class="ic">EOPNOTSUPP</span></td><td>95</td><td>Thao tác không hỗ trợ (ví dụ: accept trên DGRAM)</td><td>Mọi socket call</td></tr>
+        <tr><td><span class="ic">ECONNABORTED</span></td><td>103</td><td>Kết nối bị hủy trước khi accept thành công</td><td>accept</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-label">&lt;signal.h&gt; — signals</div>
+  <div class="card">
+    <table class="compare-table">
+      <thead><tr><th>Macro</th><th>Số</th><th>Ý nghĩa</th><th>Ghi chú</th></tr></thead>
+      <tbody>
+        <tr><td><span class="ic">SIGPIPE</span></td><td>13</td><td>Ghi vào pipe/socket đã đóng</td><td>Daemon phải ignore: <span class="ic">signal(SIGPIPE, SIG_IGN)</span></td></tr>
+        <tr><td><span class="ic">SIGTERM</span></td><td>15</td><td>Yêu cầu thoát gracefully</td><td>Dùng signalfd() + epoll</td></tr>
+        <tr><td><span class="ic">SIGINT</span></td><td>2</td><td>Ctrl+C từ terminal</td><td>Dùng signalfd() + epoll</td></tr>
+        <tr><td><span class="ic">SIGIO</span></td><td>29</td><td>Có data trên async fd</td><td>Hầu như không dùng — dùng epoll thay</td></tr>
+        <tr><td><span class="ic">SIG_IGN</span></td><td>—</td><td>Ignore signal</td><td>signal(SIGPIPE, SIG_IGN)</td></tr>
+        <tr><td><span class="ic">SIG_BLOCK</span></td><td>0</td><td>Block signal (dùng với sigprocmask)</td><td>Bắt buộc trước signalfd()</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-label">&lt;sys/signalfd.h&gt; và &lt;sys/timerfd.h&gt;</div>
+  <div class="card">
+    <table class="compare-table">
+      <thead><tr><th>Macro</th><th>Ý nghĩa</th><th>Dùng ở đâu</th></tr></thead>
+      <tbody>
+        <tr><td><span class="ic">SFD_CLOEXEC</span></td><td>Tự đóng signalfd khi exec()</td><td>signalfd() flags</td></tr>
+        <tr><td><span class="ic">SFD_NONBLOCK</span></td><td>Non-blocking signalfd</td><td>signalfd() flags</td></tr>
+        <tr><td><span class="ic">CLOCK_MONOTONIC</span></td><td>Đồng hồ không bị ảnh hưởng khi đổi giờ hệ thống</td><td>timerfd_create() — <strong>luôn dùng</strong></td></tr>
+        <tr><td><span class="ic">CLOCK_REALTIME</span></td><td>Đồng hồ thật (có thể bị đổi bằng date/NTP)</td><td>timerfd_create() — tránh dùng</td></tr>
+        <tr><td><span class="ic">EFD_CLOEXEC</span></td><td>Tự đóng eventfd khi exec()</td><td>eventfd() flags</td></tr>
+        <tr><td><span class="ic">EFD_NONBLOCK</span></td><td>Non-blocking mode cho eventfd</td><td>eventfd() flags</td></tr>
+        <tr><td><span class="ic">EFD_SEMAPHORE</span></td><td>Thay đổi read() hành vi thành semaphore (trả về 1 và giảm counter đi 1)</td><td>eventfd() flags</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="info-box"><strong>Mẹo nhớ nhanh — chỉ cần nhớ 8 macro "luôn dùng":</strong><br>
+    <span class="ic">AF_UNIX</span> — domain<br>
+    <span class="ic">SOCK_STREAM</span> hoặc <span class="ic">SOCK_SEQPACKET</span> — type<br>
+    <span class="ic">SOCK_CLOEXEC</span> — luôn OR thêm<br>
+    <span class="ic">MSG_NOSIGNAL</span> — luôn dùng khi send() trong daemon<br>
+    <span class="ic">EPOLLIN</span> — event quan tâm chính<br>
+    <span class="ic">EPOLL_CTL_ADD</span> / <span class="ic">EPOLL_CTL_DEL</span> — thêm/gỡ fd<br>
+    <span class="ic">EINTR</span> — luôn retry khi gặp<br>
+    Còn lại? <span class="ic">man 7 unix</span> và bảng tra cứu trên đây.</div>
+</div>
+
+</div><!-- container -->
+<script>
+function go(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,967 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); color: var(--color-text-primary); background: transparent; }
+
+.header {
+  padding: 2rem 0 1.5rem;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+  margin-bottom: 1.5rem;
+}
+.header h1 { font-size: 22px; font-weight: 500; margin-bottom: 6px; }
+.header p { font-size: 14px; color: var(--color-text-secondary); line-height: 1.6; }
+
+.tab-bar {
+  display: flex; gap: 4px; flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  border-bottom: 0.5px solid var(--color-border-tertiary);
+  padding-bottom: 0;
+}
+.tab {
+  padding: 8px 14px; font-size: 13px; cursor: pointer;
+  border-radius: 6px 6px 0 0; border: 0.5px solid transparent;
+  color: var(--color-text-secondary); background: transparent;
+  transition: all .15s; margin-bottom: -0.5px;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--color-text-primary); background: var(--color-background-secondary); }
+.tab.active {
+  color: var(--color-text-primary); font-weight: 500;
+  background: var(--color-background-primary);
+  border-color: var(--color-border-tertiary); border-bottom-color: var(--color-background-primary);
+}
+
+.section { display: none; }
+.section.active { display: block; }
+
+/* Cards */
+.card {
+  background: var(--color-background-primary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-lg); padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+.card-title { font-size: 16px; font-weight: 500; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.card-desc { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 12px; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+
+/* Badges */
+.badge {
+  display: inline-block; font-size: 11px; padding: 2px 8px;
+  border-radius: 4px; font-weight: 500; vertical-align: middle;
+}
+.badge-teal { background: #E1F5EE; color: #0F6E56; }
+.badge-amber { background: #FAEEDA; color: #854F0B; }
+.badge-red { background: #FCEBEB; color: #A32D2D; }
+.badge-blue { background: #E6F1FB; color: #185FA5; }
+.badge-purple { background: #EEEDFE; color: #534AB7; }
+.badge-coral { background: #FAECE7; color: #993C1D; }
+@media (prefers-color-scheme: dark) {
+  .badge-teal { background: #04342C; color: #9FE1CB; }
+  .badge-amber { background: #412402; color: #FAC775; }
+  .badge-red { background: #501313; color: #F7C1C1; }
+  .badge-blue { background: #042C53; color: #B5D4F4; }
+  .badge-purple { background: #26215C; color: #CECBF6; }
+  .badge-coral { background: #4A1B0C; color: #F5C4B3; }
+}
+
+/* Code blocks */
+.code-wrap {
+  background: var(--color-background-secondary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  padding: 1rem; margin: 10px 0; overflow-x: auto;
+}
+.code-wrap pre {
+  font-family: var(--font-mono); font-size: 12px;
+  line-height: 1.6; color: var(--color-text-primary);
+  white-space: pre; tab-size: 4;
+}
+.code-label {
+  font-size: 11px; color: var(--color-text-secondary); margin-bottom: 6px;
+  font-family: var(--font-mono); display: flex; align-items: center;
+  justify-content: space-between;
+}
+
+/* Table */
+.ipc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ipc-table th { text-align: left; padding: 8px 12px; font-weight: 500; font-size: 12px; color: var(--color-text-secondary); border-bottom: 0.5px solid var(--color-border-tertiary); background: var(--color-background-secondary); }
+.ipc-table td { padding: 8px 12px; border-bottom: 0.5px solid var(--color-border-tertiary); vertical-align: top; line-height: 1.5; }
+.ipc-table tr:last-child td { border-bottom: none; }
+.ipc-table tr:hover td { background: var(--color-background-secondary); }
+
+/* Metric */
+.metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1rem; }
+.metric { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px; text-align: center; }
+.metric-val { font-size: 20px; font-weight: 500; margin-bottom: 2px; }
+.metric-lbl { font-size: 11px; color: var(--color-text-secondary); }
+
+/* Mechanism steps */
+.steps { counter-reset: step; display: flex; flex-direction: column; gap: 8px; }
+.step {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 10px; border-radius: var(--border-radius-md);
+  border: 0.5px solid var(--color-border-tertiary);
+  background: var(--color-background-primary);
+}
+.step-num {
+  counter-increment: step;
+  min-width: 22px; height: 22px; border-radius: 50%;
+  background: var(--color-background-secondary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 500; color: var(--color-text-secondary);
+  flex-shrink: 0; margin-top: 1px;
+}
+.step-num::before { content: counter(step); }
+.step-body { flex: 1; }
+.step-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+.step-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; }
+
+/* Pro/con */
+.pro-con { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.pros, .cons { padding: 8px 10px; border-radius: var(--border-radius-md); font-size: 12px; line-height: 1.7; }
+.pros { background: #EAF3DE; color: #3B6D11; }
+.cons { background: #FCEBEB; color: #A32D2D; }
+@media (prefers-color-scheme: dark) {
+  .pros { background: #173404; color: #C0DD97; }
+  .cons { background: #501313; color: #F7C1C1; }
+}
+.pros-title, .cons-title { font-weight: 500; margin-bottom: 4px; }
+
+/* Diagram area */
+.diagram-box { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem; background: var(--color-background-primary); margin-bottom: 1rem; }
+.diagram-caption { font-size: 12px; color: var(--color-text-secondary); text-align: center; margin-top: 8px; }
+
+.tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--color-background-secondary); color: var(--color-text-secondary); border: 0.5px solid var(--color-border-tertiary); }
+
+/* Selector interactive */
+.selector { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+.sel-btn { font-size: 12px; padding: 5px 12px; border-radius: 20px; cursor: pointer; border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-primary); color: var(--color-text-secondary); transition: all .15s; }
+.sel-btn:hover { background: var(--color-background-secondary); }
+.sel-btn.active { background: #E6F1FB; color: #185FA5; border-color: #185FA5; }
+@media (prefers-color-scheme: dark) {
+  .sel-btn.active { background: #042C53; color: #B5D4F4; border-color: #3B8BD4; }
+}
+.ipc-detail { display: none; }
+.ipc-detail.active { display: block; }
+
+.info-row { display: flex; gap: 8px; align-items: center; font-size: 13px; padding: 5px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.info-row:last-child { border-bottom: none; }
+.info-key { color: var(--color-text-secondary); min-width: 130px; font-size: 12px; }
+.info-val { font-weight: 400; }
+
+/* Quiz */
+.quiz-opt { padding: 10px 14px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); margin-bottom: 6px; cursor: pointer; font-size: 13px; transition: all .15s; }
+.quiz-opt:hover { background: var(--color-background-secondary); }
+.quiz-opt.correct { background: #EAF3DE; border-color: #3B6D11; color: #3B6D11; }
+.quiz-opt.wrong { background: #FCEBEB; border-color: #A32D2D; color: #A32D2D; }
+@media (prefers-color-scheme: dark) {
+  .quiz-opt.correct { background: #173404; border-color: #639922; color: #C0DD97; }
+  .quiz-opt.wrong { background: #501313; border-color: #A32D2D; color: #F7C1C1; }
+}
+.quiz-feedback { font-size: 13px; padding: 10px; border-radius: var(--border-radius-md); margin-top: 8px; display: none; line-height: 1.5; }
+.quiz-nav { display: flex; gap: 8px; margin-top: 12px; align-items: center; }
+.btn-sm { padding: 6px 14px; font-size: 13px; border-radius: 6px; cursor: pointer; border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-primary); color: var(--color-text-primary); }
+.btn-sm:hover { background: var(--color-background-secondary); }
+.btn-sm:disabled { opacity: .4; cursor: default; }
+.quiz-score { font-size: 13px; color: var(--color-text-secondary); margin-left: auto; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Linux IPC — Tài liệu nghiên cứu</h1>
+  <p>Inter-Process Communication: các cơ chế để các tiến trình trao đổi dữ liệu và đồng bộ hoá trên Linux kernel.</p>
+</div>
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('overview', this)">Tổng quan</button>
+  <button class="tab" onclick="switchTab('pipe', this)">Pipe & FIFO</button>
+  <button class="tab" onclick="switchTab('socket', this)">Unix Socket</button>
+  <button class="tab" onclick="switchTab('shm', this)">Shared Memory</button>
+  <button class="tab" onclick="switchTab('mq', this)">Message Queue</button>
+  <button class="tab" onclick="switchTab('signal', this)">Signal</button>
+  <button class="tab" onclick="switchTab('compare', this)">So sánh</button>
+  <button class="tab" onclick="switchTab('quiz', this)">Quiz</button>
+</div>
+
+<!-- ===== OVERVIEW ===== -->
+<div id="tab-overview" class="section active">
+  <div class="diagram-box">
+    <svg width="100%" viewBox="0 0 640 320" role="img">
+      <title>Linux IPC Overview Diagram</title>
+      <desc>Sơ đồ các loại IPC trên Linux kernel, phân loại theo communication model</desc>
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+      <!-- Kernel box -->
+      <rect x="10" y="10" width="620" height="300" rx="14" fill="none" stroke="var(--color-border-tertiary)" stroke-width="0.5" stroke-dasharray="6 3"/>
+      <text font-family="var(--font-sans)" font-size="11" fill="var(--color-text-secondary)" x="22" y="26">Linux Kernel — IPC subsystem</text>
+
+      <!-- Data Transfer group -->
+      <rect x="30" y="40" width="170" height="250" rx="10" fill="var(--color-background-secondary)" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="11" font-weight="500" fill="var(--color-text-secondary)" x="115" y="58" text-anchor="middle">Data Transfer</text>
+
+      <!-- Pipe -->
+      <rect x="46" y="68" width="138" height="36" rx="6" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="12" font-weight="500" x="115" y="91" text-anchor="middle" fill="#0C447C">Pipe / FIFO</text>
+
+      <!-- Socket -->
+      <rect x="46" y="114" width="138" height="36" rx="6" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="12" font-weight="500" x="115" y="137" text-anchor="middle" fill="#0C447C">Unix Socket</text>
+
+      <!-- Message Queue -->
+      <rect x="46" y="160" width="138" height="36" rx="6" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="12" font-weight="500" x="115" y="183" text-anchor="middle" fill="#0C447C">Message Queue</text>
+
+      <!-- Network socket note -->
+      <rect x="46" y="206" width="138" height="36" rx="6" fill="#F1EFE8" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="11" x="115" y="228" text-anchor="middle" fill="var(--color-text-secondary)">Network Socket</text>
+      <text font-family="var(--font-sans)" font-size="10" x="115" y="242" text-anchor="middle" fill="var(--color-text-secondary)">(TCP/UDP — cross-host)</text>
+
+      <!-- Shared Memory group -->
+      <rect x="235" y="40" width="170" height="200" rx="10" fill="var(--color-background-secondary)" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="11" font-weight="500" fill="var(--color-text-secondary)" x="320" y="58" text-anchor="middle">Shared Memory</text>
+
+      <rect x="251" y="68" width="138" height="36" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="12" font-weight="500" x="320" y="91" text-anchor="middle" fill="#085041">mmap (POSIX)</text>
+
+      <rect x="251" y="114" width="138" height="36" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="12" font-weight="500" x="320" y="137" text-anchor="middle" fill="#085041">SysV shmget</text>
+
+      <rect x="251" y="160" width="138" height="36" rx="6" fill="#F1EFE8" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="11" x="320" y="178" text-anchor="middle" fill="var(--color-text-secondary)">+ Semaphore</text>
+      <text font-family="var(--font-sans)" font-size="10" x="320" y="192" text-anchor="middle" fill="var(--color-text-secondary)">(đồng bộ hoá)</text>
+
+      <!-- Signaling group -->
+      <rect x="440" y="40" width="170" height="200" rx="10" fill="var(--color-background-secondary)" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="11" font-weight="500" fill="var(--color-text-secondary)" x="525" y="58" text-anchor="middle">Signaling</text>
+
+      <rect x="456" y="68" width="138" height="36" rx="6" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="12" font-weight="500" x="525" y="91" text-anchor="middle" fill="#633806">Signal</text>
+
+      <rect x="456" y="114" width="138" height="36" rx="6" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="12" font-weight="500" x="525" y="137" text-anchor="middle" fill="#633806">Semaphore</text>
+
+      <rect x="456" y="160" width="138" height="36" rx="6" fill="#FAEEDA" stroke="#854F0B" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="12" font-weight="500" x="525" y="183" text-anchor="middle" fill="#633806">Futex</text>
+    </svg>
+    <div class="diagram-caption">Ba nhóm IPC chính: Data Transfer (sao chép dữ liệu qua kernel), Shared Memory (chia sẻ vùng nhớ), Signaling (thông báo sự kiện)</div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title"><span class="badge badge-blue">Data Transfer</span></div>
+      <div class="card-desc">Dữ liệu được <strong>sao chép</strong> qua kernel buffer. Kernel quản lý toàn bộ việc đọc/ghi, đảm bảo đồng bộ ngầm định.</div>
+      <div class="tag-row"><span class="tag">Pipe</span><span class="tag">FIFO</span><span class="tag">Socket</span><span class="tag">Msg Queue</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-teal">Shared Memory</span></div>
+      <div class="card-desc">Các tiến trình map cùng một vùng RAM vật lý. Không có copy overhead — bandwidth cao nhất. Cần tự đồng bộ bằng semaphore hoặc mutex.</div>
+      <div class="tag-row"><span class="tag">mmap</span><span class="tag">shm_open</span><span class="tag">shmget</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-amber">Signaling</span></div>
+      <div class="card-desc">Thông báo sự kiện không mang dữ liệu lớn. Signal là asynchronous; semaphore/futex dùng để đồng bộ hoá truy cập tài nguyên.</div>
+      <div class="tag-row"><span class="tag">kill()</span><span class="tag">sigaction</span><span class="tag">sem_wait</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Khi nào dùng loại nào?</div>
+    <table class="ipc-table">
+      <thead><tr><th>Tình huống</th><th>IPC phù hợp</th><th>Lý do</th></tr></thead>
+      <tbody>
+        <tr><td>Parent → child, dữ liệu stream</td><td><span class="badge badge-blue">Pipe</span></td><td>Đơn giản nhất, kế thừa fd qua fork()</td></tr>
+        <tr><td>Nhiều process không quan hệ</td><td><span class="badge badge-blue">FIFO / Unix Socket</span></td><td>FIFO cho stream, Socket cho bidirectional</td></tr>
+        <tr><td>Throughput tối đa, cùng máy</td><td><span class="badge badge-teal">Shared Memory</span></td><td>Zero-copy, chỉ bị giới hạn bởi RAM bandwidth</td></tr>
+        <tr><td>Message có type/priority</td><td><span class="badge badge-blue">POSIX mq</span></td><td>Kernel quản lý queue, có priority ordering</td></tr>
+        <tr><td>Ngắt luồng xử lý bất đồng bộ</td><td><span class="badge badge-amber">Signal</span></td><td>Lightweight, không cần chia sẻ dữ liệu lớn</td></tr>
+        <tr><td>Cross-host hoặc cross-network</td><td><span class="badge badge-purple">TCP/UDP Socket</span></td><td>IPC khác không hoạt động qua network interface</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== PIPE & FIFO ===== -->
+<div id="tab-pipe" class="section">
+  <div class="metric-grid">
+    <div class="metric"><div class="metric-val" style="color:#185FA5">64 KB</div><div class="metric-lbl">Buffer mặc định</div></div>
+    <div class="metric"><div class="metric-val" style="color:#185FA5">Unidirectional</div><div class="metric-lbl">Hướng dữ liệu</div></div>
+    <div class="metric"><div class="metric-val" style="color:#185FA5">Byte stream</div><div class="metric-lbl">Dạng dữ liệu</div></div>
+    <div class="metric"><div class="metric-val" style="color:#185FA5">Blocking</div><div class="metric-lbl">Mặc định I/O</div></div>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <div class="card">
+        <div class="card-title">Anonymous Pipe <span class="badge badge-blue">pipe(2)</span></div>
+        <div class="card-desc">Tồn tại trong RAM, không có tên trong filesystem. Chỉ dùng giữa các tiến trình có quan hệ cha-con (chia sẻ fd qua fork).</div>
+        <div class="steps">
+          <div class="step"><div class="step-num"></div><div class="step-body"><div class="step-title">pipe(fds) — tạo 2 file descriptor</div><div class="step-desc">fds[0] = đầu đọc, fds[1] = đầu ghi. Kernel tạo buffer trong RAM.</div></div></div>
+          <div class="step"><div class="step-num"></div><div class="step-body"><div class="step-title">fork() — nhân bản tiến trình</div><div class="step-desc">Child kế thừa cả hai fd. Mỗi process đóng fd không dùng.</div></div></div>
+          <div class="step"><div class="step-num"></div><div class="step-body"><div class="step-title">write(fds[1]) / read(fds[0])</div><div class="step-desc">Kernel copy dữ liệu vào buffer. read() block cho đến khi có dữ liệu.</div></div></div>
+          <div class="step"><div class="step-num"></div><div class="step-body"><div class="step-title">EOF khi writer đóng fds[1]</div><div class="step-desc">read() trả về 0. Reader thoát vòng lặp.</div></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Named Pipe (FIFO) <span class="badge badge-blue">mkfifo(3)</span></div>
+        <div class="card-desc">Có inode trong filesystem, tồn tại độc lập với process. Bất kỳ process nào biết path đều có thể mở.</div>
+        <div class="tag-row"><span class="tag">mkfifo("/tmp/myfifo", 0666)</span></div>
+        <div style="margin-top:10px; font-size:13px; color:var(--color-text-secondary); line-height:1.6">
+          Mở FIFO sẽ <strong>block</strong> cho đến khi cả hai phía (reader và writer) đều mở. Dùng <code style="font-family:var(--font-mono);font-size:12px;background:var(--color-background-secondary);padding:1px 4px;border-radius:3px">O_NONBLOCK</code> để tránh deadlock.
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-title">Code: Anonymous Pipe</div>
+        <div class="code-wrap">
+          <div class="code-label">pipe_example.c</div>
+          <pre>#include &lt;unistd.h&gt;
+#include &lt;stdio.h&gt;
+
+int main() {
+    int fds[2];
+    pipe(fds);          /* tạo pipe */
+
+    if (fork() == 0) {
+        /* Child: writer */
+        close(fds[0]);  /* đóng đầu đọc */
+        char msg[] = "Hello from child";
+        write(fds[1], msg, sizeof(msg));
+        close(fds[1]);
+    } else {
+        /* Parent: reader */
+        close(fds[1]);  /* đóng đầu ghi */
+        char buf[64];
+        int n = read(fds[0], buf, sizeof(buf));
+        printf("Got: %.*s\n", n, buf);
+        close(fds[0]);
+    }
+    return 0;
+}</pre>
+        </div>
+        <div class="code-wrap">
+          <div class="code-label">mkfifo — terminal A (reader)</div>
+          <pre>mkfifo /tmp/myfifo
+cat /tmp/myfifo</pre>
+        </div>
+        <div class="code-wrap">
+          <div class="code-label">terminal B (writer)</div>
+          <pre>echo "test data" > /tmp/myfifo</pre>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Điểm quan trọng</div>
+        <div class="pro-con">
+          <div class="pros"><div class="pros-title">✓ Ưu điểm</div>API đơn giản, không cần cleanup<br>Kernel đồng bộ tự động<br>Hoạt động với poll/select/epoll</div>
+          <div class="cons"><div class="cons-title">✗ Hạn chế</div>Unidirectional (1 chiều)<br>Chỉ giữa related process (pipe)<br>Không có message boundary</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== UNIX SOCKET ===== -->
+<div id="tab-socket" class="section">
+  <div class="metric-grid">
+    <div class="metric"><div class="metric-val" style="color:#0F6E56">Bidirectional</div><div class="metric-lbl">Hướng giao tiếp</div></div>
+    <div class="metric"><div class="metric-val" style="color:#0F6E56">AF_UNIX</div><div class="metric-lbl">Address family</div></div>
+    <div class="metric"><div class="metric-val" style="color:#0F6E56">SOCK_STREAM</div><div class="metric-lbl">Loại phổ biến</div></div>
+    <div class="metric"><div class="metric-val" style="color:#0F6E56">~1.5×</div><div class="metric-lbl">Nhanh hơn TCP localhost</div></div>
+  </div>
+  <div class="grid-2">
+    <div>
+      <div class="card">
+        <div class="card-title">Unix Domain Socket là gì?</div>
+        <div class="card-desc">Socket dùng filesystem path thay vì IP:port. Giao tiếp qua kernel buffer nội bộ — không đi qua network stack. Hỗ trợ truyền file descriptor giữa các process (fd passing).</div>
+        <div class="steps">
+          <div class="step"><div class="step-num"></div><div class="step-body"><div class="step-title">Server: socket() → bind() → listen()</div><div class="step-desc">Tạo socket file tại /tmp/server.sock, lắng nghe kết nối.</div></div></div>
+          <div class="step"><div class="step-num"></div><div class="step-body"><div class="step-title">Client: socket() → connect()</div><div class="step-desc">Kết nối đến path. Kernel tạo kênh liên lạc trong RAM.</div></div></div>
+          <div class="step"><div class="step-num"></div><div class="step-body"><div class="step-title">Server: accept() → trả về fd mới</div><div class="step-desc">accept() block cho đến khi có client. Mỗi client có fd riêng.</div></div></div>
+          <div class="step"><div class="step-num"></div><div class="step-body"><div class="step-title">send() / recv() hoặc read() / write()</div><div class="step-desc">Bidirectional — cả hai phía đều có thể gửi và nhận.</div></div></div>
+        </div>
+        <div style="margin-top:12px; padding:10px; background:var(--color-background-secondary); border-radius:6px; font-size:12px; color:var(--color-text-secondary); line-height:1.6">
+          <strong style="color:var(--color-text-primary)">SOCK_STREAM vs SOCK_DGRAM:</strong><br>
+          Stream = byte stream như TCP, đảm bảo thứ tự.<br>
+          Dgram = message-based như UDP, giữ message boundary.
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-title">Code: Unix Domain Socket</div>
+        <div class="code-wrap">
+          <div class="code-label">server.c (rút gọn)</div>
+          <pre>#include &lt;sys/socket.h&gt;
+#include &lt;sys/un.h&gt;
+
+#define SOCK_PATH "/tmp/demo.sock"
+
+int main() {
+    int srv = socket(AF_UNIX,
+                     SOCK_STREAM, 0);
+    struct sockaddr_un addr = {
+        .sun_family = AF_UNIX,
+        .sun_path   = SOCK_PATH
+    };
+    bind(srv, (struct sockaddr*)&addr,
+         sizeof(addr));
+    listen(srv, 5);
+
+    int cli = accept(srv, NULL, NULL);
+    char buf[256];
+    int n = recv(cli, buf, sizeof(buf), 0);
+    printf("Got: %.*s\n", n, buf);
+    send(cli, "ack", 3, 0);
+
+    close(cli); close(srv);
+    unlink(SOCK_PATH);
+}</pre>
+        </div>
+        <div class="code-wrap">
+          <div class="code-label">client.c (rút gọn)</div>
+          <pre>int main() {
+    int fd = socket(AF_UNIX,
+                    SOCK_STREAM, 0);
+    struct sockaddr_un addr = {
+        .sun_family = AF_UNIX,
+        .sun_path   = "/tmp/demo.sock"
+    };
+    connect(fd, (struct sockaddr*)&addr,
+            sizeof(addr));
+    send(fd, "hello", 5, 0);
+
+    char buf[16];
+    recv(fd, buf, sizeof(buf), 0);
+    close(fd);
+}</pre>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Ứng dụng thực tế</div>
+        <div class="tag-row" style="flex-direction:column; gap:4px; margin-top:0">
+          <div style="font-size:12px; color:var(--color-text-secondary); padding:4px 0; border-bottom:0.5px solid var(--color-border-tertiary)"><strong style="color:var(--color-text-primary)">Docker daemon</strong> — /var/run/docker.sock</div>
+          <div style="font-size:12px; color:var(--color-text-secondary); padding:4px 0; border-bottom:0.5px solid var(--color-border-tertiary)"><strong style="color:var(--color-text-primary)">systemd/journald</strong> — /run/systemd/journal</div>
+          <div style="font-size:12px; color:var(--color-text-secondary); padding:4px 0; border-bottom:0.5px solid var(--color-border-tertiary)"><strong style="color:var(--color-text-primary)">X11/Wayland</strong> — /tmp/.X11-unix/X0</div>
+          <div style="font-size:12px; color:var(--color-text-secondary); padding:4px 0"><strong style="color:var(--color-text-primary)">DBus</strong> — /run/user/1000/bus</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SHARED MEMORY ===== -->
+<div id="tab-shm" class="section">
+  <div class="metric-grid">
+    <div class="metric"><div class="metric-val" style="color:#854F0B">~10GB/s</div><div class="metric-lbl">Throughput thực tế</div></div>
+    <div class="metric"><div class="metric-val" style="color:#854F0B">0 copy</div><div class="metric-lbl">Kernel data copy</div></div>
+    <div class="metric"><div class="metric-val" style="color:#854F0B">Cần lock</div><div class="metric-lbl">Đồng bộ hoá</div></div>
+    <div class="metric"><div class="metric-val" style="color:#854F0B">POSIX / SysV</div><div class="metric-lbl">Hai API chuẩn</div></div>
+  </div>
+
+  <div class="diagram-box">
+    <svg width="100%" viewBox="0 0 640 200" role="img">
+      <title>Shared Memory architecture</title>
+      <desc>Process A và Process B cùng map một vùng Physical RAM thông qua Page Table và Virtual Address Space</desc>
+
+      <!-- Process A -->
+      <rect x="20" y="30" width="130" height="140" rx="8" fill="var(--color-background-secondary)" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="11" font-weight="500" x="85" y="48" text-anchor="middle" fill="var(--color-text-primary)">Process A</text>
+      <rect x="35" y="56" width="100" height="28" rx="4" fill="#E6F1FB" stroke="#185FA5" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="11" x="85" y="74" text-anchor="middle" fill="#0C447C">Virtual Addr 0x7f00</text>
+      <rect x="35" y="90" width="100" height="20" rx="4" fill="var(--color-background-primary)" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="10" x="85" y="104" text-anchor="middle" fill="var(--color-text-secondary)">Code / Stack / Heap</text>
+      <text font-family="var(--font-sans)" font-size="10" x="85" y="130" text-anchor="middle" fill="#185FA5">ptr = mmap(...)</text>
+      <text font-family="var(--font-sans)" font-size="10" x="85" y="145" text-anchor="middle" fill="#185FA5">ptr[0] = 42;</text>
+
+      <!-- Arrow A → Physical -->
+      <line x1="137" y1="70" x2="248" y2="100" stroke="#185FA5" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr)" fill="none"/>
+
+      <!-- Physical RAM (center) -->
+      <rect x="245" y="60" width="150" height="80" rx="8" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+      <text font-family="var(--font-sans)" font-size="11" font-weight="500" x="320" y="85" text-anchor="middle" fill="#085041">Physical RAM</text>
+      <text font-family="var(--font-sans)" font-size="10" x="320" y="100" text-anchor="middle" fill="#0F6E56">Shared Pages</text>
+      <text font-family="var(--font-sans)" font-size="10" x="320" y="116" text-anchor="middle" fill="#0F6E56">[ 42, ?, ?, ... ]</text>
+      <text font-family="var(--font-sans)" font-size="9" x="320" y="150" text-anchor="middle" fill="var(--color-text-secondary)">Kernel Page Table</text>
+
+      <!-- Arrow Physical → B -->
+      <line x1="397" y1="100" x2="503" y2="70" stroke="#0F6E56" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr)" fill="none"/>
+
+      <!-- Process B -->
+      <rect x="490" y="30" width="130" height="140" rx="8" fill="var(--color-background-secondary)" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="11" font-weight="500" x="555" y="48" text-anchor="middle" fill="var(--color-text-primary)">Process B</text>
+      <rect x="505" y="56" width="100" height="28" rx="4" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="11" x="555" y="74" text-anchor="middle" fill="#085041">Virtual Addr 0xb400</text>
+      <rect x="505" y="90" width="100" height="20" rx="4" fill="var(--color-background-primary)" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="10" x="555" y="104" text-anchor="middle" fill="var(--color-text-secondary)">Code / Stack / Heap</text>
+      <text font-family="var(--font-sans)" font-size="10" x="555" y="130" text-anchor="middle" fill="#0F6E56">ptr = mmap(...)</text>
+      <text font-family="var(--font-sans)" font-size="10" x="555" y="145" text-anchor="middle" fill="#0F6E56">val = ptr[0]; // 42</text>
+    </svg>
+    <div class="diagram-caption">Hai process có virtual address khác nhau nhưng cùng trỏ đến cùng một physical page — không có copy</div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">POSIX Shared Memory <span class="badge badge-teal">shm_open</span></div>
+      <div class="code-wrap">
+        <div class="code-label">producer.c</div>
+        <pre>#include &lt;sys/mman.h&gt;
+#include &lt;fcntl.h&gt;
+
+#define SHM_NAME "/myshm"
+#define SIZE     4096
+
+int main() {
+    /* Tạo / mở shared memory object */
+    int fd = shm_open(SHM_NAME,
+                      O_CREAT|O_RDWR, 0666);
+    ftruncate(fd, SIZE);
+
+    /* Map vào address space */
+    char *ptr = mmap(NULL, SIZE,
+                     PROT_READ|PROT_WRITE,
+                     MAP_SHARED, fd, 0);
+
+    /* Ghi dữ liệu — process B đọc ngay */
+    snprintf(ptr, SIZE, "Hello SHM!");
+
+    /* Cleanup */
+    munmap(ptr, SIZE);
+    close(fd);
+    /* shm_unlink(SHM_NAME); khi done */
+}</pre>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-title">Đồng bộ hoá bắt buộc</div>
+        <div class="card-desc">Không có kernel đồng bộ — cần semaphore hoặc mutex để tránh race condition.</div>
+        <div class="code-wrap">
+          <div class="code-label">Dùng POSIX semaphore</div>
+          <pre>#include &lt;semaphore.h&gt;
+
+/* Đặt semaphore trong SHM */
+typedef struct {
+    sem_t   sem;
+    char    data[1024];
+} SharedData;
+
+SharedData *shm = mmap(...);
+sem_init(&shm->sem, 1, 1); /* pshared=1 */
+
+/* Producer */
+sem_wait(&shm->sem);
+memcpy(shm->data, buf, len);
+sem_post(&shm->sem);
+
+/* Consumer */
+sem_wait(&shm->sem);
+memcpy(local, shm->data, len);
+sem_post(&shm->sem);</pre>
+        </div>
+      </div>
+      <div class="card" style="margin-top:0">
+        <div class="card-title">Lệnh kiểm tra</div>
+        <div class="code-wrap">
+          <pre># Xem các SHM objects
+ls -la /dev/shm/
+
+# SysV shared memory
+ipcs -m
+
+# Xoá SHM bị treo
+ipcrm -m &lt;shmid&gt;</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MESSAGE QUEUE ===== -->
+<div id="tab-mq" class="section">
+  <div class="metric-grid">
+    <div class="metric"><div class="metric-val" style="color:#534AB7">Typed msg</div><div class="metric-lbl">Message có type</div></div>
+    <div class="metric"><div class="metric-val" style="color:#534AB7">Priority</div><div class="metric-lbl">Ordering theo độ ưu tiên</div></div>
+    <div class="metric"><div class="metric-val" style="color:#534AB7">Async</div><div class="metric-lbl">Sender không block</div></div>
+    <div class="metric"><div class="metric-val" style="color:#534AB7">Kernel</div><div class="metric-lbl">Persistent qua crash</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">POSIX Message Queue <span class="badge badge-purple">mq_open</span></div>
+      <div class="card-desc">Hàng đợi có thứ tự ưu tiên, message-based (không phải byte stream). Kernel lưu trữ — sender gửi xong tiếp tục, receiver nhận khi rảnh.</div>
+      <div class="code-wrap">
+        <div class="code-label">sender.c</div>
+        <pre>#include &lt;mqueue.h&gt;
+
+int main() {
+    mqd_t mq = mq_open("/myqueue",
+        O_CREAT|O_WRONLY,
+        0666, NULL);
+
+    struct {
+        int  type;
+        char payload[128];
+    } msg = { .type = 1 };
+
+    snprintf(msg.payload, 128,
+             "Hello MQ");
+
+    /* priority = 5 */
+    mq_send(mq, (char*)&msg,
+            sizeof(msg), 5);
+    mq_close(mq);
+}</pre>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-title">POSIX vs SysV Message Queue</div>
+        <table class="ipc-table">
+          <thead><tr><th>Đặc điểm</th><th>POSIX</th><th>SysV</th></tr></thead>
+          <tbody>
+            <tr><td>API</td><td>mq_open/send/receive</td><td>msgget/msgsnd/msgrcv</td></tr>
+            <tr><td>Tên</td><td>/myqueue (path-like)</td><td>key_t (số nguyên)</td></tr>
+            <tr><td>Priority</td><td>Có (0-31)</td><td>Qua msg_type</td></tr>
+            <tr><td>Notification</td><td>mq_notify (signal/thread)</td><td>Không</td></tr>
+            <tr><td>poll/select</td><td>Có (là fd)</td><td>Không</td></tr>
+            <tr><td>Khuyến nghị</td><td>✓ Nên dùng</td><td>Legacy</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <div class="card-title">Code: Receiver + notification</div>
+        <div class="code-wrap">
+          <pre>mqd_t mq = mq_open("/myqueue",
+    O_CREAT|O_RDONLY, 0666, NULL);
+
+/* Đăng ký signal khi có message mới */
+struct sigevent sev = {
+    .sigev_notify = SIGEV_SIGNAL,
+    .sigev_signo  = SIGUSR1
+};
+mq_notify(mq, &sev);
+
+/* ... sau khi nhận SIGUSR1 ... */
+char buf[256];
+unsigned prio;
+mq_receive(mq, buf, sizeof(buf), &prio);
+
+# Kiểm tra queue
+ls /dev/mqueue/
+cat /proc/sys/fs/mqueue/msg_max</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SIGNAL ===== -->
+<div id="tab-signal" class="section">
+  <div class="metric-grid">
+    <div class="metric"><div class="metric-val" style="color:#993556">Async</div><div class="metric-lbl">Delivery mode</div></div>
+    <div class="metric"><div class="metric-val" style="color:#993556">64</div><div class="metric-lbl">Số signal trên x86-64</div></div>
+    <div class="metric"><div class="metric-val" style="color:#993556">~32</div><div class="metric-lbl">Real-time signals</div></div>
+    <div class="metric"><div class="metric-val" style="color:#993556">Không queue</div><div class="metric-lbl">Standard signals</div></div>
+  </div>
+  <div class="grid-2">
+    <div>
+      <div class="card">
+        <div class="card-title">Signal lifecycle</div>
+        <div class="steps">
+          <div class="step"><div class="step-num"></div><div class="step-body"><div class="step-title">Generation</div><div class="step-desc">kill(), raise(), tgkill(), hoặc kernel tự tạo (SIGSEGV, SIGFPE, SIGCHLD...)</div></div></div>
+          <div class="step"><div class="step-num"></div><div class="step-body"><div class="step-title">Pending</div><div class="step-desc">Signal được đặt trong pending set của task_struct. Nếu bị block (sigprocmask), nằm ở đây.</div></div></div>
+          <div class="step"><div class="step-num"></div><div class="step-body"><div class="step-title">Delivery</div><div class="step-desc">Khi process return từ syscall hoặc sau context switch, kernel kiểm tra pending set.</div></div></div>
+          <div class="step"><div class="step-num"></div><div class="step-body"><div class="step-title">Handling</div><div class="step-desc">SIG_DFL (default action), SIG_IGN (ignore), hoặc custom handler qua sigaction().</div></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Các signal quan trọng</div>
+        <table class="ipc-table">
+          <thead><tr><th>Signal</th><th>Số</th><th>Default action</th><th>Ý nghĩa</th></tr></thead>
+          <tbody>
+            <tr><td>SIGTERM</td><td>15</td><td>Terminate</td><td>Yêu cầu thoát (graceful)</td></tr>
+            <tr><td>SIGKILL</td><td>9</td><td>Terminate</td><td>Buộc thoát — không thể catch</td></tr>
+            <tr><td>SIGINT</td><td>2</td><td>Terminate</td><td>Ctrl+C từ terminal</td></tr>
+            <tr><td>SIGSEGV</td><td>11</td><td>Core dump</td><td>Invalid memory access</td></tr>
+            <tr><td>SIGCHLD</td><td>17</td><td>Ignore</td><td>Child process changed state</td></tr>
+            <tr><td>SIGHUP</td><td>1</td><td>Terminate</td><td>Reload config (convention)</td></tr>
+            <tr><td>SIGUSR1/2</td><td>10/12</td><td>Terminate</td><td>User-defined purposes</td></tr>
+            <tr><td>SIGALRM</td><td>14</td><td>Terminate</td><td>Timer alarm (alarm())</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-title">Code: sigaction + signalfd</div>
+        <div class="code-wrap">
+          <div class="code-label">sigaction — cách đúng để handle signal</div>
+          <pre>#include &lt;signal.h&gt;
+#include &lt;stdio.h&gt;
+
+volatile sig_atomic_t running = 1;
+
+void handle_term(int sig) {
+    running = 0;  /* async-signal-safe */
+}
+
+int main() {
+    struct sigaction sa = {
+        .sa_handler = handle_term,
+        .sa_flags   = SA_RESTART
+    };
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGTERM, &sa, NULL);
+    sigaction(SIGINT,  &sa, NULL);
+
+    while (running) {
+        /* main loop */
+        pause(); /* sleep until signal */
+    }
+    printf("Shutting down gracefully\n");
+}</pre>
+        </div>
+        <div class="code-wrap">
+          <div class="code-label">signalfd — đọc signal như file (dùng với epoll)</div>
+          <pre>#include &lt;sys/signalfd.h&gt;
+
+sigset_t mask;
+sigemptyset(&mask);
+sigaddset(&mask, SIGTERM);
+sigaddset(&mask, SIGUSR1);
+
+/* Block signals thông thường */
+sigprocmask(SIG_BLOCK, &mask, NULL);
+
+/* Tạo fd cho signals */
+int sfd = signalfd(-1, &mask, SFD_CLOEXEC);
+
+/* Đọc khi có signal */
+struct signalfd_siginfo info;
+read(sfd, &info, sizeof(info));
+printf("Got signal %d from PID %d\n",
+       info.ssi_signo, info.ssi_pid);</pre>
+        </div>
+      </div>
+      <div class="card" style="margin-top:0">
+        <div class="card-title">Lưu ý async-signal safety</div>
+        <div class="card-desc">Trong signal handler chỉ được gọi async-signal-safe functions. <strong>Không được:</strong> malloc, printf, mutex lock. <strong>Được:</strong> write(), _exit(), sig_atomic_t, self-pipe trick.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== COMPARE ===== -->
+<div id="tab-compare" class="section">
+  <div class="card">
+    <div class="card-title">So sánh toàn diện các loại IPC</div>
+    <div style="overflow-x:auto">
+    <table class="ipc-table">
+      <thead>
+        <tr>
+          <th>Đặc điểm</th>
+          <th>Pipe</th>
+          <th>FIFO</th>
+          <th>Unix Socket</th>
+          <th>Shared Mem</th>
+          <th>Msg Queue</th>
+          <th>Signal</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Tốc độ</strong></td><td>Trung bình</td><td>Trung bình</td><td>Cao</td><td>Rất cao</td><td>Trung bình</td><td>Nhanh</td></tr>
+        <tr><td><strong>Data copy</strong></td><td>2× (user↔kernel)</td><td>2×</td><td>2×</td><td>0</td><td>2×</td><td>Không có dữ liệu</td></tr>
+        <tr><td><strong>Hướng</strong></td><td>Unidirectional</td><td>Unidirectional</td><td>Bidirectional</td><td>Bidirectional</td><td>Bidirectional</td><td>Unidirectional</td></tr>
+        <tr><td><strong>Message boundary</strong></td><td>Không (byte stream)</td><td>Không</td><td>Stream/Dgram</td><td>Tự quản lý</td><td>Có</td><td>Chỉ signal number</td></tr>
+        <tr><td><strong>Persistence</strong></td><td>Mất khi process chết</td><td>Tồn tại trên FS</td><td>Tồn tại trên FS</td><td>Cho đến reboot</td><td>Cho đến reboot</td><td>Không</td></tr>
+        <tr><td><strong>Đồng bộ</strong></td><td>Kernel tự động</td><td>Kernel tự động</td><td>Kernel tự động</td><td>Tự làm (sem)</td><td>Kernel tự động</td><td>Asynchronous</td></tr>
+        <tr><td><strong>Process liên quan</strong></td><td>Cần related</td><td>Bất kỳ</td><td>Bất kỳ</td><td>Bất kỳ</td><td>Bất kỳ</td><td>Biết PID</td></tr>
+        <tr><td><strong>Khó dùng</strong></td><td>Dễ</td><td>Dễ</td><td>Trung bình</td><td>Khó</td><td>Trung bình</td><td>Trung bình</td></tr>
+        <tr><td><strong>poll/epoll</strong></td><td>Có</td><td>Có</td><td>Có</td><td>Không</td><td>Có (POSIX)</td><td>Có (signalfd)</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Throughput benchmark (ước tính trên modern Linux x86-64)</div>
+    <svg width="100%" viewBox="0 0 620 180" role="img">
+      <title>IPC throughput comparison</title>
+      <desc>Biểu đồ so sánh throughput của các loại IPC</desc>
+
+      <!-- Bars -->
+      <!-- SHM ~100% -->
+      <rect x="40" y="20" width="530" height="24" rx="4" fill="#E1F5EE"/>
+      <rect x="40" y="20" width="530" height="24" rx="4" fill="#1D9E75"/>
+      <text font-family="var(--font-sans)" font-size="11" font-weight="500" x="36" y="36" text-anchor="end" fill="var(--color-text-secondary)">Shared Mem</text>
+      <text font-family="var(--font-sans)" font-size="11" x="578" y="36" fill="#085041">~10 GB/s</text>
+
+      <!-- Unix Socket ~50% -->
+      <rect x="40" y="56" width="265" height="24" rx="4" fill="#E6F1FB"/>
+      <rect x="40" y="56" width="265" height="24" rx="4" fill="#378ADD"/>
+      <text font-family="var(--font-sans)" font-size="11" font-weight="500" x="36" y="72" text-anchor="end" fill="var(--color-text-secondary)">Unix Socket</text>
+      <text font-family="var(--font-sans)" font-size="11" x="312" y="72" fill="#0C447C">~4–6 GB/s</text>
+
+      <!-- Pipe ~40% -->
+      <rect x="40" y="92" width="212" height="24" rx="4" fill="#E1F5EE"/>
+      <rect x="40" y="92" width="212" height="24" rx="4" fill="#5DCAA5"/>
+      <text font-family="var(--font-sans)" font-size="11" font-weight="500" x="36" y="108" text-anchor="end" fill="var(--color-text-secondary)">Pipe</text>
+      <text font-family="var(--font-sans)" font-size="11" x="258" y="108" fill="#085041">~3–4 GB/s</text>
+
+      <!-- Msg Queue ~25% -->
+      <rect x="40" y="128" width="133" height="24" rx="4" fill="#EEEDFE"/>
+      <rect x="40" y="128" width="133" height="24" rx="4" fill="#7F77DD"/>
+      <text font-family="var(--font-sans)" font-size="11" font-weight="500" x="36" y="144" text-anchor="end" fill="var(--color-text-secondary)">Msg Queue</text>
+      <text font-family="var(--font-sans)" font-size="11" x="180" y="144" fill="#3C3489">~1–2 GB/s</text>
+    </svg>
+    <div class="diagram-caption">Shared memory không có copy overhead nên vượt trội; các phương thức khác bị giới hạn bởi kernel buffer copy</div>
+  </div>
+</div>
+
+<!-- ===== QUIZ ===== -->
+<div id="tab-quiz" class="section">
+  <div id="quiz-container"></div>
+</div>
+
+<script>
+const QUIZ = [
+  {
+    q: "Khi bạn tạo một anonymous pipe bằng pipe(), hai file descriptor fds[0] và fds[1] đại diện cho điều gì?",
+    opts: [
+      "fds[0] = đầu ghi, fds[1] = đầu đọc",
+      "fds[0] = đầu đọc, fds[1] = đầu ghi",
+      "Cả hai đều có thể đọc và ghi (bidirectional)",
+      "fds[0] = stdin, fds[1] = stdout"
+    ],
+    correct: 1,
+    explain: "pipe() tạo fds[0] là đầu đọc (read end) và fds[1] là đầu ghi (write end). Dữ liệu ghi vào fds[1] được đọc từ fds[0]. Pipe là unidirectional."
+  },
+  {
+    q: "Tại sao Shared Memory cho throughput cao nhất trong các loại IPC?",
+    opts: [
+      "Vì dùng mạng loopback nhanh hơn các IPC khác",
+      "Vì kernel dùng DMA để transfer dữ liệu tự động",
+      "Vì không có data copy — các process cùng truy cập một vùng RAM vật lý",
+      "Vì kernel cache các message trong L3 cache"
+    ],
+    correct: 2,
+    explain: "Shared memory map cùng một physical pages vào address space của nhiều process. Không có kernel copy — process A ghi trực tiếp vào RAM, process B đọc từ cùng địa chỉ vật lý đó. Các IPC khác phải copy ít nhất 2 lần (user→kernel→user)."
+  },
+  {
+    q: "Bạn cần thông báo cho một service reload config file mà không cần restart. Convention trên Linux là gửi signal nào?",
+    opts: [
+      "SIGTERM (15)",
+      "SIGKILL (9)",
+      "SIGHUP (1)",
+      "SIGUSR2 (12)"
+    ],
+    correct: 2,
+    explain: "SIGHUP là convention Unix để yêu cầu process reload config. Lý do lịch sử: SIGHUP nghĩa là 'hangup' (terminal bị đóng), và daemon tự reload khi mất terminal. Ngày nay dùng với nghĩa 'reload'. nginx -s reload và systemctl reload đều dùng SIGHUP."
+  },
+  {
+    q: "Điểm khác biệt quan trọng nhất giữa POSIX Message Queue và Pipe là gì?",
+    opts: [
+      "Message Queue nhanh hơn Pipe vì dùng shared memory",
+      "Message Queue có message boundary và priority; Pipe là byte stream không có boundary",
+      "Pipe hỗ trợ nhiều writer còn Message Queue chỉ một writer",
+      "Message Queue chỉ hoạt động giữa related process"
+    ],
+    correct: 1,
+    explain: "Pipe là byte stream — write(10) rồi write(5) có thể được read(15) một lần. Message Queue giữ message boundary — mỗi mq_send() là một message riêng biệt được nhận bởi một mq_receive(). Ngoài ra MQ có priority queue (msg ưu tiên cao nhận trước)."
+  },
+  {
+    q: "Tại sao cần đồng bộ hoá (semaphore/mutex) khi dùng Shared Memory nhưng không cần với Pipe?",
+    opts: [
+      "Pipe tự động dùng semaphore nội bộ, SHM không",
+      "Kernel serialize tất cả write() vào Pipe; với SHM nhiều process có thể ghi đồng thời gây data corruption",
+      "SHM cần nhiều permission hơn nên cần semaphore để xác thực",
+      "Pipe là unidirectional nên không bao giờ có race condition"
+    ],
+    correct: 1,
+    explain: "Kernel đảm bảo các thao tác read/write vào Pipe là atomic (cho block nhỏ hơn PIPE_BUF = 4096 bytes). Với Shared Memory, kernel không can thiệp — nếu Process A và B cùng ghi vào cùng offset, dữ liệu sẽ bị corrupt (race condition). Cần semaphore hoặc mutex để mutual exclusion."
+  },
+  {
+    q: "Khi nào Unix Domain Socket phù hợp hơn Named Pipe (FIFO)?",
+    opts: [
+      "Khi cần performance tối đa",
+      "Khi cần bidirectional communication hoặc gửi file descriptor giữa các process",
+      "Khi cần message persistence sau khi process chết",
+      "Khi cần giao tiếp cross-host qua network"
+    ],
+    correct: 1,
+    explain: "Unix Socket là bidirectional (hai chiều) và hỗ trợ fd passing (gửi file descriptor qua SCM_RIGHTS). FIFO chỉ unidirectional — để bidirectional cần 2 FIFO. Đây là lý do Docker, systemd, DBus đều dùng Unix socket thay vì FIFO."
+  },
+  {
+    q: "Hàm nào KHÔNG an toàn để gọi trong signal handler?",
+    opts: [
+      "write()",
+      "printf()",
+      "_exit()",
+      "signal()"
+    ],
+    correct: 1,
+    explain: "printf() không phải async-signal-safe vì nó dùng stdio buffer (malloc, lock nội bộ). Nếu signal ngắt một malloc() đang chạy và handler gọi printf() (dùng malloc), sẽ gây deadlock hoặc heap corruption. Chỉ dùng write() với STDERR_FILENO, hoặc self-pipe trick để notify main loop."
+  }
+];
+
+let current = 0, score = 0, answered = Array(QUIZ.length).fill(false);
+
+function renderQuiz() {
+  const q = QUIZ[current];
+  const isAnswered = answered[current] !== false;
+  const container = document.getElementById('quiz-container');
+  container.innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span style="font-size:12px;color:var(--color-text-secondary)">Câu ${current+1}/${QUIZ.length}</span>
+        <span style="font-size:12px;color:var(--color-text-secondary)">Đúng: ${score}/${QUIZ.length}</span>
+      </div>
+      <div style="font-size:14px;font-weight:500;margin-bottom:14px;line-height:1.5">${q.q}</div>
+      ${q.opts.map((o,i) => `
+        <div class="quiz-opt${isAnswered ? (i===q.correct?' correct':(i===answered[current]?' wrong':'')) : ''}"
+             onclick="${isAnswered ? '' : `pickAnswer(${i})`}" style="${isAnswered?'cursor:default':''}">
+          ${o}
+        </div>
+      `).join('')}
+      ${isAnswered ? `<div class="quiz-feedback" style="display:block;background:var(--color-background-secondary);border-radius:6px;padding:10px;font-size:13px;color:var(--color-text-secondary);line-height:1.6;margin-top:10px">
+        ${answered[current]===q.correct?'✓ Chính xác! ':'✗ Chưa đúng. '} ${q.explain}
+      </div>` : ''}
+      <div class="quiz-nav">
+        <button class="btn-sm" onclick="navQuiz(-1)" ${current===0?'disabled':''}>← Trước</button>
+        <button class="btn-sm" onclick="navQuiz(1)" ${current===QUIZ.length-1?'disabled':''}>Tiếp →</button>
+        ${current===QUIZ.length-1?`<button class="btn-sm" onclick="resetQuiz()" style="margin-left:auto">Làm lại</button>`:''}
+      </div>
+    </div>
+  `;
+}
+function pickAnswer(i) {
+  const q = QUIZ[current];
+  answered[current] = i;
+  if (i === q.correct) score++;
+  renderQuiz();
+}
+function navQuiz(d) { current = Math.max(0,Math.min(QUIZ.length-1,current+d)); renderQuiz(); }
+function resetQuiz() { current=0; score=0; answered=Array(QUIZ.length).fill(false); renderQuiz(); }
+renderQuiz();
+
+// Tab switching
+function switchTab(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>

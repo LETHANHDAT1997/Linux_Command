@@ -1,0 +1,652 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);color:var(--color-text-primary);background:transparent;font-size:14px;line-height:1.7}
+
+.chapter{padding:1.5rem 0 0}
+.chapter-title{font-size:18px;font-weight:500;margin-bottom:4px}
+.chapter-sub{font-size:13px;color:var(--color-text-secondary);margin-bottom:1.25rem}
+
+.section-label{font-size:11px;font-weight:500;letter-spacing:.06em;color:var(--color-text-secondary);text-transform:uppercase;margin:1.5rem 0 .6rem}
+
+.card{background:var(--color-background-primary);border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem;margin-bottom:1rem}
+.card-title{font-size:15px;font-weight:500;margin-bottom:.5rem;display:flex;align-items:center;gap:8px}
+.card-body{font-size:13px;color:var(--color-text-secondary);line-height:1.7}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.grid2>*{min-width:0}
+
+.code-block{background:var(--color-background-secondary);border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:.875rem 1rem;margin:.6rem 0;overflow-x:auto}
+.code-block pre{font-family:var(--font-mono);font-size:12px;line-height:1.65;color:var(--color-text-primary);white-space:pre}
+.code-label{font-family:var(--font-mono);font-size:11px;color:var(--color-text-secondary);margin-bottom:.4rem}
+
+.api-box{border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);margin:.75rem 0;overflow:hidden}
+.api-sig{font-family:var(--font-mono);font-size:12.5px;font-weight:500;padding:.75rem 1rem;background:var(--color-background-secondary);border-bottom:.5px solid var(--color-border-tertiary);color:var(--color-text-primary)}
+.api-param-row{display:grid;grid-template-columns:140px 1fr;gap:0;border-bottom:.5px solid var(--color-border-tertiary)}
+.api-param-row:last-child{border-bottom:none}
+.api-param-name{font-family:var(--font-mono);font-size:12px;padding:.55rem 1rem;background:var(--color-background-secondary);color:#185FA5;border-right:.5px solid var(--color-border-tertiary)}
+.api-param-desc{font-size:12px;padding:.55rem 1rem;color:var(--color-text-secondary);line-height:1.55}
+.api-return{font-size:12px;padding:.6rem 1rem;background:var(--color-background-secondary);border-top:.5px solid var(--color-border-tertiary);color:var(--color-text-secondary)}
+.api-return span{font-family:var(--font-mono);color:var(--color-text-primary)}
+
+.flag-row{display:flex;flex-direction:column;gap:4px;margin:.5rem 0}
+.flag{display:flex;gap:10px;font-size:12px;padding:.4rem .75rem;border-radius:4px;background:var(--color-background-secondary)}
+.flag-name{font-family:var(--font-mono);color:#185FA5;min-width:120px;flex-shrink:0}
+.flag-desc{color:var(--color-text-secondary);line-height:1.45}
+
+.warn-box{background:#FAEEDA;border:.5px solid #854F0B;border-radius:var(--border-radius-md);padding:.75rem 1rem;font-size:12.5px;color:#633806;margin:.75rem 0;line-height:1.55}
+.info-box{background:#E6F1FB;border:.5px solid #185FA5;border-radius:var(--border-radius-md);padding:.75rem 1rem;font-size:12.5px;color:#0C447C;margin:.75rem 0;line-height:1.55}
+.emb-box{background:#E1F5EE;border:.5px solid #0F6E56;border-radius:var(--border-radius-md);padding:.75rem 1rem;font-size:12.5px;color:#085041;margin:.75rem 0;line-height:1.55}
+@media(prefers-color-scheme:dark){
+  .warn-box{background:#412402;border-color:#633806;color:#FAC775}
+  .info-box{background:#042C53;border-color:#185FA5;color:#B5D4F4}
+  .emb-box{background:#04342C;border-color:#0F6E56;color:#9FE1CB}
+}
+.warn-box strong,.info-box strong,.emb-box strong{font-weight:500}
+
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
+.badge-blue{background:#E6F1FB;color:#185FA5}
+.badge-teal{background:#E1F5EE;color:#0F6E56}
+.badge-amber{background:#FAEEDA;color:#854F0B}
+@media(prefers-color-scheme:dark){
+  .badge-blue{background:#042C53;color:#B5D4F4}
+  .badge-teal{background:#04342C;color:#9FE1CB}
+  .badge-amber{background:#412402;color:#FAC775}
+}
+
+.inline-code{font-family:var(--font-mono);font-size:12px;background:var(--color-background-secondary);padding:1px 5px;border-radius:3px;color:var(--color-text-primary)}
+
+.step-list{display:flex;flex-direction:column;gap:6px;counter-reset:s}
+.step-item{display:flex;gap:10px;align-items:flex-start;counter-increment:s}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--color-background-secondary);border:.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0;margin-top:2px}
+.step-num::before{content:counter(s)}
+.step-body{flex:1;font-size:13px;color:var(--color-text-secondary);line-height:1.6}
+.step-body strong{color:var(--color-text-primary);font-weight:500}
+
+.nav-bar{display:flex;gap:6px;flex-wrap:wrap;border-bottom:.5px solid var(--color-border-tertiary);padding-bottom:0;margin-bottom:0}
+.nav-btn{padding:8px 14px;font-size:13px;cursor:pointer;border-radius:6px 6px 0 0;border:.5px solid transparent;color:var(--color-text-secondary);background:transparent;transition:all .15s;margin-bottom:-.5px;white-space:nowrap}
+.nav-btn:hover{color:var(--color-text-primary);background:var(--color-background-secondary)}
+.nav-btn.active{color:var(--color-text-primary);font-weight:500;background:var(--color-background-primary);border-color:var(--color-border-tertiary);border-bottom-color:var(--color-background-primary)}
+.page{display:none}.page.active{display:block}
+
+.divider{height:.5px;background:var(--color-border-tertiary);margin:1.25rem 0}
+</style>
+
+<div class="nav-bar">
+  <button class="nav-btn active" onclick="go('pipe',this)">1. Pipe cơ bản</button>
+  <button class="nav-btn" onclick="go('how',this)">2. Cơ chế kernel</button>
+  <button class="nav-btn" onclick="go('api',this)">3. API chi tiết</button>
+  <button class="nav-btn" onclick="go('fifo',this)">4. FIFO / Named pipe</button>
+  <button class="nav-btn" onclick="go('embedded',this)">5. Embedded Linux</button>
+</div>
+
+<!-- PAGE 1: Pipe cơ bản -->
+<div class="page active" id="page-pipe">
+<div class="chapter">
+  <div class="chapter-title">Pipe — ống dẫn dữ liệu một chiều</div>
+  <div class="chapter-sub">Loại IPC đơn giản nhất. Hiểu Pipe là nền tảng để hiểu hết các IPC còn lại.</div>
+
+  <div class="section-label">Ý tưởng cốt lõi</div>
+  <div class="card">
+    <div class="card-body">
+      Hãy hình dung một <strong style="color:var(--color-text-primary)">cái ống nước thực sự</strong>: nước chỉ chảy một chiều, bạn đổ vào một đầu và lấy ra ở đầu kia theo đúng thứ tự (FIFO). Pipe trong Linux hoạt động y hệt như vậy với dữ liệu bytes.<br><br>
+      Kernel tạo ra một <strong style="color:var(--color-text-primary)">vùng đệm (buffer) trong RAM</strong> — thường 64 KB trên Linux hiện đại. Một process ghi vào đầu này, process kia đọc từ đầu kia. Kernel hoàn toàn kiểm soát việc đồng bộ.
+    </div>
+  </div>
+
+  <div class="section-label">Pipe trông như thế nào trong bộ nhớ</div>
+  <svg width="100%" viewBox="0 0 680 200" role="img">
+    <title>Pipe buffer diagram</title>
+    <desc>Process A ghi vào fd[1], kernel buffer 64KB ở giữa, Process B đọc từ fd[0]</desc>
+    <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+
+    <!-- Process A -->
+    <g class="c-purple">
+      <rect x="20" y="60" width="140" height="80" rx="8" stroke-width=".5"/>
+      <text class="th" x="90" y="92" text-anchor="middle" dominant-baseline="central">Process A</text>
+      <text class="ts" x="90" y="116" text-anchor="middle" dominant-baseline="central">(writer)</text>
+    </g>
+
+    <!-- fd[1] label -->
+    <text class="ts" x="185" y="88" text-anchor="middle" dominant-baseline="central" fill="#185FA5">write(fd[1])</text>
+    <line x1="160" y1="100" x2="230" y2="100" stroke="#378ADD" stroke-width="1.5" marker-end="url(#ar)" fill="none"/>
+
+    <!-- Kernel buffer -->
+    <g class="c-teal">
+      <rect x="230" y="40" width="220" height="120" rx="10" stroke-width=".5"/>
+      <text class="th" x="340" y="72" text-anchor="middle" dominant-baseline="central">Kernel buffer</text>
+      <text class="ts" x="340" y="92" text-anchor="middle" dominant-baseline="central">64 KB (mặc định)</text>
+    </g>
+    <!-- Data bytes inside buffer -->
+    <rect x="248" y="110" width="20" height="14" rx="2" fill="#1D9E75" opacity=".7"/>
+    <rect x="272" y="110" width="20" height="14" rx="2" fill="#1D9E75" opacity=".7"/>
+    <rect x="296" y="110" width="20" height="14" rx="2" fill="#1D9E75" opacity=".7"/>
+    <rect x="320" y="110" width="20" height="14" rx="2" fill="#1D9E75" opacity=".5"/>
+    <rect x="344" y="110" width="80" height="14" rx="2" fill="var(--color-background-secondary)" stroke="var(--color-border-tertiary)" stroke-width=".5"/>
+    <text class="ts" x="340" y="140" text-anchor="middle" dominant-baseline="central">data→ · · · (free)</text>
+
+    <!-- fd[0] label -->
+    <text class="ts" x="495" y="88" text-anchor="middle" dominant-baseline="central" fill="#185FA5">read(fd[0])</text>
+    <line x1="450" y1="100" x2="520" y2="100" stroke="#378ADD" stroke-width="1.5" marker-end="url(#ar)" fill="none"/>
+
+    <!-- Process B -->
+    <g class="c-purple">
+      <rect x="520" y="60" width="140" height="80" rx="8" stroke-width=".5"/>
+      <text class="th" x="590" y="92" text-anchor="middle" dominant-baseline="central">Process B</text>
+      <text class="ts" x="590" y="116" text-anchor="middle" dominant-baseline="central">(reader)</text>
+    </g>
+
+    <!-- Labels below -->
+    <text class="ts" x="90" y="170" text-anchor="middle" fill="var(--color-text-secondary)">fds[1] = write end</text>
+    <text class="ts" x="340" y="175" text-anchor="middle" fill="var(--color-text-secondary)">kernel-managed, không cần lock</text>
+    <text class="ts" x="590" y="170" text-anchor="middle" fill="var(--color-text-secondary)">fds[0] = read end</text>
+  </svg>
+
+  <div class="divider"></div>
+  <div class="section-label">Code đầy đủ, chạy được — có giải thích từng dòng</div>
+  <div class="code-block">
+    <div class="code-label">pipe_basic.c — compile: gcc pipe_basic.c -o pipe_basic</div>
+    <pre>#include &lt;unistd.h&gt;    /* pipe(), read(), write(), fork(), close() */
+#include &lt;stdio.h&gt;     /* printf(), perror() */
+#include &lt;stdlib.h&gt;    /* exit() */
+#include &lt;string.h&gt;    /* strlen() */
+#include &lt;sys/wait.h&gt;  /* wait() */
+
+int main(void) {
+    int fds[2];   /* fds[0] = đầu đọc, fds[1] = đầu ghi */
+
+    /* ── Bước 1: Tạo pipe ──────────────────────────────── */
+    if (pipe(fds) == -1) {
+        perror("pipe");   /* in lỗi dạng: "pipe: Too many open files" */
+        exit(1);
+    }
+    /* Lúc này kernel đã tạo buffer 64KB trong RAM.
+       fds[0] và fds[1] là 2 file descriptor trỏ vào buffer đó. */
+
+    /* ── Bước 2: Fork để tạo child process ─────────────── */
+    pid_t pid = fork();
+    if (pid == -1) { perror("fork"); exit(1); }
+
+    if (pid == 0) {
+        /* ═══ Đây là CHILD PROCESS (writer) ═══ */
+
+        close(fds[0]);   /* Đóng đầu đọc — child không cần đọc.
+                            Quan trọng: nếu không đóng, reader sẽ
+                            không bao giờ thấy EOF! */
+
+        const char *msg = "Xin chao tu child process!";
+        ssize_t n = write(fds[1], msg, strlen(msg));
+        /* write() copy dữ liệu từ user space vào kernel buffer.
+           Nếu buffer đầy → write() sẽ BLOCK cho đến khi có chỗ. */
+
+        if (n == -1) { perror("write"); exit(1); }
+        printf("[Child]  Da ghi %zd bytes\n", n);
+
+        close(fds[1]);   /* Đóng write-end → kernel biết không còn
+                            writer nào nữa → reader sẽ thấy EOF */
+        exit(0);
+
+    } else {
+        /* ═══ Đây là PARENT PROCESS (reader) ═══ */
+
+        close(fds[1]);   /* Đóng đầu ghi — parent không cần ghi.
+                            Nếu không đóng: read() sẽ block mãi mãi
+                            vì vẫn còn 1 fd ghi đang mở! */
+
+        char buf[128] = {0};
+        ssize_t n = read(fds[0], buf, sizeof(buf) - 1);
+        /* read() copy từ kernel buffer vào buf.
+           - Nếu buffer rỗng và writer còn sống → BLOCK (chờ dữ liệu)
+           - Nếu tất cả write-end đã đóng     → trả về 0 (EOF)
+           - Nếu có lỗi                        → trả về -1 */
+
+        if (n == -1) { perror("read"); exit(1); }
+        if (n == 0)  { printf("[Parent] EOF — child da dong pipe\n"); }
+        else         { printf("[Parent] Nhan duoc: \"%s\"\n", buf); }
+
+        close(fds[0]);
+
+        int status;
+        wait(&status);   /* Chờ child kết thúc, tránh zombie */
+        printf("[Parent] Child thoat voi code %d\n",
+               WEXITSTATUS(status));
+    }
+    return 0;
+}</pre>
+  </div>
+
+  <div class="info-box"><strong>Kết quả khi chạy:</strong><br>
+  <span class="inline-code">[Child]  Da ghi 26 bytes</span><br>
+  <span class="inline-code">[Parent] Nhan duoc: "Xin chao tu child process!"</span><br>
+  <span class="inline-code">[Parent] Child thoat voi code 0</span><br><br>
+  Thứ tự in ra có thể đảo: child/parent chạy song song. Nhưng nội dung message luôn đúng.
+  </div>
+</div>
+</div>
+
+<!-- PAGE 2: Cơ chế kernel -->
+<div class="page" id="page-how">
+<div class="chapter">
+  <div class="chapter-title">Bên trong kernel: pipe thực sự hoạt động ra sao</div>
+  <div class="chapter-sub">Những hành vi blocking, EOF, PIPE_BUF — tất cả đều có lý do rõ ràng.</div>
+
+  <div class="section-label">4 quy tắc blocking của pipe</div>
+
+  <div class="card">
+    <div class="card-title"><span class="badge badge-blue">Quy tắc 1</span> read() block khi buffer rỗng</div>
+    <div class="card-body">Nếu không có byte nào trong buffer và vẫn còn ít nhất 1 write-end đang mở, <span class="inline-code">read()</span> ngủ cho đến khi writer ghi gì đó. Kernel không tốn CPU trong lúc chờ — scheduler đưa process vào trạng thái <strong style="color:var(--color-text-primary)">TASK_INTERRUPTIBLE</strong>.</div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-blue">Quy tắc 2</span> read() trả về 0 (EOF) khi tất cả write-end đã đóng</div>
+    <div class="card-body">Đây là cách reader biết "không còn dữ liệu nào nữa". <strong style="color:var(--color-text-primary)">Lỗi cực phổ biến:</strong> quên <span class="inline-code">close(fds[1])</span> trong parent → reader block mãi mãi vì kernel thấy vẫn còn 1 fd ghi đang mở.</div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-blue">Quy tắc 3</span> write() block khi buffer đầy</div>
+    <div class="card-body">Buffer mặc định 64 KB. Nếu reader chậm không đọc kịp và writer tiếp tục ghi, đến lúc buffer đầy, <span class="inline-code">write()</span> block cho đến khi reader đọc bớt ra. Điều này tạo ra cơ chế <strong style="color:var(--color-text-primary)">back-pressure</strong> tự nhiên.</div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="badge badge-amber">Quy tắc 4</span> write() lên pipe không có reader → SIGPIPE</div>
+    <div class="card-body">Nếu tất cả read-end đã đóng mà writer vẫn ghi, kernel gửi <span class="inline-code">SIGPIPE</span> đến writer. Mặc định process bị kill. Có thể ignore signal này và kiểm tra <span class="inline-code">errno == EPIPE</span> từ write().</div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="section-label">PIPE_BUF và tính atomic</div>
+  <div class="card">
+    <div class="card-body">
+      <span class="inline-code">PIPE_BUF</span> trên Linux = <strong style="color:var(--color-text-primary)">4096 bytes</strong> (4 KB). Đây là ngưỡng quan trọng:<br><br>
+      — Nếu <span class="inline-code">write(n)</span> với <span class="inline-code">n ≤ PIPE_BUF</span>: kernel đảm bảo ghi <strong style="color:var(--color-text-primary)">atomic</strong> — không bị xen lẫn với write() của process khác. An toàn với nhiều writer.<br>
+      — Nếu <span class="inline-code">n > PIPE_BUF</span>: kernel có thể chia nhỏ và các write() khác nhau có thể bị xen kẽ → cần lock thủ công.
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">Kiểm tra PIPE_BUF và kích thước buffer thực tế</div>
+    <pre>#include &lt;limits.h&gt;   /* PIPE_BUF */
+#include &lt;fcntl.h&gt;    /* F_GETPIPE_SZ, F_SETPIPE_SZ */
+
+printf("PIPE_BUF = %d bytes\n", PIPE_BUF);  /* Thường là 4096 */
+
+int fds[2];
+pipe(fds);
+
+/* Đọc kích thước buffer hiện tại của pipe */
+int sz = fcntl(fds[0], F_GETPIPE_SZ);
+printf("Pipe buffer size = %d bytes\n", sz);  /* Thường 65536 = 64KB */
+
+/* Tăng kích thước buffer (cần quyền hoặc process là owner) */
+fcntl(fds[1], F_SETPIPE_SZ, 1024 * 1024);  /* Tăng lên 1 MB */
+/* Trên embedded: /proc/sys/fs/pipe-max-size giới hạn giá trị tối đa */</pre>
+  </div>
+
+  <div class="divider"></div>
+  <div class="section-label">Pipe với vòng lặp đọc — cách đúng</div>
+  <div class="code-block">
+    <div class="code-label">pipe_loop.c — đọc cho đến EOF, xử lý từng chunk</div>
+    <pre>/* Reader đúng cách: đọc trong vòng lặp */
+char buf[4096];
+ssize_t n;
+
+while ((n = read(fds[0], buf, sizeof(buf))) > 0) {
+    /* n bytes đã đọc được, xử lý [buf, buf+n) */
+    fwrite(buf, 1, n, stdout);
+}
+/* Sau vòng lặp: n == 0 nghĩa là EOF (tất cả writer đã đóng)
+                 n == -1 nghĩa là lỗi, kiểm tra errno */
+if (n == -1) perror("read");
+
+
+/* ─── Sai lầm thường gặp ─────────────────────────────── */
+/* SAI: đọc 1 lần, giả sử lấy hết dữ liệu               */
+read(fds[0], buf, sizeof(buf));   /* Có thể nhận ít hơn! */
+
+/* ĐÚNG: luôn đọc trong vòng lặp đến khi n == 0 hoặc lỗi */</pre>
+  </div>
+
+  <div class="warn-box"><strong>Lý do phải đọc trong vòng lặp:</strong> <span class="inline-code">read()</span> được phép trả về ít hơn số byte bạn yêu cầu ngay cả khi chưa EOF. Ví dụ: write 1000 bytes nhưng read() có thể trả về 512, rồi 488. Đây là hành vi hợp lệ hoàn toàn.</div>
+</div>
+</div>
+
+<!-- PAGE 3: API chi tiết -->
+<div class="page" id="page-api">
+<div class="chapter">
+  <div class="chapter-title">API chi tiết — từng tham số, từng flag</div>
+  <div class="chapter-sub">Giải thích đầy đủ pipe(), pipe2(), read(), write() trong ngữ cảnh pipe.</div>
+
+  <div class="section-label">pipe() — tạo anonymous pipe</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;unistd.h&gt;<br>int pipe(int pipefd[2]);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">pipefd[2]</div>
+      <div class="api-param-desc"><strong style="color:var(--color-text-primary)">Output:</strong> kernel điền vào mảng 2 phần tử.<br>• <span class="inline-code">pipefd[0]</span> = file descriptor đầu đọc (read end)<br>• <span class="inline-code">pipefd[1]</span> = file descriptor đầu ghi (write end)<br>Cả hai là fd thông thường, dùng được với read/write/close/select/poll/epoll.</div>
+    </div>
+    <div class="api-return">Trả về: <span>0</span> khi thành công, <span>-1</span> khi lỗi (errno được set: <span>EMFILE</span> = hết fd, <span>ENFILE</span> = system limit)</div>
+  </div>
+
+  <div class="section-label">pipe2() — tạo pipe với flags (Linux-specific)</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;fcntl.h&gt;   /* O_CLOEXEC, O_NONBLOCK */
+#include &lt;unistd.h&gt;
+int pipe2(int pipefd[2], int flags);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">pipefd[2]</div>
+      <div class="api-param-desc">Giống pipe() — kernel điền đầu đọc/ghi.</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">flags</div>
+      <div class="api-param-desc">Kết hợp bằng OR (<span class="inline-code">|</span>) các giá trị sau:</div>
+    </div>
+    <div class="flag-row" style="margin:.5rem 1rem .75rem">
+      <div class="flag"><span class="flag-name">O_CLOEXEC</span><span class="flag-desc">Tự động đóng fd khi process gọi exec(). <strong style="color:var(--color-text-primary)">Luôn dùng flag này</strong> để tránh fd rò rỉ sang chương trình con. Tương đương gọi fcntl(fd, F_SETFD, FD_CLOEXEC) nhưng atomic.</span></div>
+      <div class="flag"><span class="flag-name">O_NONBLOCK</span><span class="flag-desc">Biến read/write thành non-blocking. Thay vì block, hàm trả về -1 với errno=EAGAIN khi không có dữ liệu (read) hoặc buffer đầy (write). Dùng khi kết hợp với event loop (select/poll/epoll).</span></div>
+    </div>
+    <div class="api-return">Trả về: <span>0</span> thành công, <span>-1</span> lỗi. Lỗi thêm: <span>EINVAL</span> nếu flags không hợp lệ</div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">Cách dùng pipe2() đúng chuẩn cho embedded/production</div>
+    <pre>int fds[2];
+
+/* pipe2 = pipe + O_CLOEXEC + O_NONBLOCK trong 1 syscall,
+   tránh race condition giữa pipe() và fcntl() */
+if (pipe2(fds, O_CLOEXEC | O_NONBLOCK) == -1) {
+    perror("pipe2");
+    return -1;
+}
+
+/* Đọc non-blocking */
+char buf[256];
+ssize_t n = read(fds[0], buf, sizeof(buf));
+if (n == -1) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        /* Bình thường: không có dữ liệu lúc này */
+    } else {
+        perror("read");  /* Lỗi thực sự */
+    }
+}</pre>
+  </div>
+
+  <div class="section-label">write() và read() trong ngữ cảnh pipe</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;unistd.h&gt;
+ssize_t write(int fd, const void *buf, size_t count);
+ssize_t read (int fd,       void *buf, size_t count);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">fd</div>
+      <div class="api-param-desc">Với pipe: <span class="inline-code">fds[1]</span> cho write, <span class="inline-code">fds[0]</span> cho read. Dùng sai (ghi vào [0] hoặc đọc từ [1]) → EBADF.</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">buf</div>
+      <div class="api-param-desc">Con trỏ đến vùng nhớ chứa dữ liệu (write) hoặc nơi nhận dữ liệu (read). Phải valid và đủ kích thước.</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">count</div>
+      <div class="api-param-desc">Số bytes muốn ghi/đọc. Kết quả thực tế có thể ít hơn — luôn kiểm tra giá trị trả về.</div>
+    </div>
+    <div class="api-return">Trả về: số bytes thực sự đọc/ghi (≥0), hoặc <span>-1</span> lỗi. Riêng read: <span>0</span> = EOF</div>
+  </div>
+
+  <div class="warn-box"><strong>Partial write:</strong> write() có thể ghi ít hơn count bytes, đặc biệt với pipe lớn hoặc signal ngắt. Phải kiểm tra giá trị trả về và ghi lại phần còn thiếu — đây là lỗi rất phổ biến trong code production.</div>
+
+  <div class="code-block">
+    <div class="code-label">write_all() — helper function viết đủ bytes</div>
+    <pre>/* Đảm bảo ghi đủ n bytes, xử lý partial write và EINTR */
+ssize_t write_all(int fd, const void *buf, size_t n) {
+    const char *p = buf;
+    size_t remaining = n;
+    while (remaining > 0) {
+        ssize_t w = write(fd, p, remaining);
+        if (w == -1) {
+            if (errno == EINTR) continue;  /* Signal ngắt, thử lại */
+            return -1;                     /* Lỗi thực sự */
+        }
+        p         += w;
+        remaining -= w;
+    }
+    return (ssize_t)n;
+}</pre>
+  </div>
+</div>
+</div>
+
+<!-- PAGE 4: FIFO -->
+<div class="page" id="page-fifo">
+<div class="chapter">
+  <div class="chapter-title">FIFO — Named Pipe, có tên trên filesystem</div>
+  <div class="chapter-sub">Giống anonymous pipe nhưng có path, dùng được giữa các process không liên quan.</div>
+
+  <div class="section-label">Điểm khác biệt so với anonymous pipe</div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Anonymous pipe</div>
+      <div class="card-body">— Không có tên trên filesystem<br>— Chỉ dùng giữa parent và child (kế thừa fd qua fork)<br>— Mất khi process chết<br>— Tạo bằng <span class="inline-code">pipe()</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title">FIFO (Named pipe)</div>
+      <div class="card-body">— Có inode trên filesystem (thường ở /tmp)<br>— Bất kỳ process nào biết path đều dùng được<br>— Tồn tại cho đến khi bị <span class="inline-code">unlink()</span><br>— Tạo bằng <span class="inline-code">mkfifo()</span></div>
+    </div>
+  </div>
+
+  <div class="section-label">mkfifo() — tạo FIFO</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;sys/types.h&gt;
+#include &lt;sys/stat.h&gt;
+int mkfifo(const char *pathname, mode_t mode);</div>
+    <div class="api-param-row">
+      <div class="api-param-name">pathname</div>
+      <div class="api-param-desc">Đường dẫn tạo FIFO trên filesystem. Ví dụ: <span class="inline-code">"/tmp/my_fifo"</span> hoặc <span class="inline-code">"/var/run/myapp/cmd"</span>. Thư mục cha phải tồn tại.</div>
+    </div>
+    <div class="api-param-row">
+      <div class="api-param-name">mode</div>
+      <div class="api-param-desc">Permission bits, giống chmod. Ví dụ: <span class="inline-code">0666</span> = đọc/ghi cho tất cả. Giá trị thực tế bị mask bởi umask của process. Trong embedded thường dùng <span class="inline-code">0600</span> (chỉ owner đọc/ghi) hoặc <span class="inline-code">0660</span> (owner + group).</div>
+    </div>
+    <div class="api-return">Trả về: <span>0</span> thành công, <span>-1</span> lỗi. Lỗi quan trọng: <span>EEXIST</span> = path đã tồn tại, <span>ENOENT</span> = thư mục cha không tồn tại</div>
+  </div>
+
+  <div class="section-label">Hành vi quan trọng: open() FIFO block cho đến khi cả 2 đầu sẵn sàng</div>
+  <div class="card">
+    <div class="card-body">
+      Đây là điểm khác biệt lớn nhất so với anonymous pipe. Khi mở FIFO:<br><br>
+      — <span class="inline-code">open(path, O_RDONLY)</span>: block cho đến khi có process mở <span class="inline-code">O_WRONLY</span><br>
+      — <span class="inline-code">open(path, O_WRONLY)</span>: block cho đến khi có process mở <span class="inline-code">O_RDONLY</span><br><br>
+      Lý do: kernel cần cả 2 đầu sẵn sàng mới có ý nghĩa. Nếu muốn không block: dùng <span class="inline-code">O_NONBLOCK</span>.
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">fifo_server.c — bên nhận lệnh (chạy trước)</div>
+    <pre>#include &lt;sys/stat.h&gt;  /* mkfifo() */
+#include &lt;fcntl.h&gt;     /* open(), O_RDONLY */
+#include &lt;unistd.h&gt;    /* read(), close(), unlink() */
+#include &lt;stdio.h&gt;
+
+#define FIFO_PATH "/tmp/cmd_fifo"
+
+int main(void) {
+    /* Tạo FIFO nếu chưa có */
+    if (mkfifo(FIFO_PATH, 0660) == -1) {
+        if (errno != EEXIST) {   /* EEXIST = đã tồn tại, OK */
+            perror("mkfifo"); return 1;
+        }
+    }
+    printf("Dang cho lenh... (FIFO: %s)\n", FIFO_PATH);
+
+    /* open() sẽ BLOCK ở đây cho đến khi client mở để ghi */
+    int fd = open(FIFO_PATH, O_RDONLY);
+    if (fd == -1) { perror("open"); return 1; }
+
+    char buf[256];
+    ssize_t n;
+    while ((n = read(fd, buf, sizeof(buf)-1)) > 0) {
+        buf[n] = '\0';
+        printf("Nhan lenh: [%s]\n", buf);
+    }
+    close(fd);
+
+    /* Dọn dẹp — FIFO vẫn tồn tại trên disk nếu không unlink */
+    unlink(FIFO_PATH);
+    return 0;
+}</pre>
+  </div>
+  <div class="code-block">
+    <div class="code-label">fifo_client.c — bên gửi lệnh (chạy sau)</div>
+    <pre>#include &lt;fcntl.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+
+#define FIFO_PATH "/tmp/cmd_fifo"
+
+int main(void) {
+    /* open() block cho đến khi server mở O_RDONLY */
+    int fd = open(FIFO_PATH, O_WRONLY);
+    if (fd == -1) { perror("open"); return 1; }
+
+    const char *cmd = "START_SENSOR";
+    write(fd, cmd, strlen(cmd));
+    printf("Da gui: %s\n", cmd);
+
+    close(fd);  /* Đóng → server thấy EOF */
+    return 0;
+}</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">Cách chạy — 2 terminal</div>
+    <pre># Terminal 1 (chạy trước):
+./fifo_server
+# Output: "Dang cho lenh..." rồi block
+
+# Terminal 2:
+./fifo_client
+# Output: "Da gui: START_SENSOR"
+
+# Terminal 1 tiếp tục in:
+# "Nhan lenh: [START_SENSOR]"</pre>
+  </div>
+</div>
+</div>
+
+<!-- PAGE 5: Embedded Linux -->
+<div class="page" id="page-embedded">
+<div class="chapter">
+  <div class="chapter-title">Pipe & FIFO trong Embedded Linux</div>
+  <div class="chapter-sub">Những điểm khác biệt, ưu tiên, và giới hạn khi dùng trên thiết bị nhúng.</div>
+
+  <div class="section-label">Những ràng buộc đặc thù của embedded Linux</div>
+  <div class="grid2">
+    <div>
+      <div class="emb-box"><strong>RAM giới hạn:</strong> Buffer mặc định 64 KB/pipe. Trên thiết bị 64 MB RAM, tạo nhiều pipe có thể chiếm đáng kể tài nguyên. Kiểm tra: <span class="inline-code">cat /proc/sys/fs/pipe-max-size</span></div>
+      <div class="emb-box" style="margin-top:.75rem"><strong>Filesystem read-only:</strong> FIFO cần ghi vào filesystem. Trên hệ thống có rootfs read-only (SquashFS + overlayfs), phải tạo FIFO ở <span class="inline-code">/tmp</span> (tmpfs) hoặc <span class="inline-code">/var/run</span> (ramfs), không phải <span class="inline-code">/etc</span> hay <span class="inline-code">/usr</span>.</div>
+      <div class="emb-box" style="margin-top:.75rem"><strong>Ít fd hơn:</strong> <span class="inline-code">ulimit -n</span> trên embedded thường là 256–1024. Pipe tốn 2 fd. Luôn <span class="inline-code">close()</span> fd không cần thiết ngay sau fork().</div>
+    </div>
+    <div>
+      <div class="warn-box"><strong>Không có /proc/sys/fs/pipe-max-size trên kernel cũ:</strong> Buildroot với kernel &lt; 3.5 có thể không có F_GETPIPE_SZ / F_SETPIPE_SZ. Kiểm tra bằng <span class="inline-code">uname -r</span> trước khi dùng.</div>
+      <div class="warn-box" style="margin-top:.75rem"><strong>SIGPIPE có thể kill daemon:</strong> Nếu daemon ghi vào pipe mà reader đã chết, SIGPIPE kill daemon. Luôn ignore hoặc handle SIGPIPE trong daemon code.</div>
+    </div>
+  </div>
+
+  <div class="section-label">Pattern thực tế: pipe giữa main task và sensor task</div>
+  <div class="code-block">
+    <div class="code-label">embedded_pipe.c — pattern dùng pipe + select() để không block main loop</div>
+    <pre>#include &lt;unistd.h&gt;
+#include &lt;fcntl.h&gt;
+#include &lt;signal.h&gt;
+#include &lt;sys/select.h&gt;
+
+/* Ignore SIGPIPE — quan trọng cho daemon */
+signal(SIGPIPE, SIG_IGN);
+
+int fds[2];
+/* O_CLOEXEC: tự đóng khi exec — bắt buộc trên embedded
+   để tránh rò fd khi spawn subprocess (busybox, etc.) */
+pipe2(fds, O_CLOEXEC | O_NONBLOCK);
+
+/* ── Sensor thread ghi kết quả ── */
+void sensor_thread(void) {
+    float temperature = read_sensor();
+    /* Ghi struct nhỏ hơn PIPE_BUF → atomic, an toàn */
+    write(fds[1], &temperature, sizeof(float));
+}
+
+/* ── Main loop đọc không blocking bằng select() ── */
+void main_loop(void) {
+    fd_set rfds;
+    struct timeval tv = { .tv_sec = 0, .tv_usec = 10000 }; /* 10ms */
+
+    FD_ZERO(&rfds);
+    FD_SET(fds[0], &rfds);
+
+    int ret = select(fds[0] + 1, &rfds, NULL, NULL, &tv);
+    if (ret > 0 && FD_ISSET(fds[0], &rfds)) {
+        float temp;
+        if (read(fds[0], &temp, sizeof(float)) == sizeof(float)) {
+            handle_temperature(temp);
+        }
+    }
+    /* ret == 0 → timeout, không có data, tiếp tục loop bình thường */
+}</pre>
+  </div>
+
+  <div class="section-label">Khi nào dùng Pipe vs FIFO trong embedded</div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><span class="badge badge-teal">Dùng Pipe khi</span></div>
+      <div class="card-body" style="margin-top:.5rem">
+        — Giao tiếp giữa parent và child process (sau fork)<br>
+        — Giao tiếp giữa các thread trong cùng process<br>
+        — Cần self-pipe trick để wake up select/epoll từ signal handler<br>
+        — Không muốn để lại vết trên filesystem
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-blue">Dùng FIFO khi</span></div>
+      <div class="card-body" style="margin-top:.5rem">
+        — Hai daemon độc lập cần giao tiếp (không có quan hệ cha-con)<br>
+        — Cần giao diện đơn giản: <span class="inline-code">echo "cmd" > /tmp/fifo</span><br>
+        — Script shell cần giao tiếp với C daemon<br>
+        — Debugging: có thể <span class="inline-code">cat /tmp/fifo</span> để xem data
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Self-pipe trick — wake epoll từ signal handler</div>
+  <div class="card">
+    <div class="card-body">Pattern quan trọng trong embedded daemon: signal handler không được gọi non-async-safe functions, nhưng bạn cần main loop phản ứng với SIGTERM/SIGUSR1. Giải pháp: pipe 1 byte vào một pipe, epoll sẽ thức dậy.</div>
+  </div>
+  <div class="code-block">
+    <div class="code-label">self_pipe_trick.c</div>
+    <pre>static int wakeup_pipe[2];  /* global */
+
+/* Signal handler — chỉ write() 1 byte, là async-signal-safe */
+void sig_handler(int sig) {
+    char byte = (char)sig;
+    write(wakeup_pipe[1], &byte, 1);  /* Không check return — intentional */
+}
+
+int main(void) {
+    pipe2(wakeup_pipe, O_CLOEXEC | O_NONBLOCK);
+
+    struct sigaction sa = { .sa_handler = sig_handler };
+    sigaction(SIGTERM, &sa, NULL);
+    sigaction(SIGUSR1, &sa, NULL);
+
+    /* Thêm wakeup_pipe[0] vào epoll */
+    epoll_ctl(epfd, EPOLL_CTL_ADD, wakeup_pipe[0], &ev);
+
+    /* Khi nhận signal → pipe có data → epoll wakeup → đọc byte → xử lý */
+    /* Đây là pattern chuẩn cho event-driven daemon trên Linux */
+}</pre>
+  </div>
+
+  <div class="emb-box"><strong>Bước tiếp theo:</strong> Sau khi nắm vững Pipe & FIFO, IPC tiếp theo nên học là <strong>Unix Domain Socket</strong> — cho phép bidirectional, nhiều client, và truyền file descriptor. Đặc biệt hữu ích cho kiến trúc daemon-client trong embedded Linux.</div>
+</div>
+</div>
+
+<script>
+function go(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
