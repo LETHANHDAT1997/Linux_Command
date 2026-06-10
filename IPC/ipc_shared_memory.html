@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IPC — Shared Memory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #475569;
+  --color-background-body: #f5f5f0;
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f8f8f8;
+  --color-border-secondary: #ddd;
+  --color-border-tertiary: #e0e0e0;
+  --color-nav-hover: #eee;
+  --border-radius-lg: 10px;
+  --border-radius-md: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-text-primary: #e2e8f0;
+    --color-text-secondary: #94a3b8;
+    --color-background-body: #121212;
+    --color-background-primary: #1e1e1e;
+    --color-background-secondary: #1a1a1a;
+    --color-border-secondary: #444;
+    --color-border-tertiary: #333;
+    --color-nav-hover: #2d2d2d;
+  }
+  
+  /* SVG overrides for dark mode */
+  svg { background: #111827 !important; border-color: #374151 !important; }
+  svg text { fill: #f3f4f6 !important; }
+  svg text[fill="#888"] { fill: #9ca3af !important; }
+  svg text[fill="#666"] { fill: #9ca3af !important; }
+  svg text[fill="#555"] { fill: #9ca3af !important; }
+  svg text[fill="#1a5c3a"] { fill: #a7f3d0 !important; }
+  svg text[fill="#2e9e6a"] { fill: #34d399 !important; }
+  svg text[fill="#3b2fa0"] { fill: #c7d2fe !important; }
+  svg text[fill="#6b5cd6"] { fill: #818cf8 !important; }
+  svg text[fill="#8a5000"] { fill: #fde047 !important; }
+  svg text[fill="#d9534f"] { fill: #f87171 !important; }
+  svg rect[fill="#d0f0e8"] { fill: #064e3b !important; stroke: #047857 !important; }
+  svg rect[fill="#f8f8f8"] { fill: #1f2937 !important; stroke: #374151 !important; }
+  svg rect[fill="#e8e6ff"] { fill: #1e1b4b !important; stroke: #4338ca !important; }
+  svg rect[fill="#fff8e6"] { fill: #451a03 !important; stroke: #b45309 !important; }
+  svg line[stroke="#ccc"] { stroke: #374151 !important; }
+  svg line[stroke="#e5e5e5"] { stroke: #374151 !important; }
+  svg line[stroke="#d9534f"] { stroke: #f87171 !important; }
+  svg line[stroke="#2e9e6a"] { stroke: #34d399 !important; }
+  svg path[stroke="#6b5cd6"] { stroke: #818cf8 !important; }
+
+  .api-name { color: #58a6ff; }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); color: var(--color-text-primary); background: var(--color-background-body); font-size: 15px; line-height: 1.7; }
+.container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+.sub { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1.5rem; }
+.nav-bar { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--color-border-secondary); margin-bottom: 0; }
+.nav-btn { padding: 8px 14px; font-size: 13px; cursor: pointer; border-radius: 6px 6px 0 0; border: 1px solid transparent; color: var(--color-text-secondary); background: transparent; transition: all .15s; margin-bottom: -1px; white-space: nowrap; font-family: var(--font-sans); }
+.nav-btn:hover { color: var(--color-text-primary); background: var(--color-nav-hover); }
+.nav-btn.active { color: var(--color-text-primary); font-weight: 600; background: var(--color-background-primary); border-color: var(--color-border-secondary); border-bottom-color: var(--color-background-primary); }
+.page { display: none; padding: 1.5rem 0; }
+.page.active { display: block; }
+.chapter-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+.chapter-sub { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1.25rem; }
+.section-label { font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--color-text-secondary); text-transform: uppercase; margin: 1.5rem 0 .6rem; }
+.card { background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+.card-title { font-size: 15px; font-weight: 600; margin-bottom: .5rem; display: flex; align-items: center; gap: 8px; }
+.card-body { font-size: 13px; color: var(--color-text-secondary); line-height: 1.7; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media(max-width: 600px) { .grid2 { grid-template-columns: 1fr; } }
+.code-block { background: #1e1e2e; border-radius: 8px; padding: .875rem 1rem; margin: .6rem 0; overflow-x: auto; }
+.code-block pre { font-family: var(--font-mono); font-size: 13px; line-height: 1.6; color: #cdd6f4; white-space: pre; }
+.code-label { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-secondary); margin-bottom: .4rem; }
+.api-box{border:1px solid var(--color-border-tertiary);border-radius:8px;margin:.75rem 0;overflow:hidden}
+.api-sig{font-family:var(--font-mono);font-size:13px;font-weight:500;padding:.75rem 1rem;background:var(--color-background-secondary);border-bottom:1px solid var(--color-border-tertiary);color:var(--color-text-primary);white-space:pre;line-height:1.6}
+.api-row{display:grid;grid-template-columns:160px 1fr;border-bottom:1px solid var(--color-border-tertiary)}
+.api-row:last-child{border-bottom:none}
+.api-name{font-family:var(--font-mono);font-size:12px;padding:.55rem 1rem;background:var(--color-background-secondary);color:#185FA5;border-right:1px solid var(--color-border-tertiary);word-break:break-all}
+.api-desc{font-size:12px;padding:.55rem 1rem;color:var(--color-text-secondary);line-height:1.6}
+.api-ret{font-size:12px;padding:.6rem 1rem;background:var(--color-background-secondary);border-top:1px solid var(--color-border-tertiary);color:var(--color-text-secondary)}
+.api-ret span{font-family:var(--font-mono);color:var(--color-text-primary)}
+.warn-box{background:#fff8e6;border:1px solid #e6a817;border-radius:8px;padding:.75rem 1rem;font-size:12.5px;color:#7a4f00;margin:.75rem 0;line-height:1.6}
+.info-box{background:#e8f3fd;border:1px solid #5b9bd5;border-radius:8px;padding:.75rem 1rem;font-size:12.5px;color:#1a4a7a;margin:.75rem 0;line-height:1.6}
+.emb-box{background:#e8f7ef;border:1px solid #2e9e6a;border-radius:8px;padding:.75rem 1rem;font-size:12.5px;color:#1a5c3a;margin:.75rem 0;line-height:1.6}
+.err-box{background:#fdecea;border:1px solid #d9534f;border-radius:8px;padding:.75rem 1rem;font-size:12.5px;color:#7a1a1a;margin:.75rem 0;line-height:1.6}
+@media (prefers-color-scheme: dark) {
+  .warn-box{background:#412402;border-color:#633806;color:#FAC775}
+  .info-box{background:#042C53;border-color:#185FA5;color:#B5D4F4}
+  .emb-box{background:#04342C;border-color:#0F6E56;color:#9FE1CB}
+  .err-box{background:#501313;border-color:#A32D2D;color:#F7C1C1}
+}
+strong{font-weight:600}
+.badge{display:inline-flex;align-items:center;font-size:11px;padding:2px 9px;border-radius:20px;font-weight:500;vertical-align:middle}
+.badge-blue{background:#ddeeff;color:#185FA5}
+.badge-teal{background:#d0f0e8;color:#0d7a52}
+.badge-amber{background:#fff0d0;color:#8a5000}
+@media (prefers-color-scheme: dark) {
+  .badge-blue{background:#042C53;color:#B5D4F4}
+  .badge-teal{background:#04342C;color:#9FE1CB}
+  .badge-amber{background:#412402;color:#FAC775}
+}
+.ic{font-family:var(--font-mono);font-size:12px;background:var(--color-background-secondary);padding:1px 5px;border-radius:3px;color:var(--color-text-primary)}
+.step-list{display:flex;flex-direction:column;gap:6px;counter-reset:s}
+.step-item{display:flex;gap:10px;align-items:flex-start;counter-increment:s}
+.step-num{min-width:22px;height:22px;border-radius:50%;background:var(--color-background-secondary);border:1px solid var(--color-border-secondary);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;margin-top:3px;color:var(--color-text-secondary)}
+.step-num::before{content:counter(s)}
+.step-body{flex:1;font-size:13px;color:var(--color-text-secondary);line-height:1.6}
+.step-body strong{color:var(--color-text-primary)}
+.divider{height:1px;background:var(--color-border-tertiary);margin:1.25rem 0}
+.cmp-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.cmp-table th{text-align:left;padding:7px 10px;font-weight:600;font-size:11px;color:var(--color-text-secondary);background:var(--color-background-secondary);border-bottom:1px solid var(--color-border-tertiary)}
+.cmp-table td{padding:7px 10px;border-bottom:1px solid var(--color-border-tertiary);vertical-align:top;line-height:1.5}
+.cmp-table tr:last-child td{border-bottom:none}
+.cmp-table tr:hover td { background: var(--color-background-secondary); }
+.flag{display:flex;gap:10px;font-size:12px;padding:.4rem .75rem;border-radius:4px;background:var(--color-background-secondary);margin-bottom:4px}
+.fn{font-family:var(--font-mono);color:#185FA5;min-width:150px;flex-shrink:0;font-size:12px}
+.fd{color:var(--color-text-secondary);line-height:1.5}
+.race-box{border:1px solid var(--color-border-tertiary);border-radius:8px;overflow:hidden;margin:.75rem 0}
+.race-hdr{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--color-border-tertiary)}
+.race-col{padding:.5rem .75rem;font-size:12px;font-weight:600;text-align:center}
+.rca{background:#ddeeff;color:#185FA5}
+.rcb{background:#d0f0e8;color:#0d7a52}
+@media (prefers-color-scheme: dark) {
+  .rca { background: #042C53; color: #B5D4F4; }
+  .rcb { background: #04342C; color: #9FE1CB; }
+}
+.race-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--color-border-tertiary)}
+.race-row:last-child{border-bottom:none}
+.rce{padding:.35rem .75rem;font-size:12px;font-family:var(--font-mono);color:var(--color-text-secondary);line-height:1.5}
+.rce.hi{background:#fff8e6;color:#8a5000}
+.rce.bad{background:#fdecea;color:#a32020;font-weight:600}
+@media (prefers-color-scheme: dark) {
+  .rce.hi { background: #412402; color: #FAC775; }
+  .rce.bad { background: #501313; color: #F7C1C1; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>IPC — Shared Memory</h1>
+<p class="sub">Cơ chế IPC nhanh nhất: nhiều process cùng trỏ đến một vùng RAM vật lý — không có kernel copy.</p>
+
+<div class="nav-bar">
+  <button class="nav-btn active" onclick="go('concept',this)">1. Khái niệm</button>
+  <button class="nav-btn" onclick="go('api',this)">2. shm_open &amp; mmap</button>
+  <button class="nav-btn" onclick="go('race',this)">3. Race condition</button>
+  <button class="nav-btn" onclick="go('sem',this)">4. Semaphore</button>
+  <button class="nav-btn" onclick="go('code',this)">5. Code đầy đủ</button>
+  <button class="nav-btn" onclick="go('embedded',this)">6. Embedded Linux</button>
+</div>
+
+<!-- PAGE 1 -->
+<div class="page active" id="page-concept">
+  <div class="chapter-title">Shared Memory — chia sẻ vùng RAM trực tiếp</div>
+  <div class="chapter-sub">Thay vì copy dữ liệu qua kernel, các process cùng nhìn vào một vùng RAM vật lý. Không có trung gian.</div>
+
+  <div class="section-label">Tại sao nó nhanh hơn tất cả IPC còn lại</div>
+  <div class="card">
+    <div class="card-body">
+      Với Pipe và Socket: dữ liệu phải đi qua <strong>2 lần copy</strong>.<br>
+      — Process A: user buffer → kernel buffer &nbsp;<em>(copy 1)</em><br>
+      — Process B: kernel buffer → user buffer &nbsp;<em>(copy 2)</em><br><br>
+      Với Shared Memory: <strong>không có copy nào cả</strong>. Process A ghi thẳng vào địa chỉ RAM. Process B đọc từ cùng địa chỉ RAM đó. Kernel chỉ thiết lập "bản đồ" một lần ban đầu, sau đó không can thiệp vào từng lần đọc/ghi.
+    </div>
+  </div>
+
+  <svg width="100%" viewBox="0 0 680 280" style="display:block;margin:.75rem 0;background:#fff;border:1px solid #e0e0e0;border-radius:10px">
+    <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <!-- Pipe/Socket label -->
+    <text font-family="system-ui" font-size="12" font-weight="600" x="190" y="24" text-anchor="middle" fill="#888">Pipe / Socket — 2 lần copy</text>
+    <rect x="20" y="36" width="100" height="38" rx="6" fill="#e8e6ff" stroke="#6b5cd6" stroke-width="1"/>
+    <text font-family="system-ui" font-size="12" x="70" y="55" text-anchor="middle" dominant-baseline="central" fill="#3b2fa0">Process A</text>
+    <text font-family="system-ui" font-size="10" x="70" y="68" text-anchor="middle" dominant-baseline="central" fill="#6b5cd6">user buf</text>
+    <line x1="120" y1="55" x2="152" y2="55" stroke="#d9534f" stroke-width="1.5" marker-end="url(#ar)" fill="none"/>
+    <text font-family="system-ui" font-size="10" x="136" y="46" text-anchor="middle" fill="#d9534f">copy 1</text>
+    <rect x="152" y="36" width="90" height="38" rx="6" fill="#fff8e6" stroke="#e6a817" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="197" y="55" text-anchor="middle" dominant-baseline="central" fill="#8a5000">Kernel buf</text>
+    <line x1="242" y1="55" x2="274" y2="55" stroke="#d9534f" stroke-width="1.5" marker-end="url(#ar)" fill="none"/>
+    <text font-family="system-ui" font-size="10" x="258" y="46" text-anchor="middle" fill="#d9534f">copy 2</text>
+    <rect x="274" y="36" width="100" height="38" rx="6" fill="#d0f0e8" stroke="#2e9e6a" stroke-width="1"/>
+    <text font-family="system-ui" font-size="12" x="324" y="55" text-anchor="middle" dominant-baseline="central" fill="#1a5c3a">Process B</text>
+    <text font-family="system-ui" font-size="10" x="324" y="68" text-anchor="middle" dominant-baseline="central" fill="#2e9e6a">user buf</text>
+    <!-- Divider -->
+    <line x1="10" y1="100" x2="670" y2="100" stroke="#e5e5e5" stroke-width="1"/>
+    <!-- SHM label -->
+    <text font-family="system-ui" font-size="12" font-weight="600" x="340" y="120" text-anchor="middle" fill="#888">Shared Memory — 0 copy</text>
+    <rect x="30" y="132" width="110" height="50" rx="6" fill="#e8e6ff" stroke="#6b5cd6" stroke-width="1"/>
+    <text font-family="system-ui" font-size="12" x="85" y="150" text-anchor="middle" dominant-baseline="central" fill="#3b2fa0">Process A</text>
+    <text font-family="system-ui" font-size="10" x="85" y="168" text-anchor="middle" dominant-baseline="central" fill="#6b5cd6">virt: 0x7f00</text>
+    <rect x="270" y="122" width="140" height="70" rx="8" fill="#d0f0e8" stroke="#2e9e6a" stroke-width="1.5"/>
+    <text font-family="system-ui" font-size="12" font-weight="500" x="340" y="148" text-anchor="middle" dominant-baseline="central" fill="#1a5c3a">Physical RAM</text>
+    <text font-family="system-ui" font-size="11" x="340" y="166" text-anchor="middle" dominant-baseline="central" fill="#2e9e6a">Shared Pages</text>
+    <text font-family="system-ui" font-size="10" x="340" y="182" text-anchor="middle" dominant-baseline="central" fill="#666">[ data bytes... ]</text>
+    <rect x="540" y="132" width="110" height="50" rx="6" fill="#d0f0e8" stroke="#2e9e6a" stroke-width="1"/>
+    <text font-family="system-ui" font-size="12" x="595" y="150" text-anchor="middle" dominant-baseline="central" fill="#1a5c3a">Process B</text>
+    <text font-family="system-ui" font-size="10" x="595" y="168" text-anchor="middle" dominant-baseline="central" fill="#2e9e6a">virt: 0xb400</text>
+    <line x1="140" y1="157" x2="268" y2="157" stroke="#2e9e6a" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#ar)" fill="none"/>
+    <text font-family="system-ui" font-size="10" x="204" y="148" text-anchor="middle" fill="#2e9e6a">mmap()</text>
+    <line x1="410" y1="157" x2="538" y2="157" stroke="#2e9e6a" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#ar)" fill="none"/>
+    <text font-family="system-ui" font-size="10" x="474" y="148" text-anchor="middle" fill="#2e9e6a">mmap()</text>
+    <text font-family="system-ui" font-size="10" x="85" y="200" text-anchor="middle" fill="#555">ptr[0] = 42</text>
+    <text font-family="system-ui" font-size="10" x="340" y="210" text-anchor="middle" fill="#d9534f">⚠ không copy — nhưng cần lock!</text>
+    <text font-family="system-ui" font-size="10" x="595" y="200" text-anchor="middle" fill="#555">val = ptr[0] // 42</text>
+    <text font-family="system-ui" font-size="11" x="340" y="240" text-anchor="middle" fill="#2e9e6a">Địa chỉ ảo khác nhau → cùng trang RAM vật lý</text>
+    <text font-family="system-ui" font-size="11" x="340" y="258" text-anchor="middle" fill="#888">Kernel Page Table ánh xạ một lần, sau đó không can thiệp</text>
+  </svg>
+
+  <div class="section-label">Shared Memory so với các IPC khác</div>
+  <div class="card">
+    <table class="cmp-table">
+      <thead><tr><th>Đặc điểm</th><th>Pipe</th><th>Unix Socket</th><th>Shared Memory</th></tr></thead>
+      <tbody>
+        <tr><td>Data copy</td><td>2× mỗi lần</td><td>2× mỗi lần</td><td><strong>0 — trực tiếp</strong></td></tr>
+        <tr><td>Throughput điển hình</td><td>~3–4 GB/s</td><td>~4–6 GB/s</td><td><strong>~10–40 GB/s</strong></td></tr>
+        <tr><td>Đồng bộ hoá</td><td>Kernel tự làm</td><td>Kernel tự làm</td><td><strong>Tự làm bằng semaphore</strong></td></tr>
+        <tr><td>Độ phức tạp</td><td>Thấp</td><td>Trung bình</td><td><strong>Cao (dễ sai)</strong></td></tr>
+        <tr><td>Dùng khi nào</td><td>Stream nhỏ</td><td>Bidirectional</td><td><strong>Dữ liệu lớn, latency thấp</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-label">POSIX vs SysV — dùng cái nào?</div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><span class="badge badge-teal">POSIX shm — dùng cái này</span></div>
+      <div class="card-body">
+        API: <span class="ic">shm_open()</span> + <span class="ic">mmap()</span><br>
+        Tên như file path: <span class="ic">/myshm</span><br>
+        Nằm tại <span class="ic">/dev/shm/</span> (tmpfs)<br>
+        Tích hợp tốt với fd API (poll, select)<br>
+        <strong>Dùng trong code mới</strong>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-amber">SysV shm — legacy</span></div>
+      <div class="card-body">
+        API: <span class="ic">shmget()</span> + <span class="ic">shmat()</span><br>
+        Dùng key_t (số nguyên), khó debug<br>
+        Không có fd — không dùng được với poll<br>
+        <strong>Chỉ khi cần tương thích code cũ</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page" id="page-api">
+  <div class="chapter-title">shm_open() và mmap() — từng tham số</div>
+  <div class="chapter-sub">Hai hàm này luôn đi cùng nhau. shm_open tạo "file" trong RAM, mmap ánh xạ vào address space.</div>
+
+  <div class="section-label">Luồng sử dụng POSIX Shared Memory</div>
+  <div class="step-list">
+    <div class="step-item"><div class="step-num"></div><div class="step-body"><strong>shm_open()</strong> — tạo hoặc mở shared memory object. Trả về fd, giống open() với file thật nhưng object nằm trong RAM (tmpfs tại /dev/shm/).</div></div>
+    <div class="step-item"><div class="step-num"></div><div class="step-body"><strong>ftruncate()</strong> — đặt kích thước. Object mới tạo có size = 0, phải gọi ftruncate() trước khi mmap(). Chỉ cần gọi 1 lần ở phía tạo (producer/server).</div></div>
+    <div class="step-item"><div class="step-num"></div><div class="step-body"><strong>mmap()</strong> — ánh xạ object vào address space. Sau bước này, con trỏ trả về trỏ trực tiếp vào RAM vật lý.</div></div>
+    <div class="step-item"><div class="step-num"></div><div class="step-body"><strong>Đọc/ghi qua con trỏ</strong> — nhưng phải có lock nếu có nhiều process đọc/ghi đồng thời.</div></div>
+    <div class="step-item"><div class="step-num"></div><div class="step-body"><strong>munmap()</strong> + <strong>close()</strong> + <strong>shm_unlink()</strong> — dọn dẹp. munmap bỏ ánh xạ, close đóng fd, shm_unlink xóa object khỏi /dev/shm/.</div></div>
+  </div>
+
+  <div class="section-label">shm_open()</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;sys/mman.h&gt;
+#include &lt;fcntl.h&gt;
+int shm_open(const char *name, int oflag, mode_t mode);</div>
+    <div class="api-row">
+      <div class="api-name">name</div>
+      <div class="api-desc">Tên object, <strong>phải bắt đầu bằng /</strong> và không chứa / nào khác. Ví dụ: <span class="ic">"/mysensor"</span>. Object xuất hiện tại <span class="ic">/dev/shm/mysensor</span> — kiểm tra bằng <span class="ic">ls /dev/shm/</span>.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">oflag</div>
+      <div class="api-desc">
+        <div class="flag"><span class="fn">O_CREAT</span><span class="fd">Tạo object nếu chưa tồn tại. Bỏ flag này ở phía consumer — chỉ mở object đã có.</span></div>
+        <div class="flag"><span class="fn">O_RDWR</span><span class="fd">Đọc và ghi — cần cho ftruncate() và mmap với PROT_WRITE.</span></div>
+        <div class="flag"><span class="fn">O_RDONLY</span><span class="fd">Chỉ đọc — dùng ở consumer không cần ghi.</span></div>
+        <div class="flag"><span class="fn">O_EXCL</span><span class="fd">Kết hợp O_CREAT: lỗi EEXIST nếu đã tồn tại. Đảm bảo chỉ 1 process tạo.</span></div>
+      </div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">mode</div>
+      <div class="api-desc">Permission bits khi O_CREAT. <span class="ic">0600</span> (chỉ owner), <span class="ic">0660</span> (owner+group), <span class="ic">0666</span> (tất cả). Bị mask bởi umask.</div>
+    </div>
+    <div class="api-ret">Trả về: fd ≥ 0 thành công, <span>-1</span> lỗi. <span>EEXIST</span> (có O_EXCL), <span>ENOENT</span> (không O_CREAT mà chưa có)</div>
+  </div>
+
+  <div class="section-label">mmap()</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;sys/mman.h&gt;
+void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);</div>
+    <div class="api-row">
+      <div class="api-name">addr</div>
+      <div class="api-desc">Hầu như luôn truyền <span class="ic">NULL</span> — để kernel tự chọn địa chỉ.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">length</div>
+      <div class="api-desc">Số bytes muốn map. Phải ≤ kích thước đã ftruncate(). Kernel tự làm tròn lên page size.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">prot</div>
+      <div class="api-desc">
+        <div class="flag"><span class="fn">PROT_READ</span><span class="fd">Cho phép đọc.</span></div>
+        <div class="flag"><span class="fn">PROT_WRITE</span><span class="fd">Cho phép ghi. Thường kết hợp: <span class="ic">PROT_READ | PROT_WRITE</span>.</span></div>
+        <div class="flag"><span class="fn">PROT_NONE</span><span class="fd">Không có quyền gì — dùng cho guard page.</span></div>
+      </div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">flags</div>
+      <div class="api-desc">
+        <div class="flag"><span class="fn">MAP_SHARED</span><span class="fd"><strong>Bắt buộc khi dùng IPC.</strong> Ghi hiển thị ngay cho tất cả process khác map cùng object.</span></div>
+        <div class="flag"><span class="fn">MAP_PRIVATE</span><span class="fd">Copy-on-write — ghi không ảnh hưởng process khác. Dùng để đọc file không muốn thay đổi.</span></div>
+        <div class="flag"><span class="fn">MAP_ANONYMOUS</span><span class="fd">Không có file backing — tạo vùng nhớ ẩn danh (fd=-1). Chia sẻ giữa parent/child sau fork().</span></div>
+        <div class="flag"><span class="fn">MAP_LOCKED</span><span class="fd">Lock pages vào RAM, không swap ra đĩa. Quan trọng cho real-time embedded — tránh page fault gây jitter.</span></div>
+        <div class="flag"><span class="fn">MAP_POPULATE</span><span class="fd">Pre-fault tất cả pages ngay khi mmap(). Tránh page fault lần đầu — hữu ích cho real-time.</span></div>
+      </div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">fd</div>
+      <div class="api-desc">fd từ shm_open(). Dùng <span class="ic">-1</span> với MAP_ANONYMOUS.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">offset</div>
+      <div class="api-desc">Hầu như luôn là <span class="ic">0</span>. Nếu khác 0 phải là bội số của page size (thường 4096).</div>
+    </div>
+    <div class="api-ret">Trả về: con trỏ đến vùng nhớ, hoặc <span>MAP_FAILED</span> = <span>(void*)-1</span> khi lỗi</div>
+  </div>
+
+  <div class="err-box"><strong>Không so sánh với NULL:</strong> mmap() thất bại trả về <span class="ic">MAP_FAILED</span> = <span class="ic">(void*)-1</span>, không phải NULL. Kiểm tra sai (<span class="ic">if (!ptr)</span>) sẽ bỏ qua lỗi và dereference con trỏ invalid — undefined behavior.</div>
+
+  <div class="section-label">munmap() và shm_unlink()</div>
+  <div class="api-box">
+    <div class="api-sig">int munmap(void *addr, size_t length);
+int shm_unlink(const char *name);</div>
+    <div class="api-row">
+      <div class="api-name">munmap</div>
+      <div class="api-desc">Bỏ ánh xạ khỏi address space của process này. Không xóa object — process khác vẫn dùng được. Phải truyền đúng addr và length từ lúc mmap().</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">shm_unlink</div>
+      <div class="api-desc">Xóa tên object khỏi /dev/shm/. Kernel thực sự giải phóng RAM khi tất cả process đã munmap() và close(). Giống unlink() với file thông thường.</div>
+    </div>
+  </div>
+
+  <div class="info-box"><strong>Link lúc compile:</strong> shm_open, shm_unlink, sem_open... nằm trong librt. Thêm <span class="ic">-lrt -lpthread</span> khi compile:<br><span class="ic">gcc producer.c -o producer -lrt -lpthread</span><br>Trên glibc ≥ 2.17 có thể không cần -lrt, nhưng nên thêm cho chắc.</div>
+</div>
+
+<!-- PAGE 3 -->
+<div class="page" id="page-race">
+  <div class="chapter-title">Race condition — lý do bắt buộc phải có lock</div>
+  <div class="chapter-sub">Phần quan trọng nhất và dễ sai nhất. Hiểu rõ trước khi viết code.</div>
+
+  <div class="section-label">Tại sao không thể đọc/ghi mà không có lock?</div>
+  <div class="card">
+    <div class="card-body">
+      Với Pipe và Socket, kernel <strong>serialize</strong> tất cả thao tác — chỉ 1 bên ghi tại một thời điểm. Với Shared Memory, kernel không biết bạn đang đọc hay ghi — nó chỉ thấy CPU đang truy cập địa chỉ RAM. Nếu 2 CPU đồng thời đọc và ghi cùng địa chỉ, kết quả là <strong>undefined behavior</strong>.
+    </div>
+  </div>
+
+  <div class="section-label">Ví dụ race condition cụ thể — counter++</div>
+  <div class="race-box">
+    <div class="race-hdr">
+      <div class="race-col rca">Process A (writer)</div>
+      <div class="race-col rcb">Process B (reader)</div>
+    </div>
+    <div class="race-row"><div class="rce">shm->count = shm->count + 1;</div><div class="rce"></div></div>
+    <div class="race-row"><div class="rce hi">↓ CPU dịch thành 3 lệnh assembly:</div><div class="rce"></div></div>
+    <div class="race-row"><div class="rce">MOV eax, [shm->count]  ; đọc = 5</div><div class="rce"></div></div>
+    <div class="race-row"><div class="rce">ADD eax, 1              ; eax = 6</div><div class="rce hi">← Context switch! B đọc count = 5</div></div>
+    <div class="race-row"><div class="rce">MOV [shm->count], eax  ; ghi 6</div><div class="rce bad">B đọc count = 5 — GIÁ TRỊ SAI!</div></div>
+  </div>
+
+  <div class="err-box"><strong>Ngay cả với int cũng không an toàn.</strong> Lệnh <span class="ic">count++</span> trông gọn nhưng không atomic — CPU phải read-modify-write. Context switch xảy ra giữa bất kỳ 2 lệnh machine nào.</div>
+
+  <div class="section-label">Ba dạng race condition thường gặp</div>
+  <div class="step-list">
+    <div class="step-item"><div class="step-num"></div><div class="step-body"><strong>Read-Modify-Write race (phổ biến nhất):</strong> Như ví dụ trên. counter++, enqueue vào ring buffer, cập nhật checksum — tất cả đều cần lock.</div></div>
+    <div class="step-item"><div class="step-num"></div><div class="step-body"><strong>Partial write race:</strong> Ghi struct lớn không atomic. Reader đọc khi struct đang ghi dở — nhận dữ liệu nửa cũ nửa mới. Ví dụ: struct {float x, y, z} — x mới nhưng y, z cũ.</div></div>
+    <div class="step-item"><div class="step-num"></div><div class="step-body"><strong>Reordering race:</strong> CPU và compiler có thể sắp xếp lại thứ tự ghi. Writer ghi data trước rồi set flag "ready" — nhưng CPU có thể ghi flag trước data. Cần <span class="ic">__sync_synchronize()</span> hoặc <span class="ic">atomic_thread_fence()</span>.</div></div>
+  </div>
+
+  <div class="section-label">Giải pháp: 3 cách đồng bộ hoá</div>
+  <div class="step-list">
+    <div class="step-item"><div class="step-num"></div><div class="step-body"><strong>POSIX Semaphore</strong> — đơn giản nhất. Đặt <span class="ic">sem_t</span> trong shared memory, <span class="ic">pshared=1</span>. Dùng như mutex: sem_wait trước, sem_post sau.</div></div>
+    <div class="step-item"><div class="step-num"></div><div class="step-body"><strong>pthread_mutex với PTHREAD_PROCESS_SHARED</strong> — hiệu năng cao hơn semaphore khi contention thấp vì dùng futex (không vào kernel nếu không có contention).</div></div>
+    <div class="step-item"><div class="step-num"></div><div class="step-body"><strong>C11 Atomic (<span class="ic">_Atomic</span>)</strong> — cho dữ liệu nhỏ (int, pointer). CPU đảm bảo atomic ở mức hardware, không cần lock. Zero overhead. Không dùng cho struct lớn.</div></div>
+  </div>
+</div>
+
+<!-- PAGE 4 -->
+<div class="page" id="page-sem">
+  <div class="chapter-title">POSIX Semaphore — đồng bộ Shared Memory</div>
+  <div class="chapter-sub">Semaphore là bộ đếm atomic: sem_wait() giảm 1 (block nếu = 0), sem_post() tăng 1.</div>
+
+  <div class="section-label">Hai loại POSIX Semaphore</div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><span class="badge badge-teal">Unnamed (pshared) — phổ biến nhất</span></div>
+      <div class="card-body">Đặt trực tiếp <span class="ic">sem_t</span> trong shared memory. Không có tên.<br>API: <span class="ic">sem_init(pshared=1)</span>, <span class="ic">sem_destroy()</span><br><strong>Dùng khi:</strong> semaphore đặt trong SHM — cách phổ biến nhất.</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-blue">Named semaphore</span></div>
+      <div class="card-body">Có tên <span class="ic">/mysem</span>, tồn tại trong hệ thống.<br>API: <span class="ic">sem_open()</span>, <span class="ic">sem_close()</span>, <span class="ic">sem_unlink()</span><br><strong>Dùng khi:</strong> process không liên quan cần chia sẻ semaphore mà không dùng SHM.</div>
+    </div>
+  </div>
+
+  <div class="section-label">sem_init() — khởi tạo trong SHM</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;semaphore.h&gt;
+int sem_init(sem_t *sem, int pshared, unsigned int value);</div>
+    <div class="api-row">
+      <div class="api-name">sem</div>
+      <div class="api-desc">Con trỏ đến <span class="ic">sem_t</span> nằm trong shared memory. Không dùng sem_t trên stack hay heap thông thường — process khác không thấy.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">pshared</div>
+      <div class="api-desc"><span class="ic">0</span> = chỉ dùng trong cùng process (giữa thread).<br><span class="ic">1</span> = <strong>chia sẻ giữa các process</strong> — bắt buộc khi đặt trong SHM.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">value</div>
+      <div class="api-desc"><span class="ic">1</span> = mutex (chỉ 1 bên vào tại một lúc).<br><span class="ic">0</span> = blocking ngay — dùng cho producer/consumer signaling.<br><span class="ic">N</span> = cho phép N bên vào đồng thời.</div>
+    </div>
+    <div class="api-ret">Trả về: <span>0</span> thành công, <span>-1</span> lỗi. <span>ENOSYS</span>: kernel không hỗ trợ pshared</div>
+  </div>
+
+  <div class="section-label">sem_wait(), sem_post(), sem_trywait(), sem_timedwait()</div>
+  <div class="api-box">
+    <div class="api-sig">int sem_wait(sem_t *sem);        /* Giảm 1, block nếu == 0          */
+int sem_post(sem_t *sem);        /* Tăng 1, wake 1 waiter            */
+int sem_trywait(sem_t *sem);     /* Giảm 1, EAGAIN nếu == 0 (non-block) */
+int sem_timedwait(sem_t *sem,
+    const struct timespec *abs_timeout); /* Có timeout tuyệt đối    */</div>
+    <div class="api-row">
+      <div class="api-name">sem_wait()</div>
+      <div class="api-desc">Nếu semaphore > 0: giảm 1 và tiếp tục ngay. Nếu = 0: block cho đến khi sem_post(). Nếu bị signal ngắt: trả về -1 với <span class="ic">errno == EINTR</span> — cần retry trong vòng lặp.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">sem_post()</div>
+      <div class="api-desc">Tăng semaphore lên 1. Wake một waiter nếu có. <strong>An toàn gọi từ signal handler</strong> — async-signal-safe.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">sem_timedwait()</div>
+      <div class="api-desc">Timeout <strong>tuyệt đối</strong> (không phải relative duration). Dùng <span class="ic">clock_gettime(CLOCK_REALTIME, &ts)</span> rồi cộng thêm thời gian. Trả về <span class="ic">ETIMEDOUT</span> khi quá hạn.</div>
+    </div>
+    <div class="api-ret">Trả về: <span>0</span> thành công, <span>-1</span> lỗi. Luôn kiểm tra EINTR với sem_wait()</div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">Pattern đúng: sem_wait() trong vòng lặp xử lý EINTR</div>
+    <pre>/* SAI: gọi 1 lần — có thể bị EINTR ngắt và bỏ qua */
+sem_wait(&shm->lock);
+
+/* ĐÚNG: retry khi bị signal ngắt */
+while (sem_wait(&shm->lock) == -1) {
+    if (errno == EINTR) continue;  /* signal ngắt, thử lại */
+    perror("sem_wait");            /* lỗi thực sự */
+    exit(1);
+}
+/* ← critical section: chỉ 1 process vào */
+/* ... đọc/ghi shared memory ... */
+sem_post(&shm->lock);
+/* ← process khác có thể vào */</pre>
+  </div>
+
+  <div class="section-label">Pattern producer-consumer với 2 semaphore</div>
+  <div class="card">
+    <div class="card-body">
+      Dùng 2 semaphore để đồng bộ không cần polling:<br>
+      — <span class="ic">sem_empty</span> = số slot trống (bắt đầu = N)<br>
+      — <span class="ic">sem_full</span> = số slot có dữ liệu (bắt đầu = 0)<br><br>
+      Producer: <span class="ic">sem_wait(empty)</span> → ghi → <span class="ic">sem_post(full)</span><br>
+      Consumer: <span class="ic">sem_wait(full)</span> → đọc → <span class="ic">sem_post(empty)</span><br><br>
+      Consumer block tại sem_wait(full) khi không có data. Không polling, không waste CPU.
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 5 -->
+<div class="page" id="page-code">
+  <div class="chapter-title">Code đầy đủ, chạy được</div>
+  <div class="chapter-sub">Producer ghi sensor data, Consumer đọc và xử lý. Hai process độc lập, không có quan hệ cha-con.</div>
+
+  <div class="code-block">
+    <div class="code-label">shared.h — include vào cả producer và consumer</div>
+    <pre>#pragma once
+#include &lt;semaphore.h&gt;
+#include &lt;stdint.h&gt;
+#include &lt;time.h&gt;
+
+#define SHM_NAME  "/sensor_shm"
+#define SHM_SIZE  sizeof(SharedData)
+
+typedef struct {
+    /* ── Đồng bộ ─────────────────────────── */
+    sem_t    lock;          /* mutex bảo vệ toàn bộ struct */
+    sem_t    data_ready;    /* consumer block ở đây chờ data */
+
+    /* ── Metadata ────────────────────────── */
+    uint32_t seq;           /* tăng mỗi lần ghi — consumer detect miss */
+    uint8_t  valid;         /* 1 = có dữ liệu hợp lệ */
+
+    /* ── Dữ liệu ─────────────────────────── */
+    float    temperature;
+    float    pressure;
+    float    humidity;
+    struct timespec timestamp;
+} SharedData;</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">producer.c — gcc producer.c -o producer -lrt -lpthread</div>
+    <pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;errno.h&gt;
+#include &lt;sys/mman.h&gt;
+#include &lt;fcntl.h&gt;
+#include "shared.h"
+
+int main(void) {
+    /* ── Bước 1: Tạo shared memory object ─────────────── */
+    int fd = shm_open(SHM_NAME,
+                      O_CREAT | O_RDWR,
+                      0660);
+    if (fd == -1) { perror("shm_open"); exit(1); }
+
+    /* ── Bước 2: Đặt kích thước ────────────────────────── */
+    if (ftruncate(fd, (off_t)SHM_SIZE) == -1) {
+        perror("ftruncate"); close(fd); exit(1);
+    }
+
+    /* ── Bước 3: Map vào address space ─────────────────── */
+    SharedData *shm = mmap(NULL, SHM_SIZE,
+                           PROT_READ | PROT_WRITE,
+                           MAP_SHARED, fd, 0);
+    if (shm == MAP_FAILED) {  /* KHÔNG kiểm tra == NULL */
+        perror("mmap"); close(fd); exit(1);
+    }
+    close(fd);  /* fd không cần nữa sau khi mmap */
+
+    /* ── Bước 4: Khởi tạo struct và semaphore ──────────── */
+    memset(shm, 0, SHM_SIZE);
+    sem_init(&shm->lock,       1, 1);  /* mutex: mở ban đầu */
+    sem_init(&shm->data_ready, 1, 0);  /* consumer block ở đây */
+    shm->valid = 0;
+    printf("[Producer] SHM sẵn sàng: %s\n", SHM_NAME);
+
+    /* ── Bước 5: Vòng lặp ghi dữ liệu ─────────────────── */
+    for (uint32_t i = 1; i <= 10; i++) {
+        sleep(1);  /* giả lập đọc sensor mỗi 1 giây */
+
+        /* Lấy lock trước khi ghi */
+        while (sem_wait(&shm->lock) == -1)
+            if (errno != EINTR) { perror("sem_wait"); exit(1); }
+
+        /* ← critical section */
+        shm->seq         = i;
+        shm->temperature = 20.0f + (float)(i % 10);
+        shm->pressure    = 1013.25f + (float)(i % 5);
+        shm->humidity    = 60.0f + (float)(i % 20);
+        clock_gettime(CLOCK_MONOTONIC, &shm->timestamp);
+        shm->valid       = 1;
+        /* ← kết thúc critical section */
+
+        printf("[Producer] Ghi seq=%u, temp=%.1f°C\n",
+               i, shm->temperature);
+
+        sem_post(&shm->lock);       /* nhả lock */
+        sem_post(&shm->data_ready); /* báo consumer có data */
+    }
+
+    /* ── Cleanup ────────────────────────────────────────── */
+    /* Chờ consumer đọc xong trước khi xóa */
+    sleep(1);
+    sem_destroy(&shm->data_ready);
+    sem_destroy(&shm->lock);
+    munmap(shm, SHM_SIZE);
+    shm_unlink(SHM_NAME);  /* xóa khỏi /dev/shm/ */
+    printf("[Producer] Done.\n");
+    return 0;
+}</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">consumer.c — gcc consumer.c -o consumer -lrt -lpthread</div>
+    <pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;errno.h&gt;
+#include &lt;sys/mman.h&gt;
+#include &lt;fcntl.h&gt;
+#include "shared.h"
+
+int main(void) {
+    /* Consumer chỉ mở — không tạo (không có O_CREAT) */
+    int fd = shm_open(SHM_NAME, O_RDWR, 0);
+    if (fd == -1) {
+        perror("shm_open — producer chưa chạy?");
+        exit(1);
+    }
+
+    SharedData *shm = mmap(NULL, SHM_SIZE,
+                           PROT_READ | PROT_WRITE,
+                           MAP_SHARED, fd, 0);
+    if (shm == MAP_FAILED) { perror("mmap"); exit(1); }
+    close(fd);
+
+    printf("[Consumer] Đã attach SHM, đang chờ data...\n");
+
+    while (1) {
+        /* Block ở đây cho đến khi producer sem_post */
+        while (sem_wait(&shm->data_ready) == -1)
+            if (errno != EINTR) { perror("sem_wait"); exit(1); }
+
+        /* Lấy lock để đọc an toàn */
+        while (sem_wait(&shm->lock) == -1)
+            if (errno != EINTR) { perror("sem_wait"); exit(1); }
+
+        /* ← critical section */
+        uint32_t seq = shm->seq;
+        float temp   = shm->temperature;
+        float pres   = shm->pressure;
+        float hum    = shm->humidity;
+        /* ← kết thúc critical section */
+
+        sem_post(&shm->lock);
+
+        printf("[Consumer] seq=%u | %.1f°C | %.2fhPa | %.1f%%\n",
+               seq, temp, pres, hum);
+
+        if (seq >= 10) break;
+    }
+
+    munmap(shm, SHM_SIZE);
+    printf("[Consumer] Done.\n");
+    return 0;
+}</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">Cách chạy và quan sát</div>
+    <pre># Terminal 1 — producer trước:
+./producer
+# [Producer] SHM sẵn sàng: /sensor_shm
+# [Producer] Ghi seq=1, temp=21.0°C
+# ...
+
+# Terminal 2 — consumer (cùng lúc hoặc sau):
+./consumer
+# [Consumer] Đã attach SHM, đang chờ data...
+# [Consumer] seq=1 | 21.0°C | 1014.25hPa | 61.0%
+# ...
+
+# Quan sát object trong /dev/shm:
+ls -lh /dev/shm/sensor_shm
+# -rw-rw---- 1 user group  88B ...
+
+# Debug: dump nội dung SHM dưới dạng hex
+xxd /dev/shm/sensor_shm
+
+# Xem kích thước thực tế của SharedData:
+# Thêm vào main: printf("sizeof=%zu\n", sizeof(SharedData));</pre>
+  </div>
+</div>
+
+<!-- PAGE 6 -->
+<div class="page" id="page-embedded">
+  <div class="chapter-title">Shared Memory trong Embedded Linux</div>
+  <div class="chapter-sub">Ứng dụng thực tế, ràng buộc phần cứng, và những điểm phải chú ý.</div>
+
+  <div class="section-label">Use case điển hình</div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Camera frame buffer</div>
+      <div class="card-body">Camera driver ghi frame (1920×1080×3 ≈ 6MB) vào SHM. ISP process xử lý. Display process render. Không thể dùng Pipe — copy 6MB×30fps = 180MB/s chỉ để copy.<br><br><strong>Pattern:</strong> Double buffer — ghi slot B khi reader đang đọc slot A.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Sensor aggregator</div>
+      <div class="card-body">Nhiều sensor process ghi vào struct trong SHM. Dashboard process đọc và hiển thị. Yêu cầu latency thấp — không thể chờ socket roundtrip.<br><br><strong>Pattern:</strong> Struct với seq number và lock. Consumer kiểm tra seq để detect missed update.</div>
+    </div>
+  </div>
+
+  <div class="section-label">Ràng buộc quan trọng trên embedded</div>
+
+  <div class="emb-box"><strong>/dev/shm cần tmpfs:</strong> POSIX SHM lưu vào /dev/shm. Trên Buildroot mặc định có thể không mount tmpfs tại đây. Kiểm tra: <span class="ic">mount | grep /dev/shm</span>. Nếu không có, thêm vào <span class="ic">/etc/fstab</span>:<br><span class="ic">tmpfs /dev/shm tmpfs defaults,size=64M 0 0</span><br>Hoặc dùng <span class="ic">mmap() + open()</span> với file thường trong /tmp thay shm_open().</div>
+
+  <div class="emb-box"><strong>MAP_LOCKED cho real-time:</strong> Trên hệ thống real-time (robotics, motor control), page fault trong critical section gây jitter hàng ms — thảm họa. Dùng <span class="ic">MAP_LOCKED | MAP_POPULATE</span> để lock pages vào RAM ngay từ đầu. Cần <span class="ic">mlockall(MCL_CURRENT | MCL_FUTURE)</span> ở đầu chương trình và quyền <span class="ic">CAP_IPC_LOCK</span>.</div>
+
+  <div class="warn-box"><strong>RAM giới hạn:</strong> /dev/shm mặc định chiếm 50% RAM. Trên board 256MB, mỗi frame buffer 6MB chiếm đáng kể. Đặt giới hạn size tmpfs rõ ràng trong fstab. Kiểm tra: <span class="ic">df -h /dev/shm</span>.</div>
+
+  <div class="section-label">Pattern: mmap() với file thường khi không có /dev/shm</div>
+  <div class="code-block">
+    <div class="code-label">Thay thế shm_open bằng open() + mmap() — portable hơn trên Buildroot</div>
+    <pre>/* Thay vì shm_open("/mysensor", ...) */
+int fd = open("/tmp/sensor_data.bin",
+              O_CREAT | O_RDWR, 0660);
+ftruncate(fd, sizeof(SharedData));
+
+SharedData *shm = mmap(NULL, sizeof(SharedData),
+                        PROT_READ | PROT_WRITE,
+                        MAP_SHARED, fd, 0);
+/* Hoạt động y hệt POSIX SHM nhưng:
+   + Không cần /dev/shm tmpfs
+   + Có thể debug: xxd /tmp/sensor_data.bin
+   - File tồn tại sau reboot (có thể là feature hoặc bug)
+   - Có thể swap ra eMMC nếu không MAP_LOCKED
+   Giải pháp: đặt file trong /tmp (nếu /tmp là tmpfs) */</pre>
+  </div>
+
+  <div class="section-label">Cleanup đúng cách trong signal handler</div>
+  <div class="code-block">
+    <div class="code-label">Tránh SHM bị orphan khi daemon crash</div>
+    <pre>static SharedData *g_shm  = NULL;
+static size_t      g_size = 0;
+
+void cleanup_handler(int sig) {
+    if (g_shm) {
+        sem_destroy(&g_shm->data_ready);
+        sem_destroy(&g_shm->lock);
+        munmap(g_shm, g_size);
+        g_shm = NULL;
+    }
+    shm_unlink(SHM_NAME);
+    _exit(sig == SIGTERM ? 0 : 1);  /* _exit() là async-signal-safe */
+}
+
+int main(void) {
+    struct sigaction sa = { .sa_handler = cleanup_handler };
+    sigaction(SIGTERM, &sa, NULL);
+    sigaction(SIGINT,  &sa, NULL);
+    /* ... */
+}
+
+/* Nếu producer crash mà không cleanup:
+   - SHM object còn trong /dev/shm — ls /dev/shm/ để thấy
+   - Consumer mở lại được nhưng seq/valid có thể sai
+   - Script khởi động: rm -f /dev/shm/sensor_shm trước launch */</pre>
+  </div>
+
+  <div class="emb-box"><strong>Bước tiếp theo:</strong> Sau Shared Memory, IPC cuối cần học là <strong>POSIX Message Queue</strong> — cho pattern publish-subscribe và event-driven architecture. Message Queue giải quyết bài toán SHM không giải được: nhiều consumer độc lập nhận message khác nhau, có priority ordering, không cần polling.</div>
+</div>
+
+</div>
+<script>
+function go(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>

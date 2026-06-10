@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IPC — POSIX Message Queue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #475569;
+  --color-background-body: #f5f5f0;
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f8f8f8;
+  --color-border-secondary: #ddd;
+  --color-border-tertiary: #e0e0e0;
+  --color-nav-hover: #eee;
+  --border-radius-lg: 10px;
+  --border-radius-md: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-text-primary: #e2e8f0;
+    --color-text-secondary: #94a3b8;
+    --color-background-body: #121212;
+    --color-background-primary: #1e1e1e;
+    --color-background-secondary: #1a1a1a;
+    --color-border-secondary: #444;
+    --color-border-tertiary: #333;
+    --color-nav-hover: #2d2d2d;
+  }
+  
+  /* SVG overrides for dark mode */
+  svg { background: #111827 !important; border-color: #374151 !important; }
+  svg text { fill: #f3f4f6 !important; }
+  svg text[fill="#888"] { fill: #9ca3af !important; }
+  svg text[fill="#666"] { fill: #9ca3af !important; }
+  svg text[fill="#555"] { fill: #9ca3af !important; }
+  svg text[fill="#1a5c3a"] { fill: #a7f3d0 !important; }
+  svg text[fill="#2e9e6a"] { fill: #34d399 !important; }
+  svg text[fill="#3b2fa0"] { fill: #c7d2fe !important; }
+  svg text[fill="#6b5cd6"] { fill: #818cf8 !important; }
+  svg text[fill="#8a5000"] { fill: #fde047 !important; }
+  svg text[fill="#a32020"] { fill: #f87171 !important; }
+  svg text[fill="#7a1a1a"] { fill: #fca5a5 !important; }
+  svg text[fill="#7a4f00"] { fill: #fde047 !important; }
+  svg text[fill="#185FA5"] { fill: #60a5fa !important; }
+  svg text[fill="#1a4a7a"] { fill: #93c5fd !important; }
+  svg rect[fill="#d0f0e8"] { fill: #064e3b !important; stroke: #047857 !important; }
+  svg rect[fill="#f8f8f8"] { fill: #1f2937 !important; stroke: #374151 !important; }
+  svg rect[fill="#e8e6ff"] { fill: #1e1b4b !important; stroke: #4338ca !important; }
+  svg rect[fill="#fff8e6"] { fill: #451a03 !important; stroke: #b45309 !important; }
+  svg rect[fill="#fdecea"] { fill: #501313 !important; stroke: #b91c1c !important; }
+  svg rect[fill="#e8f3fd"] { fill: #0c4a6e !important; stroke: #0369a1 !important; }
+  svg line[stroke="#ccc"] { stroke: #374151 !important; }
+  svg line[stroke="#6b5cd6"] { stroke: #818cf8 !important; }
+  svg line[stroke="#2e9e6a"] { stroke: #34d399 !important; }
+  svg path[stroke="#6b5cd6"] { stroke: #818cf8 !important; }
+  
+  /* Priority queue visual dark mode overrides */
+  .pq-box { border-color: #374151; }
+  .pq-header { background: #1f2937; border-bottom-color: #374151; color: #9ca3af; }
+  .pq-row { border-bottom-color: #111827; }
+  .pq-prio.hi { color: #f87171; }
+  .pq-prio.mid { color: #fde047; }
+  .pq-prio.lo { color: #9ca3af; }
+  .pq-arrow { color: #6b7280; }
+  
+  .err-box { background: #501313; border-color: #A32D2D; color: #F7C1C1; }
+  .api-name, .fn { color: #58a6ff; }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); color: var(--color-text-primary); background: var(--color-background-body); font-size: 15px; line-height: 1.7; }
+.container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+.sub { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1.5rem; }
+
+.nav-bar { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--color-border-secondary); margin-bottom: 0; }
+.nav-btn { padding: 8px 14px; font-size: 13px; cursor: pointer; border-radius: 6px 6px 0 0; border: 1px solid transparent; color: var(--color-text-secondary); background: transparent; transition: all .15s; margin-bottom: -1px; white-space: nowrap; font-family: var(--font-sans); }
+.nav-btn:hover { color: var(--color-text-primary); background: var(--color-nav-hover); }
+.nav-btn.active { color: var(--color-text-primary); font-weight: 600; background: var(--color-background-primary); border-color: var(--color-border-secondary); border-bottom-color: var(--color-background-primary); }
+
+.page { display: none; padding: 1.5rem 0; }
+.page.active { display: block; }
+
+.chapter-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+.chapter-sub { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1.25rem; }
+.section-label { font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--color-text-secondary); text-transform: uppercase; margin: 1.5rem 0 .6rem; }
+
+.card { background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+.card-title { font-size: 15px; font-weight: 600; margin-bottom: .5rem; display: flex; align-items: center; gap: 8px; }
+.card-body { font-size: 13px; color: var(--color-text-secondary); line-height: 1.7; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media(max-width: 600px) { .grid2 { grid-template-columns: 1fr; } }
+
+.code-block { background: #1e1e2e; border-radius: 8px; padding: .875rem 1rem; margin: .6rem 0; overflow-x: auto; }
+.code-block pre { font-family: var(--font-mono); font-size: 13px; line-height: 1.6; color: #cdd6f4; white-space: pre; }
+.code-label { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-secondary); margin-bottom: .4rem; }
+
+.api-box { border: 1px solid var(--color-border-tertiary); border-radius: 8px; margin: .75rem 0; overflow: hidden; }
+.api-sig { font-family: var(--font-mono); font-size: 13px; font-weight: 500; padding: .75rem 1rem; background: var(--color-background-secondary); border-bottom: 1px solid var(--color-border-tertiary); color: var(--color-text-primary); white-space: pre; line-height: 1.6; }
+.api-row { display: grid; grid-template-columns: 170px 1fr; border-bottom: 1px solid var(--color-border-tertiary); }
+.api-row:last-child { border-bottom: none; }
+.api-name { font-family: var(--font-mono); font-size: 12px; padding: .55rem 1rem; background: var(--color-background-secondary); color: #185FA5; border-right: 1px solid var(--color-border-tertiary); word-break: break-all; }
+.api-desc { font-size: 12px; padding: .55rem 1rem; color: var(--color-text-secondary); line-height: 1.6; }
+.api-ret { font-size: 12px; padding: .6rem 1rem; background: var(--color-background-secondary); border-top: 1px solid var(--color-border-tertiary); color: var(--color-text-secondary); }
+.api-ret span { font-family: var(--font-mono); color: var(--color-text-primary); }
+
+.warn-box { background: #fff8e6; border: 1px solid #e6a817; border-radius: 8px; padding: .75rem 1rem; font-size: 12.5px; color: #7a4f00; margin: .75rem 0; line-height: 1.6; }
+.info-box { background: #e8f3fd; border: 1px solid #5b9bd5; border-radius: 8px; padding: .75rem 1rem; font-size: 12.5px; color: #1a4a7a; margin: .75rem 0; line-height: 1.6; }
+.emb-box { background: #e8f7ef; border: 1px solid #2e9e6a; border-radius: 8px; padding: .75rem 1rem; font-size: 12.5px; color: #1a5c3a; margin: .75rem 0; line-height: 1.6; }
+.err-box { background: #fdecea; border: 1px solid #d9534f; border-radius: 8px; padding: .75rem 1rem; font-size: 12.5px; color: #7a1a1a; margin: .75rem 0; line-height: 1.6; }
+strong { font-weight: 600; }
+
+.badge { display: inline-flex; align-items: center; font-size: 11px; padding: 2px 9px; border-radius: 20px; font-weight: 500; vertical-align: middle; }
+.badge-blue { background: #ddeeff; color: #185FA5; }
+.badge-teal { background: #d0f0e8; color: #0d7a52; }
+.badge-amber { background: #fff0d0; color: #8a5000; }
+.badge-purple { background: #ede9fe; color: #5b21b6; }
+@media (prefers-color-scheme: dark) {
+  .badge-blue { background: #042C53 !important; color: #B5D4F4 !important; }
+  .badge-teal { background: #04342C !important; color: #9FE1CB !important; }
+  .badge-amber { background: #412402 !important; color: #FAC775 !important; }
+  .badge-purple { background: #2e1065 !important; color: #c7d2fe !important; }
+}
+
+.ic { font-family: var(--font-mono); font-size: 12px; background: var(--color-background-secondary); padding: 1px 5px; border-radius: 3px; color: var(--color-text-primary); }
+
+.step-list { display: flex; flex-direction: column; gap: 6px; counter-reset: s; }
+.step-item { display: flex; gap: 10px; align-items: flex-start; counter-increment: s; }
+.step-num { min-width: 22px; height: 22px; border-radius: 50%; background: var(--color-background-secondary); border: 1px solid var(--color-border-secondary); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; margin-top: 3px; color: var(--color-text-secondary); }
+.step-num::before { content: counter(s); }
+.step-body { flex: 1; font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; }
+.step-body strong { color: var(--color-text-primary); }
+
+.divider { height: 1px; background: var(--color-border-tertiary); margin: 1.25rem 0; }
+
+.cmp-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.cmp-table th { text-align: left; padding: 7px 10px; font-weight: 600; font-size: 11px; color: var(--color-text-secondary); background: var(--color-background-secondary); border-bottom: 1px solid var(--color-border-tertiary); }
+.cmp-table td { padding: 7px 10px; border-bottom: 1px solid var(--color-border-tertiary); vertical-align: top; line-height: 1.5; }
+.cmp-table tr:last-child td { border-bottom: none; }
+.cmp-table tr:hover td { background: var(--color-background-secondary); }
+
+.flag { display: flex; gap: 10px; font-size: 12px; padding: .4rem .75rem; border-radius: 4px; background: var(--color-background-secondary); margin-bottom: 4px; }
+.fn { font-family: var(--font-mono); color: #185FA5; min-width: 140px; flex-shrink: 0; font-size: 12px; }
+@media (prefers-color-scheme: dark) {
+  .fn { color: #58a6ff; }
+}
+.fd { color: var(--color-text-secondary); line-height: 1.5; }
+
+/* Priority queue visual */
+.pq-box { border: 1px solid var(--color-border-tertiary); border-radius: 8px; overflow: hidden; margin: .75rem 0; }
+.pq-header { display: grid; grid-template-columns: 80px 1fr 120px; background: var(--color-background-secondary); border-bottom: 1px solid var(--color-border-tertiary); font-size: 11px; font-weight: 600; color: var(--color-text-secondary); padding: 6px 12px; gap: 8px; }
+.pq-row { display: grid; grid-template-columns: 80px 1fr 120px; padding: 6px 12px; gap: 8px; border-bottom: 1px solid var(--color-background-secondary); font-size: 12.5px; align-items: center; }
+.pq-row:last-child { border-bottom: none; }
+.pq-prio { font-family: var(--font-mono); font-weight: 600; }
+.pq-prio.hi { color: #d9534f; }
+.pq-prio.mid { color: #e6a817; }
+.pq-prio.lo { color: var(--color-text-secondary); }
+.pq-arrow { font-size: 11px; color: var(--color-text-secondary); text-align: right; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>IPC — POSIX Message Queue</h1>
+<p class="sub">Message-based IPC với priority ordering: message quan trọng hơn được nhận trước, bất kể thứ tự gửi.</p>
+
+<div class="nav-bar">
+  <button class="nav-btn active" onclick="go('concept',this)">1. Khái niệm</button>
+  <button class="nav-btn" onclick="go('api',this)">2. API chi tiết</button>
+  <button class="nav-btn" onclick="go('attr',this)">3. mq_attr &amp; limits</button>
+  <button class="nav-btn" onclick="go('notify',this)">4. mq_notify</button>
+  <button class="nav-btn" onclick="go('code',this)">5. Code đầy đủ</button>
+  <button class="nav-btn" onclick="go('embedded',this)">6. Embedded Linux</button>
+</div>
+
+<!-- ═══ PAGE 1: KHÁI NIỆM ═══ -->
+<div class="page active" id="page-concept">
+  <div class="chapter-title">Message Queue — hàng đợi có ưu tiên</div>
+  <div class="chapter-sub">Kernel quản lý hàng đợi message. Sender gửi không cần receiver sẵn sàng. Message có priority — quan trọng hơn lên đầu queue.</div>
+
+  <div class="section-label">Tại sao cần Message Queue khi đã có Pipe và Socket?</div>
+  <div class="card">
+    <div class="card-body">
+      Pipe và Socket là <strong>byte stream hoặc connection-based</strong>: sender và receiver phải chạy đồng thời, không có khái niệm "message" riêng biệt, không có priority.<br><br>
+      Message Queue giải quyết 3 vấn đề mà các IPC trước không làm được:<br>
+      — <strong>Message boundary:</strong> mỗi mq_send() là 1 message trọn vẹn, mq_receive() luôn nhận đúng 1 message — không bao giờ bị tách.<br>
+      — <strong>Priority ordering:</strong> message với priority cao hơn luôn được lấy ra trước, bất kể thứ tự gửi.<br>
+      — <strong>Decoupled timing:</strong> sender gửi khi rảnh, receiver nhận khi rảnh — không cần connect trước.
+    </div>
+  </div>
+
+  <!-- Diagram: priority queue -->
+  <svg width="100%" viewBox="0 0 680 260" style="display:block;margin:.75rem 0;background:#fff;border:1px solid #e0e0e0;border-radius:10px">
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </marker>
+    </defs>
+
+    <!-- Senders -->
+    <rect x="20" y="30" width="110" height="42" rx="6" fill="#e8e6ff" stroke="#6b5cd6" stroke-width="1"/>
+    <text font-family="system-ui" font-size="12" x="75" y="45" text-anchor="middle" dominant-baseline="central" fill="#3b2fa0">Sender A</text>
+    <text font-family="system-ui" font-size="10" x="75" y="59" text-anchor="middle" dominant-baseline="central" fill="#6b5cd6">prio=5 (HIGH)</text>
+
+    <rect x="20" y="86" width="110" height="42" rx="6" fill="#e8e6ff" stroke="#6b5cd6" stroke-width="1"/>
+    <text font-family="system-ui" font-size="12" x="75" y="101" text-anchor="middle" dominant-baseline="central" fill="#3b2fa0">Sender B</text>
+    <text font-family="system-ui" font-size="10" x="75" y="115" text-anchor="middle" dominant-baseline="central" fill="#6b5cd6">prio=1 (LOW)</text>
+
+    <rect x="20" y="142" width="110" height="42" rx="6" fill="#e8e6ff" stroke="#6b5cd6" stroke-width="1"/>
+    <text font-family="system-ui" font-size="12" x="75" y="157" text-anchor="middle" dominant-baseline="central" fill="#3b2fa0">Sender C</text>
+    <text font-family="system-ui" font-size="10" x="75" y="171" text-anchor="middle" dominant-baseline="central" fill="#6b5cd6">prio=3 (MED)</text>
+
+    <!-- Arrows to queue -->
+    <line x1="130" y1="51"  x2="200" y2="80"  stroke="#6b5cd6" stroke-width="1" marker-end="url(#ar)" fill="none"/>
+    <line x1="130" y1="107" x2="200" y2="120" stroke="#6b5cd6" stroke-width="1" marker-end="url(#ar)" fill="none"/>
+    <line x1="130" y1="163" x2="200" y2="155" stroke="#6b5cd6" stroke-width="1" marker-end="url(#ar)" fill="none"/>
+
+    <!-- Kernel Queue box -->
+    <rect x="200" y="30" width="240" height="190" rx="10" fill="#f8f8f8" stroke="#ddd" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" font-weight="600" x="320" y="50" text-anchor="middle" fill="#888">Kernel Queue (sorted by prio)</text>
+
+    <!-- Messages in queue, sorted by priority -->
+    <rect x="216" y="60" width="208" height="30" rx="5" fill="#fdecea" stroke="#d9534f" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" font-weight="500" x="280" y="75" text-anchor="middle" dominant-baseline="central" fill="#a32020">prio=5</text>
+    <text font-family="system-ui" font-size="11" x="360" y="75" text-anchor="middle" dominant-baseline="central" fill="#7a1a1a">ALARM: overheat!</text>
+
+    <rect x="216" y="96" width="208" height="30" rx="5" fill="#fff8e6" stroke="#e6a817" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" font-weight="500" x="280" y="111" text-anchor="middle" dominant-baseline="central" fill="#8a5000">prio=3</text>
+    <text font-family="system-ui" font-size="11" x="360" y="111" text-anchor="middle" dominant-baseline="central" fill="#7a4f00">STATUS: temp=72°C</text>
+
+    <rect x="216" y="132" width="208" height="30" rx="5" fill="#e8f3fd" stroke="#5b9bd5" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" font-weight="500" x="280" y="147" text-anchor="middle" dominant-baseline="central" fill="#185FA5">prio=1</text>
+    <text font-family="system-ui" font-size="11" x="360" y="147" text-anchor="middle" dominant-baseline="central" fill="#1a4a7a">LOG: startup done</text>
+
+    <text font-family="system-ui" font-size="10" x="320" y="186" text-anchor="middle" fill="#888">↑ mq_receive() lấy từ đây trước</text>
+    <text font-family="system-ui" font-size="10" x="320" y="204" text-anchor="middle" fill="#888">↓ message mới vào đây</text>
+
+    <!-- Arrow to receiver -->
+    <line x1="440" y1="110" x2="510" y2="110" stroke="#2e9e6a" stroke-width="1.5" marker-end="url(#ar)" fill="none"/>
+    <text font-family="system-ui" font-size="10" x="475" y="100" text-anchor="middle" fill="#2e9e6a">mq_receive()</text>
+    <text font-family="system-ui" font-size="10" x="475" y="122" text-anchor="middle" fill="#888">theo thứ tự prio</text>
+
+    <!-- Receiver -->
+    <rect x="510" y="80" width="130" height="60" rx="8" fill="#d0f0e8" stroke="#2e9e6a" stroke-width="1"/>
+    <text font-family="system-ui" font-size="12" font-weight="500" x="575" y="107" text-anchor="middle" dominant-baseline="central" fill="#1a5c3a">Receiver</text>
+    <text font-family="system-ui" font-size="10" x="575" y="124" text-anchor="middle" dominant-baseline="central" fill="#2e9e6a">nhận prio=5 trước</text>
+  </svg>
+
+  <div class="section-label">So sánh Message Queue với các IPC đã học</div>
+  <div class="card">
+    <table class="cmp-table">
+      <thead><tr><th>Đặc điểm</th><th>Pipe</th><th>Unix Socket</th><th>Shared Mem</th><th>Msg Queue</th></tr></thead>
+      <tbody>
+        <tr><td>Message boundary</td><td>Không</td><td>DGRAM: Có</td><td>Tự quản lý</td><td><strong>Có</strong></td></tr>
+        <tr><td>Priority</td><td>Không</td><td>Không</td><td>Tự làm</td><td><strong>Có (0–31)</strong></td></tr>
+        <tr><td>Decoupled timing</td><td>Không</td><td>Không</td><td>Không</td><td><strong>Có</strong></td></tr>
+        <tr><td>Async notification</td><td>Không</td><td>Không</td><td>Không</td><td><strong>Có (mq_notify)</strong></td></tr>
+        <tr><td>Dùng với epoll/select</td><td>Có</td><td>Có</td><td>Không</td><td><strong>Có (là fd)</strong></td></tr>
+        <tr><td>Throughput</td><td>Cao</td><td>Cao</td><td>Rất cao</td><td>Trung bình</td></tr>
+        <tr><td>Độ phức tạp</td><td>Thấp</td><td>Trung bình</td><td>Cao</td><td>Trung bình</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-label">POSIX vs SysV Message Queue</div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><span class="badge badge-teal">POSIX mq — dùng cái này</span></div>
+      <div class="card-body">
+        Header: <span class="ic">&lt;mqueue.h&gt;</span><br>
+        Tên: <span class="ic">/myqueue</span> (path-like)<br>
+        Trả về <span class="ic">mqd_t</span> — là file descriptor thực!<br>
+        Dùng được với <span class="ic">select()</span>, <span class="ic">poll()</span>, <span class="ic">epoll()</span><br>
+        Có <span class="ic">mq_notify()</span> — async notification<br>
+        <strong>Dùng trong code mới</strong>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-amber">SysV msgq — legacy</span></div>
+      <div class="card-body">
+        Header: <span class="ic">&lt;sys/msg.h&gt;</span><br>
+        Dùng <span class="ic">key_t</span> (số nguyên), khó debug<br>
+        Không phải fd — không dùng với select/poll<br>
+        Không có async notification<br>
+        Filter message theo <span class="ic">msg_type</span><br>
+        <strong>Chỉ dùng khi cần tương thích cũ</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PAGE 2: API ═══ -->
+<div class="page" id="page-api">
+  <div class="chapter-title">API chi tiết — từng tham số</div>
+  <div class="chapter-sub">mq_open(), mq_send(), mq_receive(), mq_close(), mq_unlink() — tất cả đều tương tự file API.</div>
+
+  <div class="section-label">mq_open() — tạo hoặc mở queue</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;mqueue.h&gt;
+mqd_t mq_open(const char *name, int oflag);
+mqd_t mq_open(const char *name, int oflag,
+              mode_t mode, struct mq_attr *attr); /* khi O_CREAT */</div>
+    <div class="api-row">
+      <div class="api-name">name</div>
+      <div class="api-desc">Tên queue, <strong>phải bắt đầu bằng /</strong>, không chứa / nào khác. Ví dụ: <span class="ic">"/sensor_events"</span>. Queue được quản lý bởi kernel — nằm trong <span class="ic">/dev/mqueue/</span> (nếu mount mqueue fs).</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">oflag</div>
+      <div class="api-desc">
+        <div class="flag"><span class="fn">O_CREAT</span><span class="fd">Tạo queue nếu chưa tồn tại. Cần thêm tham số <span class="ic">mode</span> và <span class="ic">attr</span>.</span></div>
+        <div class="flag"><span class="fn">O_RDONLY</span><span class="fd">Chỉ nhận (<span class="ic">mq_receive</span>). Dùng ở phía consumer.</span></div>
+        <div class="flag"><span class="fn">O_WRONLY</span><span class="fd">Chỉ gửi (<span class="ic">mq_send</span>). Dùng ở phía producer.</span></div>
+        <div class="flag"><span class="fn">O_RDWR</span><span class="fd">Vừa gửi vừa nhận.</span></div>
+        <div class="flag"><span class="fn">O_NONBLOCK</span><span class="fd">Non-blocking: mq_send/receive trả về <span class="ic">EAGAIN</span> thay vì block khi queue đầy/rỗng.</span></div>
+        <div class="flag"><span class="fn">O_EXCL</span><span class="fd">Kết hợp O_CREAT: lỗi <span class="ic">EEXIST</span> nếu đã tồn tại.</span></div>
+      </div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">mode</div>
+      <div class="api-desc">Permission bits khi O_CREAT. <span class="ic">0600</span>, <span class="ic">0660</span>, <span class="ic">0666</span> — giống file.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">attr</div>
+      <div class="api-desc">Con trỏ đến <span class="ic">struct mq_attr</span> để set thông số queue (xem trang 3). Truyền <span class="ic">NULL</span> để dùng giá trị mặc định của hệ thống.</div>
+    </div>
+    <div class="api-ret">Trả về: <span>mqd_t</span> (là file descriptor) thành công, <span>(mqd_t)-1</span> lỗi. <span>EEXIST</span>, <span>ENOENT</span>, <span>EMFILE</span></div>
+  </div>
+
+  <div class="section-label">mq_send() — gửi message</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;mqueue.h&gt;
+int mq_send(mqd_t mqdes, const char *msg_ptr,
+            size_t msg_len, unsigned int msg_prio);
+
+int mq_timedsend(mqd_t mqdes, const char *msg_ptr,
+                 size_t msg_len, unsigned int msg_prio,
+                 const struct timespec *abs_timeout);</div>
+    <div class="api-row">
+      <div class="api-name">mqdes</div>
+      <div class="api-desc">Descriptor từ mq_open() — phải mở với O_WRONLY hoặc O_RDWR.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">msg_ptr</div>
+      <div class="api-desc">Con trỏ đến buffer chứa message. Message Queue gửi raw bytes — có thể là struct, string, bất kỳ gì. Kernel copy toàn bộ <span class="ic">msg_len</span> bytes vào queue.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">msg_len</div>
+      <div class="api-desc">Kích thước message, tính bằng bytes. <strong>Phải ≤ mq_msgsize</strong> của queue (đặt lúc tạo). Gửi message lớn hơn → lỗi <span class="ic">EMSGSIZE</span>.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">msg_prio</div>
+      <div class="api-desc">Priority của message. Phạm vi: <strong>0 đến 31</strong> trên Linux (MQ_PRIO_MAX-1). <strong>Số cao hơn = ưu tiên cao hơn</strong>. Message có cùng priority được xếp theo thứ tự FIFO. Kernel tự sắp xếp — mq_receive() luôn lấy message priority cao nhất.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">abs_timeout (timedsend)</div>
+      <div class="api-desc">Timeout <strong>tuyệt đối</strong> (CLOCK_REALTIME). Dùng <span class="ic">clock_gettime()</span> + cộng thêm duration. Trả về <span class="ic">ETIMEDOUT</span> nếu queue vẫn đầy sau timeout.</div>
+    </div>
+    <div class="api-ret">Trả về: <span>0</span> thành công, <span>-1</span> lỗi. Block nếu queue đầy (blocking mode). <span>EAGAIN</span> nếu O_NONBLOCK và queue đầy. <span>EMSGSIZE</span> nếu msg_len > mq_msgsize</div>
+  </div>
+
+  <div class="section-label">mq_receive() — nhận message</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;mqueue.h&gt;
+ssize_t mq_receive(mqd_t mqdes, char *msg_ptr,
+                   size_t msg_len, unsigned int *msg_prio);
+
+ssize_t mq_timedreceive(mqd_t mqdes, char *msg_ptr,
+                        size_t msg_len, unsigned int *msg_prio,
+                        const struct timespec *abs_timeout);</div>
+    <div class="api-row">
+      <div class="api-name">msg_ptr</div>
+      <div class="api-desc">Buffer nhận message. Kernel copy message vào đây.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">msg_len</div>
+      <div class="api-desc">Kích thước buffer. <strong>Phải ≥ mq_msgsize</strong> của queue — không phải kích thước message thực tế. Dùng giá trị nhỏ hơn → lỗi <span class="ic">EMSGSIZE</span>. Pattern chuẩn: lấy mq_msgsize từ mq_getattr() rồi dùng làm buffer size.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">msg_prio</div>
+      <div class="api-desc">Output: kernel ghi priority của message nhận được vào đây. Truyền <span class="ic">NULL</span> nếu không cần biết priority.</div>
+    </div>
+    <div class="api-ret">Trả về: số bytes thực sự của message (≥ 0), <span>-1</span> lỗi. Block nếu queue rỗng. <span>EAGAIN</span> nếu O_NONBLOCK và queue rỗng</div>
+  </div>
+
+  <div class="section-label">mq_close() và mq_unlink()</div>
+  <div class="api-box">
+    <div class="api-sig">int mq_close(mqd_t mqdes);
+int mq_unlink(const char *name);</div>
+    <div class="api-row">
+      <div class="api-name">mq_close()</div>
+      <div class="api-desc">Đóng descriptor — giải phóng fd. Queue <strong>không bị xóa</strong> — message trong queue vẫn tồn tại. Các process khác vẫn mở được.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">mq_unlink()</div>
+      <div class="api-desc">Xóa queue. Kernel thực sự xóa khi tất cả process đã mq_close(). <strong>Chỉ 1 process gọi unlink</strong> — thường là process tạo ra queue (server/producer).</div>
+    </div>
+    <div class="api-ret">Trả về: <span>0</span> thành công, <span>-1</span> lỗi</div>
+  </div>
+
+  <div class="info-box"><strong>mqd_t là file descriptor thực:</strong> Khác với SysV, POSIX mqd_t là fd hợp lệ. Có thể dùng với <span class="ic">select()</span>, <span class="ic">poll()</span>, <span class="ic">epoll()</span> để biết khi nào queue có message mà không cần blocking mq_receive().</div>
+
+  <div class="warn-box"><strong>Link lúc compile:</strong> Cần <span class="ic">-lrt</span>:<br><span class="ic">gcc sender.c -o sender -lrt</span></div>
+</div>
+
+<!-- ═══ PAGE 3: MQ_ATTR ═══ -->
+<div class="page" id="page-attr">
+  <div class="chapter-title">struct mq_attr và giới hạn hệ thống</div>
+  <div class="chapter-sub">Hai thông số quan trọng nhất: mq_maxmsg (bao nhiêu message) và mq_msgsize (message lớn nhất bao nhiêu bytes).</div>
+
+  <div class="section-label">struct mq_attr — cấu trúc thuộc tính queue</div>
+  <div class="api-box">
+    <div class="api-sig">struct mq_attr {
+    long mq_flags;    /* flags: 0 hoặc O_NONBLOCK */
+    long mq_maxmsg;   /* số message tối đa trong queue */
+    long mq_msgsize;  /* kích thước tối đa 1 message (bytes) */
+    long mq_curmsgs;  /* số message hiện tại (read-only) */
+};</div>
+    <div class="api-row">
+      <div class="api-name">mq_flags</div>
+      <div class="api-desc">Khi tạo queue: bị ignore (dùng oflag của mq_open). Khi đọc bằng mq_getattr(): phản ánh O_NONBLOCK. Khi set bằng mq_setattr(): thay đổi non-blocking behavior.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">mq_maxmsg</div>
+      <div class="api-desc">Số message tối đa queue có thể chứa. Khi queue đầy, mq_send() block (hoặc EAGAIN nếu O_NONBLOCK). <strong>Trên embedded: đặt vừa đủ</strong> — mỗi slot tốn RAM = mq_msgsize bytes trong kernel.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">mq_msgsize</div>
+      <div class="api-desc">Kích thước tối đa của 1 message (bytes). <strong>Tất cả message gửi vào queue phải ≤ giá trị này.</strong> Buffer của mq_receive() phải ≥ giá trị này. Nên đặt bằng sizeof(struct lớn nhất bạn muốn gửi).</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">mq_curmsgs</div>
+      <div class="api-desc">Chỉ có ý nghĩa khi đọc bằng mq_getattr() — cho biết số message đang chờ trong queue. Ignore khi tạo queue.</div>
+    </div>
+  </div>
+
+  <div class="section-label">Giới hạn hệ thống — điều chỉnh cho embedded</div>
+  <div class="card">
+    <div class="card-body">
+      Kernel có giới hạn mặc định cho mq_maxmsg và mq_msgsize. Nếu đặt giá trị lớn hơn, mq_open() sẽ lỗi <span class="ic">EINVAL</span>.
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">Kiểm tra và điều chỉnh limits</div>
+    <pre># Xem giới hạn hiện tại
+cat /proc/sys/fs/mqueue/msg_max       # mq_maxmsg tối đa (default: 10)
+cat /proc/sys/fs/mqueue/msgsize_max   # mq_msgsize tối đa (default: 8192)
+cat /proc/sys/fs/mqueue/queues_max    # số queue tối đa (default: 256)
+
+# Tăng giới hạn tạm thời (root):
+echo 64   > /proc/sys/fs/mqueue/msg_max
+echo 4096 > /proc/sys/fs/mqueue/msgsize_max
+
+# Đặt vĩnh viễn trong /etc/sysctl.conf:
+# fs.mqueue.msg_max    = 64
+# fs.mqueue.msgsize_max = 4096
+
+# Trên Buildroot: thêm vào /etc/sysctl.d/99-mqueue.conf
+# Áp dụng: sysctl -p /etc/sysctl.d/99-mqueue.conf
+
+# Mount mqueue filesystem để debug (xem queue tên):
+mount -t mqueue none /dev/mqueue
+ls /dev/mqueue/          # thấy tên các queue đang tồn tại
+cat /dev/mqueue/myqueue  # xem thông tin queue</pre>
+  </div>
+
+  <div class="section-label">RAM kernel dùng cho queue</div>
+  <div class="card">
+    <div class="card-body">
+      Kernel cấp phát trước toàn bộ RAM cho queue khi mq_open() với O_CREAT:<br><br>
+      <span class="ic">RAM ≈ mq_maxmsg × mq_msgsize</span><br><br>
+      Ví dụ: mq_maxmsg=10, mq_msgsize=512 → ~5KB trong kernel.<br>
+      Embedded với RAM ít: đặt mq_maxmsg nhỏ (4–16), mq_msgsize vừa đủ struct lớn nhất.<br><br>
+      <strong>Tip:</strong> Dùng <span class="ic">mq_getattr()</span> trong code để đọc mq_msgsize thực tế rồi allocate buffer đúng kích thước — không hardcode.
+    </div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">Cách đặt mq_attr và đọc lại</div>
+    <pre>#include &lt;mqueue.h&gt;
+
+/* Tạo queue với thuộc tính tùy chỉnh */
+struct mq_attr attr = {
+    .mq_flags   = 0,        /* bị ignore lúc tạo */
+    .mq_maxmsg  = 16,       /* tối đa 16 message đang chờ */
+    .mq_msgsize = 256,      /* message lớn nhất 256 bytes */
+    .mq_curmsgs = 0         /* bị ignore lúc tạo */
+};
+
+mqd_t mq = mq_open("/myqueue",
+                   O_CREAT | O_RDWR,
+                   0660,
+                   &attr);
+
+/* Đọc lại thuộc tính thực tế — kernel có thể điều chỉnh */
+struct mq_attr actual;
+mq_getattr(mq, &actual);
+printf("maxmsg=%ld, msgsize=%ld, curmsgs=%ld\n",
+       actual.mq_maxmsg,
+       actual.mq_msgsize,
+       actual.mq_curmsgs);
+
+/* Allocate buffer đúng kích thước để nhận */
+char *buf = malloc(actual.mq_msgsize);
+/* ... dùng buf cho mq_receive() ... */
+free(buf);</pre>
+  </div>
+
+  <div class="section-label">Priority — hiểu đúng về phạm vi</div>
+  <div class="pq-box">
+    <div class="pq-header">
+      <div>Priority value</div>
+      <div>Ý nghĩa</div>
+      <div>Thứ tự nhận</div>
+    </div>
+    <div class="pq-row">
+      <div class="pq-prio hi">31 (cao nhất)</div>
+      <div style="font-size:12.5px">CRITICAL — alarm, emergency stop</div>
+      <div class="pq-arrow" style="font-size:12.5px">← Đầu tiên</div>
+    </div>
+    <div class="pq-row">
+      <div class="pq-prio hi">10–30</div>
+      <div style="font-size:12.5px">HIGH — lệnh điều khiển, cảnh báo</div>
+      <div class="pq-arrow" style="font-size:12.5px">← Sớm</div>
+    </div>
+    <div class="pq-row">
+      <div class="pq-prio mid">5–9</div>
+      <div style="font-size:12.5px">MEDIUM — sensor data, status update</div>
+      <div class="pq-arrow" style="font-size:12.5px">← Trung bình</div>
+    </div>
+    <div class="pq-row">
+      <div class="pq-prio lo">1–4</div>
+      <div style="font-size:12.5px">LOW — log, debug, heartbeat</div>
+      <div class="pq-arrow" style="font-size:12.5px">← Muộn</div>
+    </div>
+    <div class="pq-row">
+      <div class="pq-prio lo">0</div>
+      <div style="font-size:12.5px">LOWEST — background, non-critical</div>
+      <div class="pq-arrow" style="font-size:12.5px">← Cuối cùng</div>
+    </div>
+  </div>
+  <div class="warn-box"><strong>Cùng priority → FIFO:</strong> Nếu 3 message cùng prio=5, chúng được nhận theo thứ tự gửi (FIFO). Priority chỉ quyết định thứ tự giữa các mức priority khác nhau.</div>
+</div>
+
+<!-- ═══ PAGE 4: MQ_NOTIFY ═══ -->
+<div class="page" id="page-notify">
+  <div class="chapter-title">mq_notify() — async notification</div>
+  <div class="chapter-sub">Thay vì block chờ message, đăng ký để kernel tự thông báo khi queue có message mới. Không tốn CPU.</div>
+
+  <div class="section-label">Tại sao cần mq_notify?</div>
+  <div class="card">
+    <div class="card-body">
+      <strong>Blocking mq_receive():</strong> Process ngủ chờ. Không làm gì khác được. Phù hợp cho consumer thread chuyên dụng.<br><br>
+      <strong>Non-blocking + polling:</strong> Gọi mq_receive() liên tục trong vòng lặp. Tốn CPU, không tốt.<br><br>
+      <strong>mq_notify() + epoll/signal:</strong> Đăng ký 1 lần. Kernel tự đánh thức khi queue có message. Process làm việc khác trong lúc chờ. <strong>Lý tưởng cho event-driven daemon.</strong>
+    </div>
+  </div>
+
+  <div class="section-label">mq_notify() — API</div>
+  <div class="api-box">
+    <div class="api-sig">#include &lt;mqueue.h&gt;
+int mq_notify(mqd_t mqdes, const struct sigevent *sevp);</div>
+    <div class="api-row">
+      <div class="api-name">mqdes</div>
+      <div class="api-desc">Queue đã mở. Một process chỉ được đăng ký 1 notification tại một thời điểm. Process mới đăng ký sẽ thay thế process cũ.</div>
+    </div>
+    <div class="api-row">
+      <div class="api-name">sevp</div>
+      <div class="api-desc">
+        Con trỏ đến <span class="ic">struct sigevent</span> — mô tả cách thông báo.<br><br>
+        <div class="flag"><span class="fn">SIGEV_SIGNAL</span><span class="fd">Gửi signal (ví dụ SIGUSR1) đến process khi có message. Đơn giản nhất nhưng hạn chế của signal handler.</span></div>
+        <div class="flag"><span class="fn">SIGEV_THREAD</span><span class="fd">Tạo thread mới và gọi callback function. Callback chạy trong thread riêng — an toàn hơn signal handler.</span></div>
+        <div class="flag"><span class="fn">SIGEV_NONE</span><span class="fd">Không thông báo — chỉ "claim" queue để process khác không đăng ký được.</span></div>
+        Truyền <span class="ic">NULL</span>: hủy notification đã đăng ký.
+      </div>
+    </div>
+    <div class="api-ret">Trả về: <span>0</span> thành công, <span>-1</span> lỗi. <span>EBUSY</span>: process khác đã đăng ký notification</div>
+  </div>
+
+  <div class="warn-box"><strong>Notification chỉ xảy ra 1 lần:</strong> Sau khi kernel gửi notification, registration bị xóa. Phải gọi mq_notify() lại sau mỗi lần nhận notification nếu muốn tiếp tục nhận — thường làm ngay trong callback trước khi đọc message.</div>
+
+  <div class="section-label">Hai pattern dùng mq_notify</div>
+
+  <div class="code-block">
+    <div class="code-label">Pattern 1: SIGEV_SIGNAL — đơn giản, dùng với signalfd + epoll</div>
+    <pre>#include &lt;mqueue.h&gt;
+#include &lt;signal.h&gt;
+#include &lt;sys/signalfd.h&gt;
+#include &lt;sys/epoll.h&gt;
+
+/* Block SIGUSR1 khỏi delivery bình thường (dùng signalfd thay) */
+sigset_t mask;
+sigemptyset(&mask);
+sigaddset(&mask, SIGUSR1);
+sigprocmask(SIG_BLOCK, &mask, NULL);
+
+/* Tạo signalfd — đọc signal như file, dùng được với epoll */
+int sfd = signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC);
+
+/* Đăng ký mq_notify với SIGUSR1 */
+struct sigevent sev = {
+    .sigev_notify = SIGEV_SIGNAL,
+    .sigev_signo  = SIGUSR1
+};
+mq_notify(mq, &sev);
+
+/* Thêm signalfd vào epoll */
+struct epoll_event ev = { .events = EPOLLIN, .data.fd = sfd };
+epoll_ctl(epfd, EPOLL_CTL_ADD, sfd, &ev);
+
+/* Trong epoll event loop khi sfd sẵn sàng: */
+struct signalfd_siginfo sinfo;
+read(sfd, &sinfo, sizeof(sinfo));  /* đọc signal info */
+
+/* QUAN TRỌNG: đăng ký lại trước khi đọc message */
+mq_notify(mq, &sev);
+
+/* Đọc tất cả message có trong queue */
+char buf[MSG_SIZE];
+unsigned prio;
+while (mq_receive(mq, buf, MSG_SIZE, &prio) != -1) {
+    process_message(buf, prio);
+}
+/* mq_receive trả về -1 với EAGAIN khi queue rỗng → thoát loop */</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">Pattern 2: SIGEV_THREAD — callback trong thread mới, dễ dùng hơn</div>
+    <pre>#include &lt;mqueue.h&gt;
+#include &lt;signal.h&gt;
+#include &lt;pthread.h&gt;
+
+static mqd_t g_mq;
+
+/* Callback — chạy trong thread mới do kernel tạo */
+void mq_callback(union sigval sv) {
+    (void)sv;
+    /* QUAN TRỌNG: đăng ký lại ngay trước khi đọc */
+    struct sigevent sev = {
+        .sigev_notify          = SIGEV_THREAD,
+        .sigev_notify_function = mq_callback
+    };
+    mq_notify(g_mq, &sev);
+
+    /* Đọc tất cả message */
+    char buf[512];
+    unsigned prio;
+    ssize_t n;
+    while ((n = mq_receive(g_mq, buf, sizeof(buf), &prio)) > 0) {
+        printf("Callback thread: %zd bytes, prio=%u\n", n, prio);
+    }
+}
+
+int main(void) {
+    g_mq = mq_open("/myqueue", O_RDONLY | O_NONBLOCK, 0, NULL);
+
+    struct sigevent sev = {
+        .sigev_notify          = SIGEV_THREAD,
+        .sigev_notify_function = mq_callback,
+        .sigev_value.sival_ptr = NULL
+    };
+    mq_notify(g_mq, &sev);
+
+    /* Main thread tiếp tục làm việc khác — không block */
+    while (1) {
+        do_other_work();
+        sleep(1);
+    }
+}</pre>
+  </div>
+</div>
+
+<!-- ═══ PAGE 5: CODE ĐẦY ĐỦ ═══ -->
+<div class="page" id="page-code">
+  <div class="chapter-title">Code đầy đủ, chạy được</div>
+  <div class="chapter-sub">Hệ thống sensor với 3 loại message, priority ordering, và consumer xử lý theo thứ tự quan trọng.</div>
+
+  <div class="code-block">
+    <div class="code-label">msg_types.h — định nghĩa message chung</div>
+    <pre>#pragma once
+#include &lt;stdint.h&gt;
+#include &lt;time.h&gt;
+
+#define MQ_NAME     "/sensor_events"
+#define MQ_MAXMSG   16
+#define MQ_MSGSIZE  sizeof(SensorMsg)  /* buffer size cho mq_receive */
+
+/* Priority levels — số cao = quan trọng hơn */
+#define PRIO_CRITICAL  31   /* alarm, emergency */
+#define PRIO_HIGH      20   /* control commands */
+#define PRIO_MEDIUM    10   /* sensor data */
+#define PRIO_LOW        1   /* log, heartbeat  */
+
+/* Message type identifier */
+typedef enum {
+    MSG_ALARM    = 1,
+    MSG_SENSOR   = 2,
+    MSG_COMMAND  = 3,
+    MSG_LOG      = 4
+} MsgType;
+
+/* Struct chung cho tất cả message — dùng union cho payload */
+typedef struct {
+    MsgType  type;
+    uint32_t seq;
+    struct timespec ts;
+
+    union {
+        struct { int   code;  char desc[64]; } alarm;
+        struct { float temp;  float hum;      } sensor;
+        struct { char  cmd[32];               } command;
+        struct { char  text[80];              } log;
+    } payload;
+} SensorMsg;</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">producer.c — gửi nhiều loại message với priority khác nhau</div>
+    <pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;mqueue.h&gt;
+#include &lt;time.h&gt;
+#include "msg_types.h"
+
+/* Helper: gửi message, log lỗi */
+static int send_msg(mqd_t mq, const SensorMsg *m, unsigned prio) {
+    int r = mq_send(mq, (const char *)m, sizeof(*m), prio);
+    if (r == -1) perror("mq_send");
+    return r;
+}
+
+int main(void) {
+    /* Tạo queue với attr tùy chỉnh */
+    struct mq_attr attr = {
+        .mq_maxmsg  = MQ_MAXMSG,
+        .mq_msgsize = MQ_MSGSIZE
+    };
+
+    /* Xóa queue cũ nếu còn */
+    mq_unlink(MQ_NAME);
+
+    mqd_t mq = mq_open(MQ_NAME,
+                       O_CREAT | O_WRONLY,
+                       0660, &attr);
+    if (mq == (mqd_t)-1) { perror("mq_open"); exit(1); }
+
+    printf("[Producer] Queue tạo: %s\n", MQ_NAME);
+    SensorMsg m = {0};
+    uint32_t seq = 0;
+
+    /* Gửi 1: LOG (prio thấp) — gửi đầu tiên nhưng nhận sau cùng */
+    m.type   = MSG_LOG;  m.seq = ++seq;
+    clock_gettime(CLOCK_MONOTONIC, &m.ts);
+    snprintf(m.payload.log.text, sizeof(m.payload.log.text),
+             "System startup");
+    send_msg(mq, &m, PRIO_LOW);
+    printf("[Producer] Gui LOG (prio=%d)\n", PRIO_LOW);
+
+    /* Gửi 2: SENSOR (prio trung bình) */
+    m.type = MSG_SENSOR; m.seq = ++seq;
+    m.payload.sensor.temp = 72.5f;
+    m.payload.sensor.hum  = 58.0f;
+    send_msg(mq, &m, PRIO_MEDIUM);
+    printf("[Producer] Gui SENSOR (prio=%d)\n", PRIO_MEDIUM);
+
+    /* Gửi 3: ALARM (prio cao nhất) — gửi sau nhưng nhận trước! */
+    m.type = MSG_ALARM; m.seq = ++seq;
+    m.payload.alarm.code = 42;
+    snprintf(m.payload.alarm.desc, sizeof(m.payload.alarm.desc),
+             "Temperature critical: 92C");
+    send_msg(mq, &m, PRIO_CRITICAL);
+    printf("[Producer] Gui ALARM (prio=%d)\n", PRIO_CRITICAL);
+
+    /* Gửi 4: COMMAND (prio cao) */
+    m.type = MSG_COMMAND; m.seq = ++seq;
+    snprintf(m.payload.command.cmd, sizeof(m.payload.command.cmd),
+             "EMERGENCY_SHUTDOWN");
+    send_msg(mq, &m, PRIO_HIGH);
+    printf("[Producer] Gui COMMAND (prio=%d)\n", PRIO_HIGH);
+
+    mq_close(mq);
+    printf("[Producer] Done — 4 messages gui vao queue.\n");
+    printf("  Thu tu gui: LOG, SENSOR, ALARM, COMMAND\n");
+    printf("  Thu tu nhan se la: ALARM(31), COMMAND(20), SENSOR(10), LOG(1)\n");
+    return 0;
+}</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">consumer.c — nhận theo priority, xử lý từng loại</div>
+    <pre>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;errno.h&gt;
+#include &lt;mqueue.h&gt;
+#include "msg_types.h"
+
+static void handle_message(const SensorMsg *m, unsigned prio) {
+    switch (m->type) {
+    case MSG_ALARM:
+        printf("  [ALARM  prio=%2u] seq=%u code=%d: %s\n",
+               prio, m->seq,
+               m->payload.alarm.code,
+               m->payload.alarm.desc);
+        break;
+    case MSG_SENSOR:
+        printf("  [SENSOR prio=%2u] seq=%u temp=%.1f°C hum=%.1f%%\n",
+               prio, m->seq,
+               m->payload.sensor.temp,
+               m->payload.sensor.hum);
+        break;
+    case MSG_COMMAND:
+        printf("  [CMD    prio=%2u] seq=%u cmd=%s\n",
+               prio, m->seq,
+               m->payload.command.cmd);
+        break;
+    case MSG_LOG:
+        printf("  [LOG    prio=%2u] seq=%u %s\n",
+               prio, m->seq,
+               m->payload.log.text);
+        break;
+    }
+}
+
+int main(void) {
+    /* Consumer chỉ mở — không tạo (không O_CREAT) */
+    mqd_t mq = mq_open(MQ_NAME, O_RDONLY);
+    if (mq == (mqd_t)-1) {
+        perror("mq_open — producer chua chay?");
+        exit(1);
+    }
+
+    /* Đọc mq_msgsize thực tế để allocate buffer đúng */
+    struct mq_attr attr;
+    mq_getattr(mq, &attr);
+    printf("[Consumer] Queue: maxmsg=%ld, msgsize=%ld, curmsgs=%ld\n",
+           attr.mq_maxmsg, attr.mq_msgsize, attr.mq_curmsgs);
+    printf("[Consumer] Thu tu nhan (theo priority cao -> thap):\n");
+
+    SensorMsg buf;
+    unsigned prio;
+
+    /* Đọc tuần tự — kernel trả về theo priority từ cao xuống thấp */
+    while (1) {
+        ssize_t n = mq_receive(mq,
+                               (char *)&buf,
+                               attr.mq_msgsize, /* phải >= mq_msgsize */
+                               &prio);
+        if (n == -1) {
+            if (errno == EAGAIN) break;  /* queue rỗng */
+            perror("mq_receive"); break;
+        }
+        handle_message(&buf, prio);
+    }
+
+    mq_close(mq);
+    mq_unlink(MQ_NAME);  /* consumer xóa queue sau khi done */
+    return 0;
+}</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">Cách chạy và output mong đợi</div>
+    <pre># Terminal 1:
+gcc producer.c -o producer -lrt
+./producer
+# [Producer] Queue tạo: /sensor_events
+# [Producer] Gui LOG (prio=1)
+# [Producer] Gui SENSOR (prio=10)
+# [Producer] Gui ALARM (prio=31)
+# [Producer] Gui COMMAND (prio=20)
+# [Producer] Done — 4 messages gui vao queue.
+
+# Terminal 2:
+gcc consumer.c -o consumer -lrt
+./consumer
+# [Consumer] Queue: maxmsg=16, msgsize=128, curmsgs=4
+# [Consumer] Thu tu nhan (theo priority cao -> thap):
+#   [ALARM   prio=31] seq=3 code=42: Temperature critical: 92C
+#   [CMD     prio=20] seq=4 cmd=EMERGENCY_SHUTDOWN
+#   [SENSOR  prio=10] seq=2 temp=72.5°C hum=58.0%
+#   [LOG     prio= 1] seq=1 System startup
+
+# ALARM và CMD nhận trước dù gửi sau LOG và SENSOR!
+
+# Debug: xem queue đang tồn tại
+mount -t mqueue none /dev/mqueue 2>/dev/null || true
+ls /dev/mqueue/</pre>
+  </div>
+</div>
+
+<!-- ═══ PAGE 6: EMBEDDED ═══ -->
+<div class="page" id="page-embedded">
+  <div class="chapter-title">Message Queue trong Embedded Linux</div>
+  <div class="chapter-sub">Pattern thực tế, ràng buộc, và so sánh với các IPC đã học để biết khi nào dùng cái nào.</div>
+
+  <div class="section-label">Khi nào dùng Message Queue trên embedded</div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><span class="badge badge-teal">Phù hợp</span></div>
+      <div class="card-body">
+        — Event-driven system: sensor → event processor<br>
+        — Cần priority: ALARM trước LOG<br>
+        — Producer và consumer chạy lệch nhau về thời gian<br>
+        — Message nhỏ và rõ ràng (struct ≤ vài KB)<br>
+        — Cần timeout: mq_timedreceive() cho watchdog
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="badge badge-amber">Không phù hợp</span></div>
+      <div class="card-body">
+        — Dữ liệu lớn (frame ảnh, audio) → dùng Shared Memory<br>
+        — Cần bidirectional theo từng request → dùng Unix Socket<br>
+        — Cần nhiều consumer nhận cùng message (broadcast) → dùng Unix DGRAM socket<br>
+        — Throughput cực cao → dùng Shared Memory
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Tóm tắt toàn bộ IPC — bảng quyết định cuối</div>
+  <div class="card">
+    <table class="cmp-table">
+      <thead><tr><th>Tình huống</th><th>IPC tốt nhất</th><th>Lý do</th></tr></thead>
+      <tbody>
+        <tr><td>Parent giao tiếp với child process</td><td><strong>Anonymous Pipe</strong></td><td>Đơn giản nhất, kế thừa qua fork()</td></tr>
+        <tr><td>Daemon nhận lệnh từ shell/script</td><td><strong>FIFO</strong></td><td>Có thể <span class="ic">echo cmd &gt; /tmp/fifo</span></td></tr>
+        <tr><td>Daemon ↔ nhiều client, bidirectional</td><td><strong>Unix Socket STREAM</strong></td><td>accept() riêng từng client, reply được</td></tr>
+        <tr><td>Nhiều sensor → 1 collector, fire-and-forget</td><td><strong>Unix Socket DGRAM</strong> hoặc <strong>Msg Queue</strong></td><td>DGRAM: đơn giản hơn; MQ: có priority</td></tr>
+        <tr><td>Frame ảnh, audio buffer lớn</td><td><strong>Shared Memory</strong></td><td>Zero-copy, bandwidth giới hạn bởi RAM</td></tr>
+        <tr><td>Event với priority, watchdog timeout</td><td><strong>Message Queue</strong></td><td>Priority ordering + mq_timedreceive()</td></tr>
+        <tr><td>Ngắt luồng xử lý bất đồng bộ</td><td><strong>Signal</strong></td><td>Lightweight, không cần chia sẻ data</td></tr>
+        <tr><td>Cross-host, cross-network</td><td><strong>TCP/UDP Socket</strong></td><td>Chỉ loại này hoạt động qua network</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-label">Pattern: event-driven daemon với mq_notify + epoll</div>
+  <div class="code-block">
+    <div class="code-label">event_daemon.c — main loop không block, xử lý nhiều fd</div>
+    <pre>#include &lt;mqueue.h&gt;
+#include &lt;sys/epoll.h&gt;
+#include &lt;sys/signalfd.h&gt;
+#include &lt;signal.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;errno.h&gt;
+#include &lt;stdio.h&gt;
+
+#define MQ_NAME  "/events"
+
+int main(void) {
+    /* ── Setup signal fd cho SIGUSR1 và SIGTERM ────────── */
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGUSR1);   /* từ mq_notify */
+    sigaddset(&mask, SIGTERM);   /* graceful shutdown */
+    sigprocmask(SIG_BLOCK, &mask, NULL);
+    int sfd = signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC);
+
+    /* ── Mở message queue ──────────────────────────────── */
+    struct mq_attr attr = { .mq_maxmsg = 16, .mq_msgsize = 256 };
+    mq_unlink(MQ_NAME);
+    mqd_t mq = mq_open(MQ_NAME,
+                       O_CREAT | O_RDONLY | O_NONBLOCK,
+                       0660, &attr);
+
+    /* ── Đăng ký mq_notify ─────────────────────────────── */
+    struct sigevent sev = {
+        .sigev_notify = SIGEV_SIGNAL,
+        .sigev_signo  = SIGUSR1
+    };
+    mq_notify(mq, &sev);
+
+    /* ── Epoll setup ───────────────────────────────────── */
+    int epfd = epoll_create1(EPOLL_CLOEXEC);
+
+    /* Theo dõi signalfd */
+    struct epoll_event ev = { .events = EPOLLIN, .data.fd = sfd };
+    epoll_ctl(epfd, EPOLL_CTL_ADD, sfd, &ev);
+
+    /* Epoll cũng theo dõi mqd_t trực tiếp (mqd_t là fd!) */
+    ev.data.fd = (int)mq;
+    /* Dùng EPOLLET (edge-triggered) để nhận event 1 lần */
+    ev.events = EPOLLIN | EPOLLET;
+    epoll_ctl(epfd, EPOLL_CTL_ADD, (int)mq, &ev);
+
+    printf("Daemon ready, MQ: %s\n", MQ_NAME);
+
+    struct epoll_event events[8];
+    int running = 1;
+
+    while (running) {
+        int n = epoll_wait(epfd, events, 8, 5000); /* 5s timeout */
+        if (n == -1) {
+            if (errno == EINTR) continue;
+            break;
+        }
+        if (n == 0) {
+            printf("Heartbeat — queue idle\n"); continue;
+        }
+
+        for (int i = 0; i < n; i++) {
+            if (events[i].data.fd == sfd) {
+                struct signalfd_siginfo si;
+                read(sfd, &si, sizeof(si));
+                if (si.ssi_signo == SIGTERM) { running = 0; break; }
+                if (si.ssi_signo == SIGUSR1) {
+                    /* Đăng ký lại TRƯỚC khi đọc */
+                    mq_notify(mq, &sev);
+                }
+            }
+            /* Đọc tất cả message trong queue */
+            if (events[i].data.fd == (int)mq ||
+                events[i].data.fd == sfd) {
+                char buf[256]; unsigned prio;
+                while (mq_receive(mq, buf, sizeof(buf), &prio) > 0)
+                    printf("  msg prio=%u: %s\n", prio, buf);
+            }
+        }
+    }
+
+    mq_close(mq); mq_unlink(MQ_NAME);
+    close(sfd);   close(epfd);
+    return 0;
+}</pre>
+  </div>
+
+  <div class="section-label">Ràng buộc trên embedded</div>
+  <div class="emb-box"><strong>msg_max thường nhỏ:</strong> Kernel mặc định msg_max=10. Nếu code cần mq_maxmsg=16, phải tăng trước khi chạy. Thêm vào startup script: <span class="ic">echo 64 &gt; /proc/sys/fs/mqueue/msg_max</span>. Không làm được → mq_open() lỗi EINVAL.</div>
+  <div class="emb-box"><strong>mqueue filesystem cho debug:</strong> Trên Buildroot thêm vào <span class="ic">/etc/fstab</span>: <span class="ic">mqueue /dev/mqueue mqueue defaults 0 0</span>. Sau đó <span class="ic">ls /dev/mqueue/</span> thấy tên queue, <span class="ic">cat /dev/mqueue/events</span> thấy thông số. Rất hữu ích khi debug queue không được xóa sau crash.</div>
+  <div class="warn-box"><strong>Queue orphan sau crash:</strong> Nếu producer crash mà không mq_unlink(), queue còn tồn tại. Lần sau mq_open() với O_CREAT | O_EXCL sẽ lỗi EEXIST. Giải pháp: bỏ O_EXCL và gọi mq_unlink() rồi tạo lại, hoặc trong startup script: <span class="ic">rm -f /dev/mqueue/myqueue</span>.</div>
+
+  <div class="emb-box"><strong>Tài liệu này kết thúc series IPC.</strong> Bạn đã học đủ 4 loại IPC cốt lõi:<br>
+  <strong>1. Pipe &amp; FIFO</strong> — nền tảng, đơn giản nhất<br>
+  <strong>2. Unix Domain Socket</strong> — bidirectional, nhiều client, fd passing<br>
+  <strong>3. Shared Memory</strong> — zero-copy, throughput cao nhất, cần semaphore<br>
+  <strong>4. Message Queue</strong> — priority ordering, decoupled timing, async notify<br><br>
+  Bước tiếp theo thực tế: chọn 1 trong 4 loại và viết một ứng dụng nhỏ hoàn chỉnh trên STM32 Linux hoặc Buildroot để trải nghiệm thực tế.</div>
+</div>
+
+</div>
+<script>
+function go(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>

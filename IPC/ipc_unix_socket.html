@@ -4,68 +4,136 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>IPC — Unix Domain Socket</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,sans-serif;color:#1a1a1a;background:#f5f5f0;font-size:14px;line-height:1.7}
-.container{max-width:860px;margin:0 auto;padding:2rem 1.5rem}
-h1{font-size:22px;font-weight:500;margin-bottom:4px}
-.sub{font-size:13px;color:#666;margin-bottom:1.5rem}
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #475569;
+  --color-background-body: #f5f5f0;
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f8f8f8;
+  --color-border-secondary: #ddd;
+  --color-border-tertiary: #e0e0e0;
+  --color-nav-hover: #eee;
+  --border-radius-lg: 10px;
+  --border-radius-md: 8px;
+}
 
-.nav-bar{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid #ddd;margin-bottom:0;padding-bottom:0}
-.nav-btn{padding:8px 14px;font-size:13px;cursor:pointer;border-radius:6px 6px 0 0;border:1px solid transparent;color:#666;background:transparent;transition:all .15s;margin-bottom:-1px;white-space:nowrap}
-.nav-btn:hover{color:#1a1a1a;background:#eee}
-.nav-btn.active{color:#1a1a1a;font-weight:500;background:#fff;border-color:#ddd;border-bottom-color:#fff}
-.page{display:none;padding:1.5rem 0}.page.active{display:block}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-text-primary: #e2e8f0;
+    --color-text-secondary: #94a3b8;
+    --color-background-body: #121212;
+    --color-background-primary: #1e1e1e;
+    --color-background-secondary: #1a1a1a;
+    --color-border-secondary: #444;
+    --color-border-tertiary: #333;
+    --color-nav-hover: #2d2d2d;
+  }
+  
+  /* SVG overrides for dark mode */
+  svg { background: #111827 !important; }
+  svg text { fill: #f3f4f6 !important; }
+  svg text[fill="#888"] { fill: #9ca3af !important; }
+  svg text[fill="#666"] { fill: #9ca3af !important; }
+  svg text[fill="#1a5c3a"] { fill: #a7f3d0 !important; }
+  svg text[fill="#2e9e6a"] { fill: #34d399 !important; }
+  svg text[fill="#3b2fa0"] { fill: #c7d2fe !important; }
+  svg text[fill="#6b5cd6"] { fill: #818cf8 !important; }
+  svg text[fill="#8a5000"] { fill: #fde047 !important; }
+  svg text[fill="#d04040"] { fill: #f87171 !important; }
+  svg text[fill="#185FA5"] { fill: #60a5fa !important; }
+  svg rect[fill="none"] { stroke: #374151 !important; }
+  svg rect[fill="#d0f0e8"] { fill: #064e3b !important; stroke: #047857 !important; }
+  svg rect[fill="#f8f8f8"] { fill: #1f2937 !important; stroke: #374151 !important; }
+  svg rect[fill="#e8e6ff"] { fill: #1e1b4b !important; stroke: #4338ca !important; }
+  svg rect[fill="#fff0d0"] { fill: #451a03 !important; stroke: #b45309 !important; }
+  svg line[stroke="#ccc"] { stroke: #374151 !important; }
+  svg line[stroke="#888"] { stroke: #4b5563 !important; }
+  svg line[stroke="#378ADD"] { stroke: #60a5fa !important; }
+  svg path[stroke="#6b5cd6"] { stroke: #818cf8 !important; }
+  svg line[stroke="#6b5cd6"] { stroke: #818cf8 !important; }
 
-.chapter-title{font-size:18px;font-weight:500;margin-bottom:4px}
-.chapter-sub{font-size:13px;color:#666;margin-bottom:1.25rem}
-.section-label{font-size:11px;font-weight:500;letter-spacing:.06em;color:#888;text-transform:uppercase;margin:1.5rem 0 .6rem}
+  .api-param-name { color: #58a6ff; }
+}
 
-.card{background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:1.25rem;margin-bottom:1rem}
-.card-title{font-size:15px;font-weight:500;margin-bottom:.5rem;display:flex;align-items:center;gap:8px}
-.card-body{font-size:13px;color:#555;line-height:1.7}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); color: var(--color-text-primary); background: var(--color-background-body); font-size: 15px; line-height: 1.7; }
+.container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+.sub { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1.5rem; }
 
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
-@media(max-width:600px){.grid2{grid-template-columns:1fr}}
+.nav-bar { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--color-border-secondary); margin-bottom: 0; padding-bottom: 0; }
+.nav-btn { padding: 8px 14px; font-size: 13px; cursor: pointer; border-radius: 6px 6px 0 0; border: 1px solid transparent; color: var(--color-text-secondary); background: transparent; transition: all .15s; margin-bottom: -1px; white-space: nowrap; font-family: var(--font-sans); }
+.nav-btn:hover { color: var(--color-text-primary); background: var(--color-nav-hover); }
+.nav-btn.active { color: var(--color-text-primary); font-weight: 600; background: var(--color-background-primary); border-color: var(--color-border-secondary); border-bottom-color: var(--color-background-primary); }
+.page { display: none; padding: 1.5rem 0; }
+.page.active { display: block; }
 
-.code-block{background:#1e1e2e;border-radius:8px;padding:.875rem 1rem;margin:.6rem 0;overflow-x:auto}
-.code-block pre{font-family:'Courier New',monospace;font-size:12px;line-height:1.65;color:#cdd6f4;white-space:pre}
-.code-label{font-family:'Courier New',monospace;font-size:11px;color:#888;margin-bottom:.4rem}
+.chapter-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+.chapter-sub { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1.25rem; }
+.section-label { font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--color-text-secondary); text-transform: uppercase; margin: 1.5rem 0 .6rem; }
 
-.api-box{border:1px solid #e0e0e0;border-radius:8px;margin:.75rem 0;overflow:hidden}
-.api-sig{font-family:'Courier New',monospace;font-size:12.5px;font-weight:500;padding:.75rem 1rem;background:#f8f8f8;border-bottom:1px solid #e0e0e0;color:#1a1a1a;white-space:pre}
-.api-param-row{display:grid;grid-template-columns:150px 1fr;border-bottom:1px solid #e0e0e0}
-.api-param-row:last-child{border-bottom:none}
-.api-param-name{font-family:'Courier New',monospace;font-size:12px;padding:.55rem 1rem;background:#f8f8f8;color:#185FA5;border-right:1px solid #e0e0e0}
-.api-param-desc{font-size:12px;padding:.55rem 1rem;color:#555;line-height:1.55}
-.api-return{font-size:12px;padding:.6rem 1rem;background:#f8f8f8;border-top:1px solid #e0e0e0;color:#666}
-.api-return span{font-family:'Courier New',monospace;color:#1a1a1a}
+.card { background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+.card-title { font-size: 15px; font-weight: 600; margin-bottom: .5rem; display: flex; align-items: center; gap: 8px; }
+.card-body { font-size: 13px; color: var(--color-text-secondary); line-height: 1.7; }
 
-.warn-box{background:#fff8e6;border:1px solid #e6a817;border-radius:8px;padding:.75rem 1rem;font-size:12.5px;color:#7a4f00;margin:.75rem 0;line-height:1.55}
-.info-box{background:#e8f3fd;border:1px solid #5b9bd5;border-radius:8px;padding:.75rem 1rem;font-size:12.5px;color:#1a4a7a;margin:.75rem 0;line-height:1.55}
-.emb-box{background:#e8f7ef;border:1px solid #2e9e6a;border-radius:8px;padding:.75rem 1rem;font-size:12.5px;color:#1a5c3a;margin:.75rem 0;line-height:1.55}
-.warn-box strong,.info-box strong,.emb-box strong{font-weight:500}
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media(max-width: 600px) { .grid2 { grid-template-columns: 1fr; } }
 
-.badge{display:inline-flex;align-items:center;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500;vertical-align:middle}
-.badge-blue{background:#ddeeff;color:#185FA5}
-.badge-teal{background:#d0f0e8;color:#0d7a52}
-.badge-amber{background:#fff0d0;color:#8a5000}
+.code-block { background: #1e1e2e; border-radius: 8px; padding: .875rem 1rem; margin: .6rem 0; overflow-x: auto; }
+.code-block pre { font-family: var(--font-mono); font-size: 13px; line-height: 1.6; color: #cdd6f4; white-space: pre; }
+.code-label { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-secondary); margin-bottom: .4rem; }
 
-.ic{font-family:'Courier New',monospace;font-size:12px;background:#f0f0f0;padding:1px 5px;border-radius:3px;color:#1a1a1a}
+.api-box { border: 1px solid var(--color-border-tertiary); border-radius: 8px; margin: .75rem 0; overflow: hidden; }
+.api-sig { font-family: var(--font-mono); font-size: 13px; font-weight: 500; padding: .75rem 1rem; background: var(--color-background-secondary); border-bottom: 1px solid var(--color-border-tertiary); color: var(--color-text-primary); white-space: pre; }
+.api-param-row { display: grid; grid-template-columns: 150px 1fr; border-bottom: 1px solid var(--color-border-tertiary); }
+.api-param-row:last-child { border-bottom: none; }
+.api-param-name { font-family: var(--font-mono); font-size: 12px; padding: .55rem 1rem; background: var(--color-background-secondary); color: #185FA5; border-right: 1px solid var(--color-border-tertiary); }
+.api-param-desc { font-size: 12px; padding: .55rem 1rem; color: var(--color-text-secondary); line-height: 1.55; }
+.api-return { font-size: 12px; padding: .6rem 1rem; background: var(--color-background-secondary); border-top: 1px solid var(--color-border-tertiary); color: var(--color-text-secondary); }
+.api-return span { font-family: var(--font-mono); color: var(--color-text-primary); }
 
-.step-list{display:flex;flex-direction:column;gap:6px;counter-reset:s}
-.step-item{display:flex;gap:10px;align-items:flex-start;counter-increment:s}
-.step-num{width:22px;height:22px;border-radius:50%;background:#f0f0f0;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0;margin-top:2px}
-.step-num::before{content:counter(s)}
-.step-body{flex:1;font-size:13px;color:#555;line-height:1.6}
-.step-body strong{color:#1a1a1a;font-weight:500}
+.warn-box { background: #fff8e6; border: 1px solid #e6a817; border-radius: 8px; padding: .75rem 1rem; font-size: 12.5px; color: #7a4f00; margin: .75rem 0; line-height: 1.55; }
+.info-box { background: #e8f3fd; border: 1px solid #5b9bd5; border-radius: 8px; padding: .75rem 1rem; font-size: 12.5px; color: #1a4a7a; margin: .75rem 0; line-height: 1.55; }
+.emb-box { background: #e8f7ef; border: 1px solid #2e9e6a; border-radius: 8px; padding: .75rem 1rem; font-size: 12.5px; color: #1a5c3a; margin: .75rem 0; line-height: 1.55; }
+@media (prefers-color-scheme: dark) {
+  .warn-box { background: #412402; border-color: #633806; color: #FAC775; }
+  .info-box { background: #042C53; border-color: #185FA5; color: #B5D4F4; }
+  .emb-box { background: #04342C; border-color: #0F6E56; color: #9FE1CB; }
+}
+.warn-box strong, .info-box strong, .emb-box strong { font-weight: 600; }
 
-.divider{height:1px;background:#e5e5e5;margin:1.25rem 0}
+.badge { display: inline-flex; align-items: center; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; vertical-align: middle; }
+.badge-blue { background: #ddeeff; color: #185FA5; }
+.badge-teal { background: #d0f0e8; color: #0d7a52; }
+.badge-amber { background: #fff0d0; color: #8a5000; }
+@media (prefers-color-scheme: dark) {
+  .badge-blue { background: #042C53; color: #B5D4F4; }
+  .badge-teal { background: #04342C; color: #9FE1CB; }
+  .badge-amber { background: #412402; color: #FAC775; }
+}
 
-.compare-table{width:100%;border-collapse:collapse;font-size:12.5px}
-.compare-table th{text-align:left;padding:7px 10px;font-weight:500;font-size:11px;color:#888;background:#f8f8f8;border-bottom:1px solid #e0e0e0}
-.compare-table td{padding:7px 10px;border-bottom:1px solid #e0e0e0;vertical-align:top;line-height:1.5}
-.compare-table tr:last-child td{border-bottom:none}
+.ic { font-family: var(--font-mono); font-size: 12px; background: var(--color-background-secondary); padding: 1px 5px; border-radius: 3px; color: var(--color-text-primary); }
+
+.step-list { display: flex; flex-direction: column; gap: 6px; counter-reset: s; }
+.step-item { display: flex; gap: 10px; align-items: flex-start; counter-increment: s; }
+.step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--color-background-secondary); border: 1px solid var(--color-border-secondary); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; margin-top: 2px; color: var(--color-text-secondary); }
+.step-num::before { content: counter(s); }
+.step-body { flex: 1; font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; }
+.step-body strong { color: var(--color-text-primary); font-weight: 600; }
+
+.divider { height: 1px; background: var(--color-border-tertiary); margin: 1.25rem 0; }
+
+.compare-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.compare-table th { text-align: left; padding: 7px 10px; font-weight: 600; font-size: 11px; color: var(--color-text-secondary); background: var(--color-background-secondary); border-bottom: 1px solid var(--color-border-tertiary); }
+.compare-table td { padding: 7px 10px; border-bottom: 1px solid var(--color-border-tertiary); vertical-align: top; line-height: 1.5; }
+.compare-table tr:last-child td { border-bottom: none; }
+.compare-table tr:hover td { background: var(--color-background-secondary); }
 </style>
 </head>
 <body>
@@ -104,30 +172,33 @@ h1{font-size:22px;font-weight:500;margin-bottom:4px}
     <text font-family="system-ui" font-size="12" x="36" y="32" fill="#888">Filesystem: /tmp/app.sock</text>
     <!-- Server -->
     <rect x="270" y="44" width="140" height="64" rx="8" fill="#d0f0e8" stroke="#2e9e6a" stroke-width="1"/>
-    <text font-family="system-ui" font-size="13" font-weight="500" x="340" y="72" text-anchor="middle" fill="#1a5c3a">Server</text>
-    <text font-family="system-ui" font-size="11" x="340" y="92" text-anchor="middle" fill="#2e9e6a">bind + listen</text>
+    <text font-family="system-ui" font-size="13" font-weight="500" x="340" y="66" text-anchor="middle" dominant-baseline="central" fill="#1a5c3a">Server</text>
+    <text font-family="system-ui" font-size="11" x="340" y="86" text-anchor="middle" dominant-baseline="central" fill="#2e9e6a">bind + listen</text>
     <!-- Socket file -->
     <rect x="308" y="124" width="64" height="28" rx="4" fill="#f8f8f8" stroke="#ccc" stroke-width="1"/>
     <text font-family="system-ui" font-size="11" x="340" y="138" text-anchor="middle" dominant-baseline="central" fill="#666">app.sock</text>
     <line x1="340" y1="108" x2="340" y2="124" stroke="#ccc" stroke-width="1"/>
     <!-- Client A -->
     <rect x="44" y="168" width="130" height="54" rx="8" fill="#e8e6ff" stroke="#6b5cd6" stroke-width="1"/>
-    <text font-family="system-ui" font-size="13" font-weight="500" x="109" y="191" text-anchor="middle" fill="#3b2fa0">Client A</text>
-    <text font-family="system-ui" font-size="11" x="109" y="209" text-anchor="middle" fill="#6b5cd6">connect()</text>
+    <text font-family="system-ui" font-size="13" font-weight="500" x="109" y="186" text-anchor="middle" dominant-baseline="central" fill="#3b2fa0">Client A</text>
+    <text font-family="system-ui" font-size="11" x="109" y="204" text-anchor="middle" dominant-baseline="central" fill="#6b5cd6">connect()</text>
     <!-- Client B -->
     <rect x="506" y="168" width="130" height="54" rx="8" fill="#e8e6ff" stroke="#6b5cd6" stroke-width="1"/>
-    <text font-family="system-ui" font-size="13" font-weight="500" x="571" y="191" text-anchor="middle" fill="#3b2fa0">Client B</text>
-    <text font-family="system-ui" font-size="11" x="571" y="209" text-anchor="middle" fill="#6b5cd6">connect()</text>
-    <!-- Arrows -->
-    <path d="M174 195 Q260 195 270 138" fill="none" stroke="#6b5cd6" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#ar)"/>
-    <text font-family="system-ui" font-size="11" x="210" y="183" fill="#6b5cd6">fd=5</text>
-    <path d="M506 195 Q420 195 410 138" fill="none" stroke="#6b5cd6" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#ar)"/>
-    <text font-family="system-ui" font-size="11" x="442" y="183" fill="#6b5cd6">fd=7</text>
-    <!-- Accept labels -->
-    <rect x="185" y="46" width="76" height="22" rx="4" fill="#f8f8f8" stroke="#ccc" stroke-width="1"/>
-    <text font-family="system-ui" font-size="11" x="223" y="57" text-anchor="middle" dominant-baseline="central" fill="#666">accept fd=5</text>
-    <rect x="419" y="46" width="76" height="22" rx="4" fill="#f8f8f8" stroke="#ccc" stroke-width="1"/>
-    <text font-family="system-ui" font-size="11" x="457" y="57" text-anchor="middle" dominant-baseline="central" fill="#666">accept fd=7</text>
+    <text font-family="system-ui" font-size="13" font-weight="500" x="571" y="186" text-anchor="middle" dominant-baseline="central" fill="#3b2fa0">Client B</text>
+    <text font-family="system-ui" font-size="11" x="571" y="204" text-anchor="middle" dominant-baseline="central" fill="#6b5cd6">connect()</text>
+    <!-- Arrows pointing directly to the accepted FDs -->
+    <path d="M 174 195 Q 223 195 223 98" fill="none" stroke="#6b5cd6" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+    <text font-family="system-ui" font-size="11" x="212" y="138" text-anchor="end" fill="#6b5cd6">fd=5</text>
+    <path d="M 506 195 Q 457 195 457 98" fill="none" stroke="#6b5cd6" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+    <text font-family="system-ui" font-size="11" x="468" y="138" text-anchor="start" fill="#6b5cd6">fd=7</text>
+    <!-- Accept labels and their connection to Server -->
+    <rect x="185" y="75" width="76" height="22" rx="4" fill="#f8f8f8" stroke="#ccc" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="223" y="86" text-anchor="middle" dominant-baseline="central" fill="#666">accept fd=5</text>
+    <line x1="270" y1="86" x2="261" y2="86" stroke="#ccc" stroke-width="1"/>
+
+    <rect x="419" y="75" width="76" height="22" rx="4" fill="#f8f8f8" stroke="#ccc" stroke-width="1"/>
+    <text font-family="system-ui" font-size="11" x="457" y="86" text-anchor="middle" dominant-baseline="central" fill="#666">accept fd=7</text>
+    <line x1="410" y1="86" x2="419" y2="86" stroke="#ccc" stroke-width="1"/>
     <text font-family="system-ui" font-size="11" x="340" y="248" text-anchor="middle" fill="#888">Mỗi accept() trả về fd riêng — server giao tiếp với từng client độc lập</text>
   </svg>
 
@@ -191,13 +262,13 @@ h1{font-size:22px;font-weight:500;margin-bottom:4px}
     <!-- Step boxes server -->
     <rect x="60" y="68" width="140" height="30" rx="5" fill="#f8f8f8" stroke="#ddd" stroke-width="1"/>
     <text font-family="system-ui" font-size="11" x="130" y="83" text-anchor="middle" dominant-baseline="central" fill="#1a1a1a">socket(AF_UNIX, SOCK_STREAM)</text>
-    <text font-family="system-ui" font-size="11" x="215" y="83" fill="#888"> → srv_fd</text>
+    <text font-family="system-ui" font-size="11" x="215" y="83" dominant-baseline="central" fill="#888"> → srv_fd</text>
     <rect x="60" y="114" width="140" height="30" rx="5" fill="#f8f8f8" stroke="#ddd" stroke-width="1"/>
     <text font-family="system-ui" font-size="11" x="130" y="129" text-anchor="middle" dominant-baseline="central" fill="#1a1a1a">bind("/tmp/app.sock")</text>
-    <text font-family="system-ui" font-size="11" x="215" y="129" fill="#888"> → socket file trên FS</text>
+    <text font-family="system-ui" font-size="11" x="215" y="129" dominant-baseline="central" fill="#888"> → socket file trên FS</text>
     <rect x="60" y="160" width="140" height="30" rx="5" fill="#f8f8f8" stroke="#ddd" stroke-width="1"/>
     <text font-family="system-ui" font-size="11" x="130" y="175" text-anchor="middle" dominant-baseline="central" fill="#1a1a1a">listen(srv_fd, backlog)</text>
-    <text font-family="system-ui" font-size="11" x="215" y="175" fill="#888"> → kernel tạo accept queue</text>
+    <text font-family="system-ui" font-size="11" x="215" y="175" dominant-baseline="central" fill="#888"> → kernel tạo accept queue</text>
     <!-- Client steps -->
     <rect x="480" y="208" width="140" height="30" rx="5" fill="#f8f8f8" stroke="#ddd" stroke-width="1"/>
     <text font-family="system-ui" font-size="11" x="550" y="223" text-anchor="middle" dominant-baseline="central" fill="#1a1a1a">socket(AF_UNIX, SOCK_STREAM)</text>
@@ -208,7 +279,7 @@ h1{font-size:22px;font-weight:500;margin-bottom:4px}
     <!-- Accept -->
     <rect x="60" y="302" width="140" height="30" rx="5" fill="#d0f0e8" stroke="#2e9e6a" stroke-width="1"/>
     <text font-family="system-ui" font-size="11" x="130" y="317" text-anchor="middle" dominant-baseline="central" fill="#1a5c3a">accept() → cli_fd</text>
-    <text font-family="system-ui" font-size="11" x="215" y="317" fill="#888"> → fd mới cho client này</text>
+    <text font-family="system-ui" font-size="11" x="215" y="317" dominant-baseline="central" fill="#888"> → fd mới cho client này</text>
     <!-- send/recv -->
     <line x1="208" y1="365" x2="480" y2="365" stroke="#378ADD" stroke-width="1.2" marker-end="url(#ar2)" fill="none"/>
     <text font-family="system-ui" font-size="11" x="344" y="357" text-anchor="middle" fill="#185FA5">send(cli_fd, data)</text>

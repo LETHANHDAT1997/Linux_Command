@@ -1,7 +1,77 @@
-
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IPC — Pipe & FIFO Deep Dive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #475569;
+  --color-background-body: #f5f5f0;
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f8f8f8;
+  --color-border-secondary: #ddd;
+  --color-border-tertiary: #e0e0e0;
+  --color-nav-hover: #eee;
+  --border-radius-lg: 10px;
+  --border-radius-md: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-text-primary: #e2e8f0;
+    --color-text-secondary: #94a3b8;
+    --color-background-body: #121212;
+    --color-background-primary: #1e1e1e;
+    --color-background-secondary: #1a1a1a;
+    --color-border-secondary: #444;
+    --color-border-tertiary: #333;
+    --color-nav-hover: #2d2d2d;
+  }
+
+  .api-param-name, .flag-name { color: #58a6ff; }
+}
+
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:var(--font-sans);color:var(--color-text-primary);background:transparent;font-size:14px;line-height:1.7}
+body{font-family:var(--font-sans);color:var(--color-text-primary);background:var(--color-background-body);font-size:15px;line-height:1.7}
+.container{max-width:860px;margin:0 auto;padding:2rem 1.5rem}
+
+/* SVG diagram styles */
+.c-purple rect {
+  fill: #f3e8ff;
+  stroke: #7c3aed;
+}
+.c-teal rect {
+  fill: #ccfbf1;
+  stroke: #0d9488;
+}
+.th {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  fill: var(--color-text-primary);
+}
+.ts {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  fill: var(--color-text-secondary);
+}
+@media (prefers-color-scheme: dark) {
+  .c-purple rect {
+    fill: #2e1065;
+    stroke: #a78bfa;
+  }
+  .c-teal rect {
+    fill: #115e59;
+    stroke: #2dd4bf;
+  }
+}
 
 .chapter{padding:1.5rem 0 0}
 .chapter-title{font-size:18px;font-weight:500;margin-bottom:4px}
@@ -16,12 +86,12 @@ body{font-family:var(--font-sans);color:var(--color-text-primary);background:tra
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
 .grid2>*{min-width:0}
 
-.code-block{background:var(--color-background-secondary);border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:.875rem 1rem;margin:.6rem 0;overflow-x:auto}
-.code-block pre{font-family:var(--font-mono);font-size:12px;line-height:1.65;color:var(--color-text-primary);white-space:pre}
+.code-block{background:#1e1e2e;border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:.875rem 1rem;margin:.6rem 0;overflow-x:auto}
+.code-block pre{font-family:var(--font-mono);font-size:13px;line-height:1.6;color:#cdd6f4;white-space:pre}
 .code-label{font-family:var(--font-mono);font-size:11px;color:var(--color-text-secondary);margin-bottom:.4rem}
 
 .api-box{border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);margin:.75rem 0;overflow:hidden}
-.api-sig{font-family:var(--font-mono);font-size:12.5px;font-weight:500;padding:.75rem 1rem;background:var(--color-background-secondary);border-bottom:.5px solid var(--color-border-tertiary);color:var(--color-text-primary)}
+.api-sig{font-family:var(--font-mono);font-size:13px;font-weight:500;padding:.75rem 1rem;background:var(--color-background-secondary);border-bottom:.5px solid var(--color-border-tertiary);color:var(--color-text-primary)}
 .api-param-row{display:grid;grid-template-columns:140px 1fr;gap:0;border-bottom:.5px solid var(--color-border-tertiary)}
 .api-param-row:last-child{border-bottom:none}
 .api-param-name{font-family:var(--font-mono);font-size:12px;padding:.55rem 1rem;background:var(--color-background-secondary);color:#185FA5;border-right:.5px solid var(--color-border-tertiary)}
@@ -71,6 +141,9 @@ body{font-family:var(--font-sans);color:var(--color-text-primary);background:tra
 
 .divider{height:.5px;background:var(--color-border-tertiary);margin:1.25rem 0}
 </style>
+</head>
+<body>
+<div class="container">
 
 <div class="nav-bar">
   <button class="nav-btn active" onclick="go('pipe',this)">1. Pipe cơ bản</button>
@@ -108,7 +181,7 @@ body{font-family:var(--font-sans);color:var(--color-text-primary);background:tra
     </g>
 
     <!-- fd[1] label -->
-    <text class="ts" x="185" y="88" text-anchor="middle" dominant-baseline="central" fill="#185FA5">write(fd[1])</text>
+    <text font-family="system-ui" font-size="10.5" x="195" y="86" text-anchor="middle" dominant-baseline="central" fill="#185FA5">write(fd[1])</text>
     <line x1="160" y1="100" x2="230" y2="100" stroke="#378ADD" stroke-width="1.5" marker-end="url(#ar)" fill="none"/>
 
     <!-- Kernel buffer -->
@@ -126,7 +199,7 @@ body{font-family:var(--font-sans);color:var(--color-text-primary);background:tra
     <text class="ts" x="340" y="140" text-anchor="middle" dominant-baseline="central">data→ · · · (free)</text>
 
     <!-- fd[0] label -->
-    <text class="ts" x="495" y="88" text-anchor="middle" dominant-baseline="central" fill="#185FA5">read(fd[0])</text>
+    <text font-family="system-ui" font-size="10.5" x="485" y="86" text-anchor="middle" dominant-baseline="central" fill="#185FA5">read(fd[0])</text>
     <line x1="450" y1="100" x2="520" y2="100" stroke="#378ADD" stroke-width="1.5" marker-end="url(#ar)" fill="none"/>
 
     <!-- Process B -->
@@ -137,9 +210,9 @@ body{font-family:var(--font-sans);color:var(--color-text-primary);background:tra
     </g>
 
     <!-- Labels below -->
-    <text class="ts" x="90" y="170" text-anchor="middle" fill="var(--color-text-secondary)">fds[1] = write end</text>
+    <text class="ts" x="90" y="170" text-anchor="middle" fill="var(--color-text-secondary)">fd[1] = write end</text>
     <text class="ts" x="340" y="175" text-anchor="middle" fill="var(--color-text-secondary)">kernel-managed, không cần lock</text>
-    <text class="ts" x="590" y="170" text-anchor="middle" fill="var(--color-text-secondary)">fds[0] = read end</text>
+    <text class="ts" x="590" y="170" text-anchor="middle" fill="var(--color-text-secondary)">fd[0] = read end</text>
   </svg>
 
   <div class="divider"></div>
@@ -250,6 +323,18 @@ int main(void) {
   </div>
 
   <div class="divider"></div>
+  <div class="section-label">Hiểu rõ về EOF (End of File) trong Pipe</div>
+  <div class="card">
+    <div class="card-body">
+      Nhiều người lập trình hay lầm tưởng EOF là một ký tự đặc biệt (như <code>\0</code> hoặc một ký tự ẩn nào đó) được ghi vào cuối luồng dữ liệu. Thực tế:<br><br>
+      — <strong>EOF là một trạng thái (state):</strong> Đây là tín hiệu từ kernel báo rằng không còn nguồn ghi nào có thể đưa thêm dữ liệu vào pipe nữa.<br>
+      — <strong>Cách kernel kích hoạt EOF:</strong> Khi <strong>tất cả các file descriptor ghi (write-end / fds[1])</strong> liên kết với pipe này trên hệ thống đã đóng (kể cả đầu ghi của chính process đang đọc) <strong>VÀ</strong> bộ đệm trong RAM đã hết dữ liệu.<br>
+      — <strong>Hành vi của read():</strong> Khi gặp trạng thái này, hàm <span class="inline-code">read()</span> trả về <strong>0</strong> ngay lập tức thay vì block. Nhận giá trị 0 là cách chương trình nhận biết đã đọc hết file/pipe.<br>
+      — <strong>Lỗi kinh điển:</strong> Nếu bạn quên gọi <span class="inline-code">close(fds[1])</span> ở một process nào đó, kernel thấy "vẫn còn khả năng có dữ liệu ghi vào" nên <span class="inline-code">read()</span> sẽ block vô hạn để chờ thay vì trả về EOF (0).
+    </div>
+  </div>
+
+  <div class="divider"></div>
   <div class="section-label">PIPE_BUF và tính atomic</div>
   <div class="card">
     <div class="card-body">
@@ -344,7 +429,11 @@ int pipe2(int pipefd[2], int flags);</div>
 
   <div class="code-block">
     <div class="code-label">Cách dùng pipe2() đúng chuẩn cho embedded/production</div>
-    <pre>int fds[2];
+    <pre>#include &lt;errno.h&gt;   /* errno, EAGAIN, EWOULDBLOCK */
+#include &lt;fcntl.h&gt;   /* O_CLOEXEC, O_NONBLOCK */
+#include &lt;unistd.h&gt;  /* pipe2(), read() */
+
+int fds[2];
 
 /* pipe2 = pipe + O_CLOEXEC + O_NONBLOCK trong 1 syscall,
    tránh race condition giữa pipe() và fcntl() */
@@ -418,11 +507,11 @@ ssize_t write_all(int fd, const void *buf, size_t n) {
   <div class="grid2">
     <div class="card">
       <div class="card-title">Anonymous pipe</div>
-      <div class="card-body">— Không có tên trên filesystem<br>— Chỉ dùng giữa parent và child (kế thừa fd qua fork)<br>— Mất khi process chết<br>— Tạo bằng <span class="inline-code">pipe()</span></div>
+      <div class="card-body">— Không có tên trên filesystem<br>— Dùng giữa parent và child (kế thừa fd qua fork), hoặc giữa các thread trong cùng process (chia sẻ fd table)<br>— Mất khi tất cả fd đã đóng (process chết → fd tự đóng)<br>— Tạo bằng <span class="inline-code">pipe()</span></div>
     </div>
     <div class="card">
       <div class="card-title">FIFO (Named pipe)</div>
-      <div class="card-body">— Có inode trên filesystem (thường ở /tmp)<br>— Bất kỳ process nào biết path đều dùng được<br>— Tồn tại cho đến khi bị <span class="inline-code">unlink()</span><br>— Tạo bằng <span class="inline-code">mkfifo()</span></div>
+      <div class="card-body">— Có inode trên filesystem (thường ở /tmp)<br>— Bất kỳ process nào biết path đều dùng được, kể cả không liên quan nhau<br>— File FIFO tồn tại trên filesystem cho đến khi bị <span class="inline-code">unlink()</span> (nhưng kernel buffer mất khi tất cả fd đóng)<br>— Tạo bằng <span class="inline-code">mkfifo()</span></div>
     </div>
   </div>
 
@@ -448,7 +537,15 @@ int mkfifo(const char *pathname, mode_t mode);</div>
       Đây là điểm khác biệt lớn nhất so với anonymous pipe. Khi mở FIFO:<br><br>
       — <span class="inline-code">open(path, O_RDONLY)</span>: block cho đến khi có process mở <span class="inline-code">O_WRONLY</span><br>
       — <span class="inline-code">open(path, O_WRONLY)</span>: block cho đến khi có process mở <span class="inline-code">O_RDONLY</span><br><br>
-      Lý do: kernel cần cả 2 đầu sẵn sàng mới có ý nghĩa. Nếu muốn không block: dùng <span class="inline-code">O_NONBLOCK</span>.
+      Lý do: kernel cần cả 2 đầu (reader + writer) sẵn sàng thì pipe mới có ý nghĩa hoạt động.
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <strong style="color:var(--color-text-primary)">Khi dùng O_NONBLOCK với open() trên FIFO:</strong><br><br>
+      — <span class="inline-code">open(path, O_RDONLY | O_NONBLOCK)</span>: thành công ngay lập tức, trả về fd hợp lệ dù chưa có writer. Khi <span class="inline-code">read()</span> sau đó mà chưa có writer, trả về <span class="inline-code">-1</span> với <span class="inline-code">errno = EAGAIN</span>.<br>
+      — <span class="inline-code">open(path, O_WRONLY | O_NONBLOCK)</span>: nếu chưa có reader, open() <strong>thất bại ngay</strong> với <span class="inline-code">errno = ENXIO</span>. Đây là hành vi bất đối xứng so với reader — rất dễ gây nhầm lẫn.<br><br>
+      <strong style="color:var(--color-text-primary)">Lý do bất đối xứng:</strong> Reader mở trước là hợp lý (chờ writer sẵn sàng), nhưng writer mở khi không có reader thì dữ liệu ghi sẽ không ai đọc → kernel từ chối luôn.
     </div>
   </div>
 
@@ -458,6 +555,7 @@ int mkfifo(const char *pathname, mode_t mode);</div>
 #include &lt;fcntl.h&gt;     /* open(), O_RDONLY */
 #include &lt;unistd.h&gt;    /* read(), close(), unlink() */
 #include &lt;stdio.h&gt;
+#include &lt;errno.h&gt;     /* errno, EEXIST */
 
 #define FIFO_PATH "/tmp/cmd_fifo"
 
@@ -547,40 +645,51 @@ int main(void) {
 
   <div class="section-label">Pattern thực tế: pipe giữa main task và sensor task</div>
   <div class="code-block">
-    <div class="code-label">embedded_pipe.c — pattern dùng pipe + select() để không block main loop</div>
-    <pre>#include &lt;unistd.h&gt;
+    <div class="code-label">embedded_pipe.c — pattern dùng pipe + select() để không block main loop (pseudo-code)</div>
+    <pre>/* Đây là pseudo-code minh họa pattern, không phải chương trình hoàn chỉnh.
+   sensor_thread() và main_loop() là 2 hàm riêng biệt chạy ở 2 thread. */
+
+#include &lt;unistd.h&gt;
 #include &lt;fcntl.h&gt;
 #include &lt;signal.h&gt;
 #include &lt;sys/select.h&gt;
+#include &lt;errno.h&gt;
 
-/* Ignore SIGPIPE — quan trọng cho daemon */
-signal(SIGPIPE, SIG_IGN);
+static int fds[2];  /* Pipe fd dùng chung giữa 2 thread */
 
-int fds[2];
-/* O_CLOEXEC: tự đóng khi exec — bắt buộc trên embedded
-   để tránh rò fd khi spawn subprocess (busybox, etc.) */
-pipe2(fds, O_CLOEXEC | O_NONBLOCK);
+/* ── Khởi tạo trong main() ── */
+void init(void) {
+    /* Ignore SIGPIPE — quan trọng cho daemon.
+       Nên dùng sigaction() thay signal() cho portable code,
+       nhưng signal(SIG_IGN) là ngoại lệ an toàn. */
+    signal(SIGPIPE, SIG_IGN);
+
+    /* O_CLOEXEC: tự đóng khi exec — bắt buộc trên embedded
+       để tránh rò fd khi spawn subprocess (busybox, etc.) */
+    pipe2(fds, O_CLOEXEC | O_NONBLOCK);
+}
 
 /* ── Sensor thread ghi kết quả ── */
 void sensor_thread(void) {
-    float temperature = read_sensor();
-    /* Ghi struct nhỏ hơn PIPE_BUF → atomic, an toàn */
-    write(fds[1], &temperature, sizeof(float));
+    float temperature = read_sensor();  /* Hàm giả định đọc cảm biến */
+    /* sizeof(float) = 4 bytes &lt; PIPE_BUF = 4096 → atomic, an toàn.
+       Nhiều thread ghi cùng lúc cũng không bị xen lẫn. */
+    write(fds[1], &amp;temperature, sizeof(float));
 }
 
 /* ── Main loop đọc không blocking bằng select() ── */
 void main_loop(void) {
     fd_set rfds;
-    struct timeval tv = { .tv_sec = 0, .tv_usec = 10000 }; /* 10ms */
+    struct timeval tv = { .tv_sec = 0, .tv_usec = 10000 }; /* 10ms timeout */
 
-    FD_ZERO(&rfds);
-    FD_SET(fds[0], &rfds);
+    FD_ZERO(&amp;rfds);
+    FD_SET(fds[0], &amp;rfds);
 
-    int ret = select(fds[0] + 1, &rfds, NULL, NULL, &tv);
-    if (ret > 0 && FD_ISSET(fds[0], &rfds)) {
+    int ret = select(fds[0] + 1, &amp;rfds, NULL, NULL, &amp;tv);
+    if (ret &gt; 0 &amp;&amp; FD_ISSET(fds[0], &amp;rfds)) {
         float temp;
-        if (read(fds[0], &temp, sizeof(float)) == sizeof(float)) {
-            handle_temperature(temp);
+        if (read(fds[0], &amp;temp, sizeof(float)) == sizeof(float)) {
+            handle_temperature(temp);  /* Hàm giả định xử lý nhiệt độ */
         }
     }
     /* ret == 0 → timeout, không có data, tiếp tục loop bình thường */
@@ -609,34 +718,201 @@ void main_loop(void) {
     </div>
   </div>
 
-  <div class="section-label">Self-pipe trick — wake epoll từ signal handler</div>
-  <div class="card">
-    <div class="card-body">Pattern quan trọng trong embedded daemon: signal handler không được gọi non-async-safe functions, nhưng bạn cần main loop phản ứng với SIGTERM/SIGUSR1. Giải pháp: pipe 1 byte vào một pipe, epoll sẽ thức dậy.</div>
-  </div>
-  <div class="code-block">
-    <div class="code-label">self_pipe_trick.c</div>
-    <pre>static int wakeup_pipe[2];  /* global */
+  <div class="section-label">Self-pipe trick — đánh thức main loop từ signal handler</div>
 
-/* Signal handler — chỉ write() 1 byte, là async-signal-safe */
+  <!-- Bài toán -->
+  <div class="card">
+    <div class="card-title">Bài toán thực tế</div>
+    <div class="card-body">
+      Hãy tưởng tượng bạn viết một <strong style="color:var(--color-text-primary)">daemon</strong> (chương trình chạy nền) trên embedded Linux. Daemon này có một <strong style="color:var(--color-text-primary)">main loop</strong> — vòng lặp chính chạy liên tục, đợi dữ liệu từ sensor, socket, pipe... bằng <span class="inline-code">epoll_wait()</span> hoặc <span class="inline-code">select()</span>.<br><br>
+      Bây giờ bạn muốn: khi hệ thống gửi lệnh <strong style="color:var(--color-text-primary)">tắt daemon</strong> (signal SIGTERM) hoặc lệnh <strong style="color:var(--color-text-primary)">reload cấu hình</strong> (signal SIGUSR1), daemon phải phản ứng ngay lập tức — nhưng <span class="inline-code">epoll_wait()</span> đang ngủ chờ dữ liệu. Làm sao đánh thức nó?
+    </div>
+  </div>
+
+  <!-- Giải thích Signal -->
+  <div class="card">
+    <div class="card-title">Signal là gì?</div>
+    <div class="card-body">
+      <strong style="color:var(--color-text-primary)">Signal</strong> là cơ chế kernel dùng để gửi <strong>thông báo bất đồng bộ</strong> (asynchronous notification) đến một process. "Bất đồng bộ" nghĩa là signal có thể đến <strong>bất kỳ lúc nào</strong> — giữa lúc process đang làm gì đó, thậm chí giữa chừng một dòng code.<br><br>
+      Một số signal phổ biến:<br>
+      — <span class="inline-code">SIGTERM</span> (15): "Hãy tắt đi" — lệnh tắt lịch sự, cho process cơ hội dọn dẹp<br>
+      — <span class="inline-code">SIGKILL</span> (9): "Tắt ngay" — không thể bắt hay bỏ qua, kernel kill ngay lập tức<br>
+      — <span class="inline-code">SIGUSR1</span> (10): Signal do người dùng tự định nghĩa mục đích (thường dùng để reload config)<br>
+      — <span class="inline-code">SIGPIPE</span> (13): "Pipe đã hỏng" — ghi vào pipe mà reader đã đóng<br><br>
+      Gửi signal: <span class="inline-code">kill -SIGTERM 1234</span> (gửi SIGTERM đến process có PID 1234).
+    </div>
+  </div>
+
+  <!-- Signal Handler -->
+  <div class="card">
+    <div class="card-title">Signal handler là gì? Và tại sao nó bị hạn chế?</div>
+    <div class="card-body">
+      <strong style="color:var(--color-text-primary)">Signal handler</strong> là hàm bạn đăng ký để chạy khi process nhận được signal cụ thể. Kernel sẽ <strong>tạm dừng</strong> code đang chạy, nhảy vào signal handler, chạy xong rồi quay lại chỗ cũ.<br><br>
+      <strong style="color:var(--color-text-primary)">Vấn đề nguy hiểm:</strong> Vì signal đến bất kỳ lúc nào, handler có thể chạy <strong>giữa chừng</strong> một hàm khác. Ví dụ:<br><br>
+      — <span class="inline-code">malloc()</span> đang cập nhật cấu trúc heap → signal đến → handler gọi <span class="inline-code">malloc()</span> lần nữa → <strong>corrupt heap</strong> → crash<br>
+      — <span class="inline-code">printf()</span> đang ghi buffer → signal đến → handler gọi <span class="inline-code">printf()</span> → <strong>output lẫn lộn</strong> hoặc deadlock (vì printf dùng mutex nội bộ)<br><br>
+      Vì lý do này, POSIX quy định: trong signal handler, <strong>chỉ được gọi các hàm "async-signal-safe"</strong> — là những hàm đảm bảo an toàn khi bị gọi lại giữa chừng. Danh sách này rất ngắn, chủ yếu là các syscall đơn giản: <span class="inline-code">read()</span>, <span class="inline-code">write()</span>, <span class="inline-code">close()</span>, <span class="inline-code">_exit()</span>...<br><br>
+      <strong style="color:var(--color-text-primary)">Tóm lại:</strong> Trong signal handler, bạn <strong>KHÔNG được</strong> gọi <span class="inline-code">printf()</span>, <span class="inline-code">malloc()</span>, <span class="inline-code">free()</span>, lock mutex, hay bất kỳ hàm phức tạp nào. Nhưng <span class="inline-code">write()</span> thì <strong>AN TOÀN</strong>.
+    </div>
+  </div>
+
+  <!-- Ý tưởng Self-pipe -->
+  <div class="card">
+    <div class="card-title">💡 Ý tưởng Self-pipe trick</div>
+    <div class="card-body">
+      Vì signal handler không được làm gì phức tạp, nhưng <span class="inline-code">write()</span> thì an toàn — ta lợi dụng điều này:<br><br>
+      <strong style="color:var(--color-text-primary)">Bước 1:</strong> Tạo một pipe "nội bộ" (self-pipe) — không để giao tiếp giữa 2 process, mà chỉ để <strong>đánh thức main loop</strong>.<br>
+      <strong style="color:var(--color-text-primary)">Bước 2:</strong> Thêm đầu đọc <span class="inline-code">pipe[0]</span> vào danh sách mà <span class="inline-code">epoll_wait()</span>/<span class="inline-code">select()</span> đang theo dõi.<br>
+      <strong style="color:var(--color-text-primary)">Bước 3:</strong> Trong signal handler, chỉ làm 1 việc: <span class="inline-code">write(pipe[1], &amp;byte, 1)</span> — ghi 1 byte vào pipe.<br>
+      <strong style="color:var(--color-text-primary)">Bước 4:</strong> <span class="inline-code">epoll_wait()</span> đang ngủ → thấy pipe có dữ liệu → thức dậy → main loop đọc byte ra, xử lý signal <strong>một cách an toàn</strong> (vì bây giờ đang ở main loop, không phải trong signal handler — được gọi bất kỳ hàm nào).
+    </div>
+  </div>
+
+  <!-- Sơ đồ luồng -->
+  <svg width="100%" viewBox="0 0 680 180" role="img">
+    <title>Self-pipe trick flow</title>
+    <desc>Signal arrives → handler writes 1 byte to pipe → epoll wakes up → main loop processes signal safely</desc>
+
+    <!-- Step 1: Signal arrives -->
+    <g class="c-purple">
+      <rect x="10" y="50" width="120" height="70" rx="8" stroke-width=".5"/>
+      <text class="th" x="70" y="78" text-anchor="middle" dominant-baseline="central">Signal đến</text>
+      <text class="ts" x="70" y="98" text-anchor="middle" dominant-baseline="central">(SIGTERM...)</text>
+    </g>
+
+    <!-- Arrow 1 -->
+    <defs><marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+    <line x1="130" y1="85" x2="170" y2="85" stroke="#378ADD" stroke-width="1.5" marker-end="url(#ar2)"/>
+
+    <!-- Step 2: Signal handler -->
+    <g class="c-purple">
+      <rect x="170" y="50" width="130" height="70" rx="8" stroke-width=".5"/>
+      <text class="th" x="235" y="75" text-anchor="middle" dominant-baseline="central">Signal handler</text>
+      <text class="ts" x="235" y="95" text-anchor="middle" dominant-baseline="central">write(pipe, 1 byte)</text>
+    </g>
+
+    <!-- Arrow 2 -->
+    <line x1="300" y1="85" x2="340" y2="85" stroke="#378ADD" stroke-width="1.5" marker-end="url(#ar2)"/>
+
+    <!-- Step 3: Pipe -->
+    <g class="c-teal">
+      <rect x="340" y="50" width="100" height="70" rx="8" stroke-width=".5"/>
+      <text class="th" x="390" y="78" text-anchor="middle" dominant-baseline="central">Pipe</text>
+      <text class="ts" x="390" y="98" text-anchor="middle" dominant-baseline="central">(1 byte data)</text>
+    </g>
+
+    <!-- Arrow 3 -->
+    <line x1="440" y1="85" x2="480" y2="85" stroke="#378ADD" stroke-width="1.5" marker-end="url(#ar2)"/>
+
+    <!-- Step 4: epoll wakes up -->
+    <g class="c-teal">
+      <rect x="480" y="50" width="180" height="70" rx="8" stroke-width=".5"/>
+      <text class="th" x="570" y="75" text-anchor="middle" dominant-baseline="central">epoll_wait() thức dậy</text>
+      <text class="ts" x="570" y="95" text-anchor="middle" dominant-baseline="central">→ main loop xử lý an toàn</text>
+    </g>
+
+    <!-- Labels -->
+    <text class="ts" x="70" y="145" text-anchor="middle" fill="var(--color-text-secondary)">Kernel gửi</text>
+    <text class="ts" x="235" y="145" text-anchor="middle" fill="var(--color-text-secondary)">Chỉ gọi write()</text>
+    <text class="ts" x="390" y="145" text-anchor="middle" fill="var(--color-text-secondary)">Trung gian</text>
+    <text class="ts" x="570" y="145" text-anchor="middle" fill="var(--color-text-secondary)">Thoải mái gọi mọi hàm</text>
+  </svg>
+
+  <div class="warn-box"><strong>Tại sao gọi là "self-pipe"?</strong> Vì pipe này không dùng để giao tiếp giữa 2 process — process tự tạo pipe, tự ghi (trong signal handler), tự đọc (trong main loop). Nó như tự nói chuyện với chính mình qua pipe.</div>
+
+  <!-- Code -->
+  <div class="code-block">
+    <div class="code-label">self_pipe_trick.c — ví dụ hoàn chỉnh, chạy được</div>
+    <pre>#include &lt;unistd.h&gt;
+#include &lt;fcntl.h&gt;
+#include &lt;signal.h&gt;
+#include &lt;sys/epoll.h&gt;
+#include &lt;stdio.h&gt;
+
+/* ── Pipe "nội bộ" — global để signal handler truy cập được ── */
+static int wakeup_pipe[2];
+
+/* ── Signal handler ──
+   Hàm này bị gọi BẤT KỲ LÚC NÀO khi process nhận signal.
+   Quy tắc: CHỈ được gọi async-signal-safe functions.
+   write() là async-signal-safe → an toàn. */
 void sig_handler(int sig) {
-    char byte = (char)sig;
-    write(wakeup_pipe[1], &byte, 1);  /* Không check return — intentional */
+    char byte = (char)sig;  /* Gửi số hiệu signal qua pipe */
+    write(wakeup_pipe[1], &amp;byte, 1);
+    /* Không kiểm tra return value — cố ý.
+       Nếu pipe đầy (gần như không thể xảy ra), write() trả -1
+       nhưng không crash. Trong signal handler, càng ít code càng tốt. */
 }
 
 int main(void) {
+    /* ── Bước 1: Tạo pipe non-blocking ── */
     pipe2(wakeup_pipe, O_CLOEXEC | O_NONBLOCK);
+    /* O_NONBLOCK: để write() trong signal handler không bao giờ block.
+       O_CLOEXEC: tự đóng fd khi gọi exec(), tránh rò rỉ fd. */
 
+    /* ── Bước 2: Đăng ký signal handler ──
+       sigaction() là cách chuẩn, tốt hơn signal().
+       Khi process nhận SIGTERM hoặc SIGUSR1, kernel sẽ gọi sig_handler(). */
     struct sigaction sa = { .sa_handler = sig_handler };
-    sigaction(SIGTERM, &sa, NULL);
-    sigaction(SIGUSR1, &sa, NULL);
+    sigemptyset(&amp;sa.sa_mask);  /* Không block thêm signal nào khi handler chạy */
+    sa.sa_flags = 0;
+    sigaction(SIGTERM, &amp;sa, NULL);  /* Đăng ký cho SIGTERM */
+    sigaction(SIGUSR1, &amp;sa, NULL);  /* Đăng ký cho SIGUSR1 */
 
-    /* Thêm wakeup_pipe[0] vào epoll */
-    epoll_ctl(epfd, EPOLL_CTL_ADD, wakeup_pipe[0], &ev);
+    /* ── Bước 3: Tạo epoll và thêm pipe vào ──
+       epoll là cơ chế Linux dùng để "chờ" nhiều fd cùng lúc.
+       epoll_wait() sẽ ngủ cho đến khi ÍT NHẤT 1 fd có dữ liệu.
+       Ta thêm wakeup_pipe[0] vào epoll → khi signal handler ghi 1 byte
+       vào wakeup_pipe[1], epoll_wait() sẽ thức dậy. */
+    int epfd = epoll_create1(EPOLL_CLOEXEC);
+    struct epoll_event ev = {
+        .events = EPOLLIN,              /* Theo dõi sự kiện "có data để đọc" */
+        .data.fd = wakeup_pipe[0]       /* fd cần theo dõi */
+    };
+    epoll_ctl(epfd, EPOLL_CTL_ADD, wakeup_pipe[0], &amp;ev);
 
-    /* Khi nhận signal → pipe có data → epoll wakeup → đọc byte → xử lý */
-    /* Đây là pattern chuẩn cho event-driven daemon trên Linux */
+    printf("Daemon dang chay (PID=%d). Thu gui signal:\n", getpid());
+    printf("  kill -SIGUSR1 %d   (reload)\n", getpid());
+    printf("  kill -SIGTERM %d   (shutdown)\n\n", getpid());
+
+    /* ── Bước 4: Main loop ── */
+    struct epoll_event events[4];
+    for (;;) {
+        /* epoll_wait() ngủ ở đây cho đến khi có event.
+           -1 = chờ vô hạn (không timeout).
+           Khi signal đến → handler ghi byte vào pipe → epoll thức dậy. */
+        int n = epoll_wait(epfd, events, 4, -1);
+
+        for (int i = 0; i &lt; n; i++) {
+            if (events[i].data.fd == wakeup_pipe[0]) {
+                /* Pipe có data → chắc chắn signal handler vừa ghi byte */
+                char sig_byte;
+                read(wakeup_pipe[0], &amp;sig_byte, 1);
+
+                /* BÂY GIỜ ta đang ở main loop, KHÔNG phải signal handler.
+                   → Thoải mái gọi printf, malloc, free, log... */
+                if (sig_byte == SIGTERM) {
+                    printf("Nhan SIGTERM → shutdown...\n");
+                    goto cleanup;
+                } else if (sig_byte == SIGUSR1) {
+                    printf("Nhan SIGUSR1 → reload config...\n");
+                    /* Gọi reload_config() hay bất kỳ hàm phức tạp nào ở đây */
+                }
+            }
+            /* Nếu epoll theo dõi thêm fd khác (socket, sensor pipe...),
+               xử lý chúng ở đây tương tự. */
+        }
+    }
+cleanup:
+    close(epfd);
+    close(wakeup_pipe[0]);
+    close(wakeup_pipe[1]);
+    printf("Daemon da thoat.\n");
+    return 0;
 }</pre>
   </div>
+
+  <div class="info-box"><strong>Lưu ý:</strong> Trên Linux ≥ 2.6.22, có thể dùng <span class="inline-code">signalfd()</span> thay thế self-pipe trick — cũng trả về fd để dùng với epoll, nhưng API gọn hơn. Tuy nhiên self-pipe trick là portable hơn (hoạt động trên mọi POSIX system, kể cả macOS, FreeBSD).</div>
 
   <div class="emb-box"><strong>Bước tiếp theo:</strong> Sau khi nắm vững Pipe & FIFO, IPC tiếp theo nên học là <strong>Unix Domain Socket</strong> — cho phép bidirectional, nhiều client, và truyền file descriptor. Đặc biệt hữu ích cho kiến trúc daemon-client trong embedded Linux.</div>
 </div>
@@ -650,3 +926,6 @@ function go(id, btn) {
   btn.classList.add('active');
 }
 </script>
+</div>
+</body>
+</html>

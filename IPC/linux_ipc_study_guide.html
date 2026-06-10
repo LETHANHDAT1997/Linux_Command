@@ -1,10 +1,40 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Linux IPC — Tài liệu nghiên cứu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #475569;
+  --color-background-body: #f5f5f0;
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f8f8f8;
+  --color-border-tertiary: #e0e0e0;
+  --border-radius-lg: 10px;
+  --border-radius-md: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-text-primary: #e2e8f0;
+    --color-text-secondary: #94a3b8;
+    --color-background-primary: #1e1e1e;
+    --color-background-secondary: #1a1a1a;
+    --color-background-body: #121212;
+    --color-border-tertiary: #333;
+  }
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: var(--font-sans); color: var(--color-text-primary); background: transparent; }
+body { font-family: var(--font-sans); color: var(--color-text-primary); background: var(--color-background-body); font-size: 15px; line-height: 1.7; }
+.container { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
 
 .header {
   padding: 2rem 0 1.5rem;
@@ -72,14 +102,14 @@ body { font-family: var(--font-sans); color: var(--color-text-primary); backgrou
 
 /* Code blocks */
 .code-wrap {
-  background: var(--color-background-secondary);
+  background: #1e1e2e;
   border: 0.5px solid var(--color-border-tertiary);
   border-radius: var(--border-radius-md);
   padding: 1rem; margin: 10px 0; overflow-x: auto;
 }
 .code-wrap pre {
-  font-family: var(--font-mono); font-size: 12px;
-  line-height: 1.6; color: var(--color-text-primary);
+  font-family: var(--font-mono); font-size: 13px;
+  line-height: 1.6; color: #cdd6f4;
   white-space: pre; tab-size: 4;
 }
 .code-label {
@@ -174,6 +204,7 @@ body { font-family: var(--font-sans); color: var(--color-text-primary); backgrou
 </style>
 </head>
 <body>
+<div class="container">
 
 <div class="header">
   <h1>Linux IPC — Tài liệu nghiên cứu</h1>
@@ -224,9 +255,9 @@ body { font-family: var(--font-sans); color: var(--color-text-primary); backgrou
       <text font-family="var(--font-sans)" font-size="12" font-weight="500" x="115" y="183" text-anchor="middle" fill="#0C447C">Message Queue</text>
 
       <!-- Network socket note -->
-      <rect x="46" y="206" width="138" height="36" rx="6" fill="#F1EFE8" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
-      <text font-family="var(--font-sans)" font-size="11" x="115" y="228" text-anchor="middle" fill="var(--color-text-secondary)">Network Socket</text>
-      <text font-family="var(--font-sans)" font-size="10" x="115" y="242" text-anchor="middle" fill="var(--color-text-secondary)">(TCP/UDP — cross-host)</text>
+      <rect x="46" y="206" width="138" height="42" rx="6" fill="#F1EFE8" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="11" x="115" y="221" text-anchor="middle" fill="var(--color-text-secondary)">Network Socket</text>
+      <text font-family="var(--font-sans)" font-size="10" x="115" y="237" text-anchor="middle" fill="var(--color-text-secondary)">(TCP/UDP — cross-host)</text>
 
       <!-- Shared Memory group -->
       <rect x="235" y="40" width="170" height="200" rx="10" fill="var(--color-background-secondary)" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
@@ -238,9 +269,9 @@ body { font-family: var(--font-sans); color: var(--color-text-primary); backgrou
       <rect x="251" y="114" width="138" height="36" rx="6" fill="#E1F5EE" stroke="#0F6E56" stroke-width="0.5"/>
       <text font-family="var(--font-sans)" font-size="12" font-weight="500" x="320" y="137" text-anchor="middle" fill="#085041">SysV shmget</text>
 
-      <rect x="251" y="160" width="138" height="36" rx="6" fill="#F1EFE8" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
-      <text font-family="var(--font-sans)" font-size="11" x="320" y="178" text-anchor="middle" fill="var(--color-text-secondary)">+ Semaphore</text>
-      <text font-family="var(--font-sans)" font-size="10" x="320" y="192" text-anchor="middle" fill="var(--color-text-secondary)">(đồng bộ hoá)</text>
+      <rect x="251" y="160" width="138" height="42" rx="6" fill="#F1EFE8" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
+      <text font-family="var(--font-sans)" font-size="11" x="320" y="175" text-anchor="middle" fill="var(--color-text-secondary)">+ Semaphore</text>
+      <text font-family="var(--font-sans)" font-size="10" x="320" y="191" text-anchor="middle" fill="var(--color-text-secondary)">(đồng bộ hoá)</text>
 
       <!-- Signaling group -->
       <rect x="440" y="40" width="170" height="200" rx="10" fill="var(--color-background-secondary)" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>
@@ -963,5 +994,6 @@ function switchTab(id, btn) {
   btn.classList.add('active');
 }
 </script>
+</div>
 </body>
 </html>
