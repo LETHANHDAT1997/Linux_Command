@@ -639,7 +639,427 @@ int main(void) {
     </div>
     <div>
       <div class="warn-box"><strong>Không có /proc/sys/fs/pipe-max-size trên kernel cũ:</strong> Buildroot với kernel &lt; 3.5 có thể không có F_GETPIPE_SZ / F_SETPIPE_SZ. Kiểm tra bằng <span class="inline-code">uname -r</span> trước khi dùng.</div>
-      <div class="warn-box" style="margin-top:.75rem"><strong>SIGPIPE có thể kill daemon:</strong> Nếu daemon ghi vào pipe mà reader đã chết, SIGPIPE kill daemon. Luôn ignore hoặc handle SIGPIPE trong daemon code.</div>
+      <div class="warn-box" style="margin-top:.75rem"><strong>⚠ SIGPIPE có thể kill daemon:</strong> Nếu daemon ghi vào pipe/FIFO mà reader đã chết, kernel gửi SIGPIPE → daemon bị kill ngay lập tức. Đây là nguyên nhân crash phổ biến trên embedded. Xem phần giải thích chi tiết bên dưới ↓</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SIGPIPE DEEP DIVE SECTION                                      -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="section-label">⚠ SIGPIPE có thể kill daemon — giải thích chi tiết</div>
+
+  <!-- Bước 1: SIGPIPE là gì -->
+  <div class="card">
+    <div class="card-title">SIGPIPE là gì? Tại sao kernel lại gửi nó?</div>
+    <div class="card-body">
+      Hãy tưởng tượng bạn đang <strong style="color:var(--color-text-primary)">đổ nước vào một cái ống</strong>, nhưng đầu kia của ống đã bị <strong style="color:var(--color-text-primary)">bịt kín</strong> (hoặc ống bị rút ra). Nước không có nơi nào để đi. Trong thế giới thực, bạn sẽ thấy nước trào ngược. Trong Linux, kernel xử lý tình huống tương tự bằng cách gửi <span class="inline-code">SIGPIPE</span> — một signal báo rằng <strong>"ống đã hỏng, không còn ai ở đầu kia để đọc dữ liệu của bạn"</strong>.<br><br>
+
+      Cụ thể, <span class="inline-code">SIGPIPE</span> xảy ra khi:<br>
+      — Process A gọi <span class="inline-code">write()</span> ghi dữ liệu vào <strong style="color:var(--color-text-primary)">pipe hoặc FIFO</strong> (cả hai đều áp dụng)<br>
+      — Nhưng <strong style="color:var(--color-text-primary)">tất cả các đầu đọc (read-end)</strong> của pipe/FIFO đó đã bị đóng — tức là không còn bất kỳ process nào đang mở fd đọc<br>
+      — Kernel phát hiện điều này và gửi <span class="inline-code">SIGPIPE</span> (signal số 13) đến process đang ghi<br><br>
+
+      <strong style="color:var(--color-text-primary)">Áp dụng cho cả Pipe lẫn FIFO:</strong> Nhiều người mới học lầm tưởng SIGPIPE chỉ xảy ra với anonymous pipe. Thực tế, <strong>FIFO (named pipe) cũng bị SIGPIPE</strong> theo cơ chế hoàn toàn giống nhau. Lý do: sau khi cả hai đầu đã <span class="inline-code">open()</span> xong, pipe và FIFO dùng chung cùng một cấu trúc <span class="inline-code">struct pipe_inode_info</span> trong kernel — cùng buffer, cùng logic write/read, cùng cách kiểm tra "còn reader hay không". Sự khác biệt duy nhất giữa pipe và FIFO chỉ là <em>cách tạo kết nối ban đầu</em> (<span class="inline-code">pipe()</span> vs <span class="inline-code">mkfifo()</span> + <span class="inline-code">open()</span>), còn sau đó hành vi hoàn toàn đồng nhất.<br><br>
+
+      <strong style="color:var(--color-text-primary)">Hành vi mặc định:</strong> Khi process nhận <span class="inline-code">SIGPIPE</span> mà <strong>không có signal handler</strong>, kernel sẽ <strong style="color:var(--color-text-primary)">kill process ngay lập tức</strong> — không có cảnh báo, không có log, không có cơ hội dọn dẹp. Process chết im lặng.<br><br>
+
+      <strong style="color:var(--color-text-primary)">Tại sao kernel thiết kế như vậy?</strong> Đây là thiết kế có chủ đích từ UNIX ban đầu. Khi bạn chạy lệnh như <span class="inline-code">cat bigfile.txt | head -5</span>, <span class="inline-code">head</span> chỉ đọc 5 dòng rồi thoát (đóng read-end). Nếu không có SIGPIPE, <span class="inline-code">cat</span> sẽ tiếp tục đọc và ghi toàn bộ file — lãng phí tài nguyên. SIGPIPE giúp <span class="inline-code">cat</span> dừng ngay khi không còn ai cần dữ liệu.
+    </div>
+  </div>
+
+  <!-- Tại sao nguy hiểm cho daemon -->
+  <div class="card">
+    <div class="card-title"><span class="badge badge-amber">Nguy hiểm</span> Tại sao SIGPIPE đặc biệt nguy hiểm cho daemon?</div>
+    <div class="card-body">
+      Với chương trình thông thường (như <span class="inline-code">cat</span>, <span class="inline-code">grep</span>), bị kill bởi SIGPIPE là chấp nhận được — chương trình sẽ được chạy lại. Nhưng <strong style="color:var(--color-text-primary)">daemon</strong> (chương trình chạy nền liên tục) thì khác:<br><br>
+
+      <strong style="color:var(--color-text-primary)">Kịch bản thực tế trên embedded Linux:</strong><br>
+      — Bạn có một daemon <span class="inline-code">sensor_daemon</span> đọc cảm biến nhiệt độ mỗi giây<br>
+      — Daemon ghi kết quả vào FIFO <span class="inline-code">/tmp/sensor_fifo</span> để chương trình giám sát đọc<br>
+      — Chương trình giám sát crash hoặc bị restart → FIFO không còn reader<br>
+      — <span class="inline-code">sensor_daemon</span> ghi dữ liệu tiếp → nhận SIGPIPE → <strong style="color:var(--color-text-primary)">daemon chết ngay lập tức</strong><br>
+      — Hệ thống mất hoàn toàn khả năng đọc cảm biến!<br><br>
+
+      Điều tồi tệ hơn: <strong>daemon chết im lặng</strong> — không có log "tôi bị kill", không có coredump, <span class="inline-code">dmesg</span> không ghi gì. Bạn chỉ biết khi phát hiện daemon không chạy nữa. Trên thiết bị nhúng không có màn hình, việc debug lỗi này cực kỳ khó khăn.
+    </div>
+  </div>
+
+  <!-- Sơ đồ minh họa -->
+  <svg width="100%" viewBox="0 0 700 230" role="img">
+    <title>SIGPIPE flow diagram</title>
+    <desc>Daemon ghi vào pipe → reader đã chết → kernel gửi SIGPIPE → daemon bị kill</desc>
+
+    <!-- Daemon (writer) -->
+    <g class="c-teal">
+      <rect x="10" y="55" width="140" height="75" rx="8" stroke-width=".5"/>
+      <text class="th" x="80" y="82" text-anchor="middle" dominant-baseline="central">sensor_daemon</text>
+      <text class="ts" x="80" y="102" text-anchor="middle" dominant-baseline="central">write(fd, data)</text>
+    </g>
+
+    <!-- Arrow 1 -->
+    <line x1="150" y1="92" x2="200" y2="92" stroke="#378ADD" stroke-width="1.5" marker-end="url(#ar)"/>
+
+    <!-- Pipe/FIFO -->
+    <g class="c-teal">
+      <rect x="200" y="55" width="120" height="75" rx="8" stroke-width=".5"/>
+      <text class="th" x="260" y="82" text-anchor="middle" dominant-baseline="central">Pipe / FIFO</text>
+      <text class="ts" x="260" y="102" text-anchor="middle" dominant-baseline="central">(kernel buffer)</text>
+    </g>
+
+    <!-- Arrow 2 with X -->
+    <line x1="320" y1="92" x2="370" y2="92" stroke="#dc2626" stroke-width="1.5"/>
+    <text font-family="var(--font-sans)" font-size="20" x="380" y="98" fill="#dc2626" font-weight="700">✕</text>
+
+    <!-- Dead reader -->
+    <g>
+      <rect x="400" y="55" width="130" height="75" rx="8" fill="none" stroke="#dc2626" stroke-width=".5" stroke-dasharray="6,3"/>
+      <text class="th" x="465" y="82" text-anchor="middle" dominant-baseline="central" fill="#dc2626">Reader</text>
+      <text class="ts" x="465" y="102" text-anchor="middle" dominant-baseline="central" fill="#dc2626">(đã chết / đóng fd)</text>
+    </g>
+
+    <!-- SIGPIPE arrow going back to daemon -->
+    <path d="M 260 130 L 260 175 L 80 175 L 80 130" fill="none" stroke="#dc2626" stroke-width="1.5" marker-end="url(#ar)" stroke-dasharray="6,3"/>
+    <text font-family="var(--font-sans)" font-size="12" font-weight="600" x="170" y="192" text-anchor="middle" fill="#dc2626">Kernel gửi SIGPIPE (signal 13)</text>
+
+    <!-- Result -->
+    <g class="c-purple">
+      <rect x="545" y="55" width="145" height="75" rx="8" stroke-width=".5"/>
+      <text class="th" x="617" y="78" text-anchor="middle" dominant-baseline="central">Kết quả</text>
+      <text class="ts" x="617" y="96" text-anchor="middle" dominant-baseline="central">Mặc định: daemon</text>
+      <text class="ts" x="617" y="112" text-anchor="middle" dominant-baseline="central" fill="#dc2626" font-weight="600">BỊ KILL NGAY</text>
+    </g>
+    <line x1="530" y1="92" x2="545" y2="92" stroke="#dc2626" stroke-width="1.5" marker-end="url(#ar)"/>
+
+    <!-- Labels -->
+    <text class="ts" x="80" y="22" text-anchor="middle" fill="var(--color-text-secondary)">① Daemon ghi data</text>
+    <text class="ts" x="260" y="22" text-anchor="middle" fill="var(--color-text-secondary)">② Data đi vào pipe</text>
+    <text class="ts" x="465" y="22" text-anchor="middle" fill="#dc2626">③ Không ai đọc!</text>
+    <text class="ts" x="617" y="22" text-anchor="middle" fill="#dc2626">④ Daemon chết</text>
+  </svg>
+
+  <!-- Chương trình demo vấn đề -->
+  <div class="card">
+    <div class="card-title"><span class="badge badge-amber">Demo</span> Chương trình minh họa vấn đề SIGPIPE (chạy được)</div>
+    <div class="card-body">
+      Chương trình dưới đây mô phỏng kịch bản thực tế: process cha (đóng vai reader) đóng pipe rồi child (đóng vai daemon/writer) tiếp tục ghi → bị SIGPIPE kill. Bạn có thể copy, compile và chạy ngay.
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-label">sigpipe_problem.c — compile: gcc sigpipe_problem.c -o sigpipe_problem</div>
+    <pre>/*
+ * sigpipe_problem.c
+ * Minh họa: SIGPIPE kill process khi ghi vào pipe mà reader đã đóng.
+ *
+ * Kịch bản:
+ *   1. Tạo pipe, fork child (writer) và parent (reader)
+ *   2. Parent đọc 1 message rồi ĐÓNG pipe (giả lập reader crash)
+ *   3. Child tiếp tục ghi → nhận SIGPIPE → bị kill
+ *
+ * Compile: gcc sigpipe_problem.c -o sigpipe_problem
+ * Chạy:    ./sigpipe_problem
+ */
+
+#include &lt;unistd.h&gt;     /* pipe(), fork(), read(), write(), close() */
+#include &lt;stdio.h&gt;      /* printf(), perror() */
+#include &lt;stdlib.h&gt;     /* exit() */
+#include &lt;string.h&gt;     /* strlen() */
+#include &lt;sys/wait.h&gt;   /* waitpid(), WIFSIGNALED, WTERMSIG */
+#include &lt;signal.h&gt;     /* SIGPIPE */
+
+int main(void) {
+    int fds[2];
+
+    if (pipe(fds) == -1) {
+        perror("pipe");
+        exit(1);
+    }
+
+    pid_t pid = fork();
+    if (pid == -1) {
+        perror("fork");
+        exit(1);
+    }
+
+    if (pid == 0) {
+        /* ═══ CHILD PROCESS — đóng vai daemon (writer) ═══ */
+        close(fds[0]);   /* Đóng read-end, child chỉ ghi */
+
+        printf("[Child/Writer] Bat dau gui du lieu...\n");
+
+        /* Ghi message lần 1 — thành công vì parent vẫn đang đọc */
+        const char *msg1 = "Nhiet do: 35.2°C";
+        ssize_t n = write(fds[1], msg1, strlen(msg1));
+        printf("[Child/Writer] Lan 1: ghi %zd bytes OK\n", n);
+
+        /* Chờ 1 giây để parent kịp đọc xong rồi đóng pipe */
+        sleep(1);
+
+        /* Ghi message lần 2 — THẤT BẠI!
+           Parent đã đóng read-end → không còn reader nào
+           → kernel gửi SIGPIPE → child bị KILL ngay dòng này
+           → printf() bên dưới KHÔNG BAO GIỜ chạy! */
+        const char *msg2 = "Nhiet do: 36.1°C";
+        printf("[Child/Writer] Lan 2: dang ghi...\n");
+        n = write(fds[1], msg2, strlen(msg2));
+
+        /* ↓↓↓ Code bên dưới KHÔNG BAO GIỜ thực thi ↓↓↓ */
+        printf("[Child/Writer] Lan 2: ghi %zd bytes\n", n);
+        printf("[Child/Writer] Thoat binh thuong.\n");
+
+        close(fds[1]);
+        exit(0);
+
+    } else {
+        /* ═══ PARENT PROCESS — đóng vai reader (monitoring app) ═══ */
+        close(fds[1]);   /* Đóng write-end, parent chỉ đọc */
+
+        /* Đọc 1 message */
+        char buf[128] = {0};
+        ssize_t n = read(fds[0], buf, sizeof(buf) - 1);
+        if (n &gt; 0) {
+            printf("[Parent/Reader] Nhan duoc: \"%s\"\n", buf);
+        }
+
+        /* Giả lập: monitoring app crash → đóng pipe */
+        printf("[Parent/Reader] Dong pipe (gia lap crash)...\n");
+        close(fds[0]);
+
+        /* Chờ child kết thúc và kiểm tra nguyên nhân */
+        int status;
+        waitpid(pid, &amp;status, 0);
+
+        if (WIFSIGNALED(status)) {
+            int sig = WTERMSIG(status);
+            printf("\n[Parent] === KET QUA ===\n");
+            printf("[Parent] Child bi KILL boi signal %d", sig);
+            if (sig == SIGPIPE) {
+                printf(" (SIGPIPE)\n");
+                printf("[Parent] Day chinh la van de! Daemon bi giet\n");
+                printf("[Parent] chi vi reader dong pipe.\n");
+            } else {
+                printf("\n");
+            }
+        } else {
+            printf("[Parent] Child thoat binh thuong (code=%d)\n",
+                   WEXITSTATUS(status));
+        }
+    }
+
+    return 0;
+}</pre>
+  </div>
+
+  <div class="info-box"><strong>Kết quả khi chạy:</strong><br>
+  <span class="inline-code">[Child/Writer] Bat dau gui du lieu...</span><br>
+  <span class="inline-code">[Child/Writer] Lan 1: ghi 18 bytes OK</span><br>
+  <span class="inline-code">[Parent/Reader] Nhan duoc: "Nhiet do: 35.2°C"</span><br>
+  <span class="inline-code">[Parent/Reader] Dong pipe (gia lap crash)...</span><br>
+  <span class="inline-code">[Child/Writer] Lan 2: dang ghi...</span><br><br>
+  <span class="inline-code">[Parent] === KET QUA ===</span><br>
+  <span class="inline-code">[Parent] Child bi KILL boi signal 13 (SIGPIPE)</span><br>
+  <span class="inline-code">[Parent] Day chinh la van de! Daemon bi giet</span><br>
+  <span class="inline-code">[Parent] chi vi reader dong pipe.</span><br><br>
+  Chú ý: dòng <strong>"Thoat binh thuong"</strong> trong child <strong>không bao giờ được in ra</strong>. Child bị kill ngay tại lệnh <span class="inline-code">write()</span>, không kịp chạy bất kỳ code nào phía sau — kể cả code dọn dẹp tài nguyên.
+  </div>
+
+  <!-- Giải pháp -->
+  <div class="card">
+    <div class="card-title"><span class="badge badge-teal">Giải pháp</span> 3 cách xử lý SIGPIPE trong daemon</div>
+    <div class="card-body">
+      <strong style="color:var(--color-text-primary)">Cách 1 — Ignore toàn cục (đơn giản nhất, phổ biến nhất):</strong><br>
+      Gọi <span class="inline-code">signal(SIGPIPE, SIG_IGN)</span> ngay đầu <span class="inline-code">main()</span>. Khi đó, thay vì bị kill, <span class="inline-code">write()</span> sẽ trả về <span class="inline-code">-1</span> và set <span class="inline-code">errno = EPIPE</span>. Daemon kiểm tra errno để biết pipe đã hỏng và xử lý phù hợp (reconnect, retry, log lỗi...).<br><br>
+
+      <strong style="color:var(--color-text-primary)">Cách 2 — Dùng sigaction() (chuẩn POSIX):</strong><br>
+      Giống cách 1 nhưng dùng <span class="inline-code">sigaction()</span> thay <span class="inline-code">signal()</span>. <span class="inline-code">sigaction()</span> có hành vi rõ ràng hơn trên mọi hệ thống POSIX, được khuyến khích trong production code.<br><br>
+
+      <strong style="color:var(--color-text-primary)">Cách 3 — Dùng MSG_NOSIGNAL (chỉ cho socket):</strong><br>
+      Khi ghi vào socket (không phải pipe), có thể dùng <span class="inline-code">send(fd, buf, len, MSG_NOSIGNAL)</span> thay <span class="inline-code">write()</span> để suppress SIGPIPE cho từng lệnh ghi. Cách này không áp dụng cho pipe/FIFO.
+    </div>
+  </div>
+
+  <!-- Chương trình giải pháp hoàn chỉnh -->
+  <div class="code-block">
+    <div class="code-label">sigpipe_solution.c — compile: gcc sigpipe_solution.c -o sigpipe_solution</div>
+    <pre>/*
+ * sigpipe_solution.c
+ * Minh họa: Cách xử lý SIGPIPE đúng cách trong daemon.
+ *
+ * Giải pháp:
+ *   1. Ignore SIGPIPE bằng sigaction() ngay đầu main()
+ *   2. Kiểm tra errno == EPIPE sau mỗi write()
+ *   3. Daemon tiếp tục sống, log lỗi, và có thể retry
+ *
+ * Compile: gcc sigpipe_solution.c -o sigpipe_solution
+ * Chạy:    ./sigpipe_solution
+ */
+
+#include &lt;unistd.h&gt;     /* pipe(), fork(), read(), write(), close() */
+#include &lt;stdio.h&gt;      /* printf(), perror() */
+#include &lt;stdlib.h&gt;     /* exit() */
+#include &lt;string.h&gt;     /* strlen(), strerror() */
+#include &lt;sys/wait.h&gt;   /* waitpid(), WIFEXITED, WEXITSTATUS */
+#include &lt;signal.h&gt;     /* sigaction(), SIGPIPE, SIG_IGN */
+#include &lt;errno.h&gt;      /* errno, EPIPE */
+
+/*
+ * write_safe() — wrapper an toàn cho write()
+ *
+ * Sau khi ignore SIGPIPE, write() trả -1 với errno=EPIPE
+ * thay vì kill process. Hàm này kiểm tra và log lỗi rõ ràng.
+ *
+ * Trả về: số bytes ghi được, hoặc -1 nếu lỗi.
+ */
+ssize_t write_safe(int fd, const void *buf, size_t len) {
+    ssize_t n = write(fd, buf, len);
+    if (n == -1) {
+        if (errno == EPIPE) {
+            /* Pipe broken — reader đã đóng.
+               Đây KHÔNG phải lỗi nghiêm trọng, chỉ cần log và xử lý. */
+            fprintf(stderr, "[WARN] Pipe broken (EPIPE) — "
+                            "reader da dong ket noi.\n");
+        } else {
+            /* Lỗi khác — có thể nghiêm trọng */
+            fprintf(stderr, "[ERROR] write() that bai: %s\n",
+                    strerror(errno));
+        }
+    }
+    return n;
+}
+
+int main(void) {
+    /* ════════════════════════════════════════════════════════
+     * BƯỚC QUAN TRỌNG NHẤT: Ignore SIGPIPE ngay đầu main()
+     *
+     * Dùng sigaction() thay signal() vì:
+     * - Hành vi rõ ràng, nhất quán trên mọi POSIX system
+     * - signal() có thể reset handler sau lần gọi đầu (trên một số OS cũ)
+     * - sigaction() cho phép kiểm soát sa_flags chi tiết
+     *
+     * Sau dòng này, SIGPIPE không còn kill process nữa.
+     * Thay vào đó, write() sẽ trả -1 với errno = EPIPE.
+     * ════════════════════════════════════════════════════════ */
+    struct sigaction sa_ignore;
+    sa_ignore.sa_handler = SIG_IGN;       /* Ignore signal */
+    sigemptyset(&amp;sa_ignore.sa_mask);     /* Không block thêm signal nào */
+    sa_ignore.sa_flags = 0;
+    if (sigaction(SIGPIPE, &amp;sa_ignore, NULL) == -1) {
+        perror("sigaction");
+        exit(1);
+    }
+    printf("[Daemon] Da ignore SIGPIPE — an toan.\n\n");
+
+    /* ── Tạo pipe và fork (giống ví dụ trước) ── */
+    int fds[2];
+    if (pipe(fds) == -1) {
+        perror("pipe");
+        exit(1);
+    }
+
+    pid_t pid = fork();
+    if (pid == -1) {
+        perror("fork");
+        exit(1);
+    }
+
+    if (pid == 0) {
+        /* ═══ CHILD PROCESS — đóng vai daemon (writer) ═══ */
+        close(fds[0]);
+
+        printf("[Daemon] Bat dau gui du lieu...\n");
+
+        /* Lần 1 — thành công */
+        const char *msg1 = "Nhiet do: 35.2C";
+        ssize_t n = write_safe(fds[1], msg1, strlen(msg1));
+        if (n &gt; 0) {
+            printf("[Daemon] Lan 1: ghi %zd bytes OK\n", n);
+        }
+
+        /* Chờ reader đóng pipe */
+        sleep(1);
+
+        /* Lần 2 — reader đã đóng, NHƯNG daemon KHÔNG bị kill!
+           write_safe() trả -1 và log warning thay vì crash. */
+        const char *msg2 = "Nhiet do: 36.1C";
+        printf("[Daemon] Lan 2: dang ghi...\n");
+        n = write_safe(fds[1], msg2, strlen(msg2));
+
+        if (n == -1 &amp;&amp; errno == EPIPE) {
+            /* Daemon vẫn sống! Có thể xử lý thông minh: */
+            printf("[Daemon] Pipe bi dong. Xu ly:\n");
+            printf("[Daemon]   → Log canh bao\n");
+            printf("[Daemon]   → Cho reader ket noi lai\n");
+            printf("[Daemon]   → Tiep tuc cac task khac\n");
+        }
+
+        /* ↓↓↓ Code bên dưới VẪN CHẠY ĐƯỢC (khác với ví dụ trước) ↓↓↓ */
+        printf("[Daemon] Van con song! Dang don dep...\n");
+        close(fds[1]);
+
+        printf("[Daemon] Thoat binh thuong.\n");
+        exit(0);
+
+    } else {
+        /* ═══ PARENT PROCESS — đóng vai reader ═══ */
+        close(fds[1]);
+
+        char buf[128] = {0};
+        ssize_t n = read(fds[0], buf, sizeof(buf) - 1);
+        if (n &gt; 0) {
+            printf("[Reader] Nhan duoc: \"%s\"\n", buf);
+        }
+
+        printf("[Reader] Dong pipe (gia lap crash)...\n\n");
+        close(fds[0]);
+
+        /* Chờ child kết thúc */
+        int status;
+        waitpid(pid, &amp;status, 0);
+
+        printf("\n[Parent] === KET QUA ===\n");
+        if (WIFEXITED(status)) {
+            printf("[Parent] Daemon thoat binh thuong (code=%d)\n",
+                   WEXITSTATUS(status));
+            printf("[Parent] SIGPIPE KHONG kill duoc daemon!\n");
+            printf("[Parent] Daemon da xu ly loi va don dep thanh cong.\n");
+        } else if (WIFSIGNALED(status)) {
+            printf("[Parent] Daemon bi kill boi signal %d\n",
+                   WTERMSIG(status));
+        }
+    }
+
+    return 0;
+}</pre>
+  </div>
+
+  <div class="info-box"><strong>Kết quả khi chạy:</strong><br>
+  <span class="inline-code">[Daemon] Da ignore SIGPIPE — an toan.</span><br><br>
+  <span class="inline-code">[Daemon] Bat dau gui du lieu...</span><br>
+  <span class="inline-code">[Daemon] Lan 1: ghi 15 bytes OK</span><br>
+  <span class="inline-code">[Reader] Nhan duoc: "Nhiet do: 35.2C"</span><br>
+  <span class="inline-code">[Reader] Dong pipe (gia lap crash)...</span><br><br>
+  <span class="inline-code">[Daemon] Lan 2: dang ghi...</span><br>
+  <span class="inline-code">[WARN] Pipe broken (EPIPE) — reader da dong ket noi.</span><br>
+  <span class="inline-code">[Daemon] Pipe bi dong. Xu ly:</span><br>
+  <span class="inline-code">[Daemon]   → Log canh bao</span><br>
+  <span class="inline-code">[Daemon]   → Cho reader ket noi lai</span><br>
+  <span class="inline-code">[Daemon]   → Tiep tuc cac task khac</span><br>
+  <span class="inline-code">[Daemon] Van con song! Dang don dep...</span><br>
+  <span class="inline-code">[Daemon] Thoat binh thuong.</span><br><br>
+  <span class="inline-code">[Parent] === KET QUA ===</span><br>
+  <span class="inline-code">[Parent] Daemon thoat binh thuong (code=0)</span><br>
+  <span class="inline-code">[Parent] SIGPIPE KHONG kill duoc daemon!</span><br>
+  <span class="inline-code">[Parent] Daemon da xu ly loi va don dep thanh cong.</span><br><br>
+  So sánh với ví dụ trước: daemon <strong>không bị kill</strong>, tất cả code dọn dẹp đều chạy, và daemon có cơ hội xử lý lỗi thay vì chết im lặng.
+  </div>
+
+  <!-- Tóm tắt best practice -->
+  <div class="emb-box"><strong>📋 Quy tắc bắt buộc cho mọi daemon trên embedded Linux:</strong><br>
+  1. <strong>Luôn ignore SIGPIPE</strong> ngay đầu <span class="inline-code">main()</span> — dùng <span class="inline-code">sigaction(SIGPIPE, &amp;(struct sigaction){.sa_handler=SIG_IGN}, NULL)</span><br>
+  2. <strong>Luôn kiểm tra giá trị trả về</strong> của <span class="inline-code">write()</span> — nếu trả -1 với errno=EPIPE, pipe đã hỏng<br>
+  3. <strong>Viết wrapper</strong> như <span class="inline-code">write_safe()</span> ở trên để tập trung xử lý lỗi<br>
+  4. <strong>Log khi gặp EPIPE</strong> — giúp debug trên thiết bị nhúng không có màn hình</div>
     </div>
   </div>
 

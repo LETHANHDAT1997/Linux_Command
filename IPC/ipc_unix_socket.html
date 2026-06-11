@@ -416,7 +416,273 @@ ssize_t recv(int sockfd,       void *buf, size_t len, int flags);</div>
     <div class="api-return">Trả về: bytes đọc/ghi, <span>0</span> = peer đóng (EOF), <span>-1</span> lỗi</div>
   </div>
 
-  <div class="warn-box"><strong>MSG_NOSIGNAL là bắt buộc với daemon:</strong> Khi client đột ngột thoát, lần send() kế tiếp từ server sẽ nhận SIGPIPE — mặc định kill process. Dùng <span class="ic">MSG_NOSIGNAL</span> để send() trả về -1 với errno=EPIPE thay vì crash.</div>
+  <div class="warn-box"><strong>MSG_NOSIGNAL là bắt buộc với daemon:</strong> Khi client đột ngột thoát, lần send() kế tiếp từ server sẽ nhận SIGPIPE — mặc định kill process. Xem giải thích chi tiết bên dưới ↓</div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- MSG_NOSIGNAL DEEP DIVE                                         -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="divider"></div>
+  <div class="section-label">⚠ SIGPIPE trên Socket — MSG_NOSIGNAL chi tiết</div>
+
+  <!-- Giải thích SIGPIPE trên socket -->
+  <div class="card">
+    <div class="card-title">SIGPIPE trên socket khác gì so với pipe?</div>
+    <div class="card-body">
+      Bạn đã biết từ bài Pipe: khi <span class="ic">write()</span> vào pipe mà reader đã đóng → kernel gửi <span class="ic">SIGPIPE</span> → process bị kill. Với <strong style="color:var(--color-text-primary)">Unix Domain Socket (SOCK_STREAM)</strong>, cơ chế tương tự nhưng có điểm khác:<br><br>
+
+      <strong style="color:var(--color-text-primary)">Với Pipe/FIFO:</strong> Chỉ cần reader đóng fd → lần <span class="ic">write()</span> tiếp theo → SIGPIPE ngay.<br><br>
+
+      <strong style="color:var(--color-text-primary)">Với Socket (SOCK_STREAM):</strong> Khi peer (client) đóng socket hoặc crash:<br>
+      — <strong>Lần send() đầu tiên</strong> sau khi peer đóng: kernel phát hiện kết nối đã bị đóng bởi peer (nhận FIN hoặc RST), send() <strong>vẫn có thể thành công</strong> (dữ liệu vào send buffer) nhưng sau đó kernel nhận RST từ peer<br>
+      — <strong>Lần send() thứ hai</strong> (hoặc sau khi RST đã đến): kernel biết chắc socket "broken" → gửi <span class="ic">SIGPIPE</span> → process bị kill<br><br>
+
+      <strong style="color:var(--color-text-primary)">Vì sao socket cần 2 lần?</strong> Socket có cơ chế phức tạp hơn pipe: kết nối TCP/Unix stream có "graceful shutdown" qua FIN. Kernel cần nhận RST (reset) để xác nhận peer thực sự không còn nhận dữ liệu. Với pipe, kiểm tra đơn giản hơn: chỉ cần đếm số fd đọc đang mở.<br><br>
+
+      <strong style="color:var(--color-text-primary)">Kết quả:</strong> Hành vi SIGPIPE trên socket <strong>khó đoán hơn</strong> pipe — có thể xảy ra ở lần send() đầu tiên hoặc thứ hai tùy timing. Đây là lý do daemon phải <strong>luôn</strong> bảo vệ mỗi lệnh send().
+    </div>
+  </div>
+
+  <!-- So sánh 3 cách xử lý -->
+  <div class="card">
+    <div class="card-title"><span class="badge badge-teal">So sánh</span> 3 cách chống SIGPIPE trên socket</div>
+    <div class="card-body">
+      <strong style="color:var(--color-text-primary)">Cách 1 — MSG_NOSIGNAL (khuyến nghị cho socket):</strong><br>
+      Thêm flag <span class="ic">MSG_NOSIGNAL</span> vào mỗi lần gọi <span class="ic">send()</span>. Chỉ suppress SIGPIPE cho <strong>lần gọi đó</strong>, không ảnh hưởng gì khác. Khi peer đã đóng, send() trả <span class="ic">-1</span> với <span class="ic">errno = EPIPE</span> thay vì kill process.<br><br>
+
+      <strong style="color:var(--color-text-primary)">Cách 2 — signal(SIGPIPE, SIG_IGN) toàn cục:</strong><br>
+      Ignore SIGPIPE cho <strong>toàn bộ process</strong>. Đơn giản nhưng ảnh hưởng cả pipe/FIFO lẫn socket. Nếu process dùng cả pipe và socket, cách này vẫn an toàn — chỉ cần nhớ kiểm tra errno=EPIPE sau mỗi write()/send().<br><br>
+
+      <strong style="color:var(--color-text-primary)">Cách 3 — SO_NOSIGPIPE (chỉ macOS/BSD, không có trên Linux):</strong><br>
+      Trên macOS/FreeBSD, có thể set <span class="ic">setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &amp;one, sizeof(one))</span> — suppress SIGPIPE ở cấp socket thay vì per-call. <strong>Linux không hỗ trợ option này</strong>, nên trên Linux phải dùng MSG_NOSIGNAL.
+    </div>
+  </div>
+
+  <!-- Bảng so sánh nhanh -->
+  <div class="card">
+    <table class="compare-table">
+      <thead><tr><th>Cách</th><th>Phạm vi</th><th>Dùng cho</th><th>Linux</th><th>macOS</th></tr></thead>
+      <tbody>
+        <tr><td><span class="ic">MSG_NOSIGNAL</span></td><td>Mỗi lần send()</td><td>Socket only</td><td>✅</td><td>❌</td></tr>
+        <tr><td><span class="ic">signal(SIG_IGN)</span></td><td>Toàn process</td><td>Pipe + Socket</td><td>✅</td><td>✅</td></tr>
+        <tr><td><span class="ic">SO_NOSIGPIPE</span></td><td>Mỗi socket fd</td><td>Socket only</td><td>❌</td><td>✅</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="info-box"><strong>Lưu ý quan trọng:</strong> <span class="ic">MSG_NOSIGNAL</span> chỉ dùng được với <span class="ic">send()</span>, <strong>không dùng được với <span class="ic">write()</span></strong>. Hàm <span class="ic">write()</span> không có tham số flags. Nếu bạn dùng <span class="ic">write()</span> để ghi vào socket (vẫn hợp lệ), bạn phải dùng cách 2 (<span class="ic">signal(SIG_IGN)</span>) hoặc chuyển sang <span class="ic">send()</span> với <span class="ic">MSG_NOSIGNAL</span>.</div>
+
+  <!-- Code demo hoàn chỉnh -->
+  <div class="card">
+    <div class="card-title"><span class="badge badge-amber">Demo</span> Chương trình minh họa SIGPIPE trên socket (chạy được)</div>
+    <div class="card-body">
+      Chương trình dưới đây gồm <strong>server + client trong cùng 1 file</strong> (dùng fork). Client kết nối → nhận 1 message → đóng socket đột ngột. Server tiếp tục send() → gặp SIGPIPE. Chạy 2 lần: lần 1 không có bảo vệ (bị kill), lần 2 có MSG_NOSIGNAL (sống sót).
+    </div>
+  </div>
+  <div class="code-block">
+    <div class="code-label">sigpipe_socket_demo.c — compile: gcc sigpipe_socket_demo.c -o sigpipe_socket_demo</div>
+    <pre>/*
+ * sigpipe_socket_demo.c
+ * Minh họa SIGPIPE trên Unix Domain Socket và cách dùng MSG_NOSIGNAL.
+ *
+ * Chạy ./sigpipe_socket_demo 0    → KHÔNG bảo vệ  → server bị SIGPIPE kill
+ * Chạy ./sigpipe_socket_demo 1    → CÓ MSG_NOSIGNAL → server sống sót
+ *
+ * Compile: gcc sigpipe_socket_demo.c -o sigpipe_socket_demo
+ */
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;errno.h&gt;
+#include &lt;signal.h&gt;
+#include &lt;sys/socket.h&gt;
+#include &lt;sys/un.h&gt;
+#include &lt;sys/wait.h&gt;
+
+#define SOCK_PATH "/tmp/sigpipe_demo.sock"
+
+/*
+ * run_client() — kết nối, nhận 1 message, rồi đóng socket đột ngột.
+ * Mô phỏng client crash / client thoát bất ngờ.
+ */
+void run_client(void) {
+    /* Chờ server sẵn sàng */
+    usleep(100000);  /* 100ms */
+
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd == -1) { perror("client: socket"); exit(1); }
+
+    struct sockaddr_un addr = { .sun_family = AF_UNIX };
+    strncpy(addr.sun_path, SOCK_PATH, sizeof(addr.sun_path) - 1);
+
+    if (connect(fd, (struct sockaddr *)&amp;addr, sizeof(addr)) == -1) {
+        perror("client: connect");
+        exit(1);
+    }
+    printf("[Client] Da ket noi.\n");
+
+    /* Nhận 1 message từ server */
+    char buf[128] = {0};
+    ssize_t n = recv(fd, buf, sizeof(buf) - 1, 0);
+    if (n &gt; 0) {
+        printf("[Client] Nhan: \"%s\"\n", buf);
+    }
+
+    /* Đóng socket đột ngột — giả lập crash */
+    printf("[Client] Dong socket (gia lap crash)!\n\n");
+    close(fd);
+    exit(0);
+}
+
+/*
+ * run_server() — accept 1 client, gửi 2 message.
+ * Lần gửi thứ 2 sẽ gặp SIGPIPE nếu không bảo vệ.
+ *
+ * use_nosignal: 0 = không bảo vệ, 1 = dùng MSG_NOSIGNAL
+ */
+void run_server(int use_nosignal) {
+    /* Dọn socket file cũ nếu có */
+    unlink(SOCK_PATH);
+
+    int listen_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (listen_fd == -1) { perror("server: socket"); exit(1); }
+
+    struct sockaddr_un addr = { .sun_family = AF_UNIX };
+    strncpy(addr.sun_path, SOCK_PATH, sizeof(addr.sun_path) - 1);
+
+    if (bind(listen_fd, (struct sockaddr *)&amp;addr, sizeof(addr)) == -1) {
+        perror("server: bind");
+        exit(1);
+    }
+    listen(listen_fd, 1);
+
+    printf("[Server] Dang cho client... (mode: %s)\n",
+           use_nosignal ? "MSG_NOSIGNAL" : "KHONG BAO VE");
+
+    int client_fd = accept(listen_fd, NULL, NULL);
+    if (client_fd == -1) { perror("server: accept"); exit(1); }
+    printf("[Server] Client da ket noi.\n");
+
+    /* === Lần gửi 1: client vẫn sống → thành công === */
+    const char *msg1 = "Nhiet do: 35.2C";
+    int flags = use_nosignal ? MSG_NOSIGNAL : 0;
+    ssize_t n = send(client_fd, msg1, strlen(msg1), flags);
+    printf("[Server] Lan 1: send() = %zd bytes (OK)\n", n);
+
+    /* Chờ client đóng socket */
+    usleep(300000);  /* 300ms */
+
+    /* === Lần gửi 2: client đã đóng → SIGPIPE! === */
+    const char *msg2 = "Nhiet do: 36.1C";
+    printf("[Server] Lan 2: dang send()...\n");
+
+    n = send(client_fd, msg2, strlen(msg2), flags);
+
+    if (n == -1) {
+        /* Chỉ đến đây nếu SIGPIPE bị suppress (MSG_NOSIGNAL) */
+        if (errno == EPIPE) {
+            printf("[Server] send() tra ve -1, errno=EPIPE\n");
+            printf("[Server] → Client da dong ket noi.\n");
+            printf("[Server] → Daemon van song! Co the xu ly loi.\n");
+        } else {
+            printf("[Server] send() loi: %s\n", strerror(errno));
+        }
+    } else {
+        /* Nếu không có MSG_NOSIGNAL, dòng này KHÔNG BAO GIỜ chạy
+           vì process đã bị SIGPIPE kill trước khi đến đây */
+        printf("[Server] Lan 2: send() = %zd (bat thuong)\n", n);
+    }
+
+    /* Code dọn dẹp — chỉ chạy được nếu SIGPIPE bị suppress */
+    printf("[Server] Dang don dep...\n");
+    close(client_fd);
+    close(listen_fd);
+    unlink(SOCK_PATH);
+    printf("[Server] Thoat binh thuong.\n");
+    exit(0);
+}
+
+int main(int argc, char *argv[]) {
+    if (argc != 2 || (argv[1][0] != '0' &amp;&amp; argv[1][0] != '1')) {
+        fprintf(stderr, "Cach dung:\n");
+        fprintf(stderr, "  %s 0   → Khong bao ve (bi SIGPIPE kill)\n", argv[0]);
+        fprintf(stderr, "  %s 1   → Dung MSG_NOSIGNAL (an toan)\n", argv[0]);
+        return 1;
+    }
+
+    int use_nosignal = (argv[1][0] == '1');
+
+    printf("=== SIGPIPE Socket Demo (mode: %s) ===\n\n",
+           use_nosignal ? "MSG_NOSIGNAL" : "KHONG BAO VE");
+
+    /* Fork: child = client, parent = server */
+    pid_t pid = fork();
+    if (pid == -1) { perror("fork"); return 1; }
+
+    if (pid == 0) {
+        /* Child process = client */
+        run_client();
+        /* Không đến đây */
+    }
+
+    /* Parent process = server */
+    run_server(use_nosignal);
+
+    /* Chờ client */
+    int status;
+    waitpid(pid, &amp;status, 0);
+
+    return 0;
+}</pre>
+  </div>
+
+  <div class="info-box"><strong>Kết quả khi chạy KHÔNG bảo vệ:</strong> <span class="ic">./sigpipe_socket_demo 0</span><br><br>
+  <span class="ic">=== SIGPIPE Socket Demo (mode: KHONG BAO VE) ===</span><br><br>
+  <span class="ic">[Server] Dang cho client... (mode: KHONG BAO VE)</span><br>
+  <span class="ic">[Client] Da ket noi.</span><br>
+  <span class="ic">[Server] Client da ket noi.</span><br>
+  <span class="ic">[Server] Lan 1: send() = 15 bytes (OK)</span><br>
+  <span class="ic">[Client] Nhan: "Nhiet do: 35.2C"</span><br>
+  <span class="ic">[Client] Dong socket (gia lap crash)!</span><br><br>
+  <span class="ic">[Server] Lan 2: dang send()...</span><br>
+  ← <strong>Server bị kill ở đây, không có output nào nữa!</strong> Dòng "Dang don dep..." không bao giờ chạy.
+  </div>
+
+  <div class="emb-box"><strong>Kết quả khi chạy CÓ MSG_NOSIGNAL:</strong> <span class="ic">./sigpipe_socket_demo 1</span><br><br>
+  <span class="ic">=== SIGPIPE Socket Demo (mode: MSG_NOSIGNAL) ===</span><br><br>
+  <span class="ic">[Server] Dang cho client... (mode: MSG_NOSIGNAL)</span><br>
+  <span class="ic">[Client] Da ket noi.</span><br>
+  <span class="ic">[Server] Client da ket noi.</span><br>
+  <span class="ic">[Server] Lan 1: send() = 15 bytes (OK)</span><br>
+  <span class="ic">[Client] Nhan: "Nhiet do: 35.2C"</span><br>
+  <span class="ic">[Client] Dong socket (gia lap crash)!</span><br><br>
+  <span class="ic">[Server] Lan 2: dang send()...</span><br>
+  <span class="ic">[Server] send() tra ve -1, errno=EPIPE</span><br>
+  <span class="ic">[Server] → Client da dong ket noi.</span><br>
+  <span class="ic">[Server] → Daemon van song! Co the xu ly loi.</span><br>
+  <span class="ic">[Server] Dang don dep...</span><br>
+  <span class="ic">[Server] Thoat binh thuong.</span><br><br>
+  Server <strong>không bị kill</strong>, code dọn dẹp chạy đầy đủ, daemon sống sót để phục vụ client khác.
+  </div>
+
+  <!-- Best practice tóm tắt -->
+  <div class="card">
+    <div class="card-title"><span class="badge badge-teal">Best Practice</span> Quy tắc SIGPIPE cho socket daemon</div>
+    <div class="card-body">
+      <strong style="color:var(--color-text-primary)">1. Dùng cả hai cách cùng lúc</strong> — đây là pattern an toàn nhất:<br>
+      — <span class="ic">signal(SIGPIPE, SIG_IGN)</span> ở đầu <span class="ic">main()</span> (bảo vệ toàn process, kể cả write() vào pipe)<br>
+      — <span class="ic">MSG_NOSIGNAL</span> trong mỗi <span class="ic">send()</span> (rõ ràng, self-documenting)<br><br>
+
+      <strong style="color:var(--color-text-primary)">2. Luôn kiểm tra errno sau send():</strong><br>
+      — <span class="ic">EPIPE</span>: peer đã đóng → close fd, xóa client khỏi danh sách<br>
+      — <span class="ic">ECONNRESET</span>: peer reset kết nối → tương tự EPIPE<br>
+      — <span class="ic">EAGAIN</span>: buffer đầy (non-blocking) → thử lại sau<br>
+      — <span class="ic">EINTR</span>: bị signal ngắt → retry ngay<br><br>
+
+      <strong style="color:var(--color-text-primary)">3. Viết send_all() wrapper</strong> (xem code bên dưới) — tập trung xử lý lỗi một chỗ, tránh lặp code trong toàn bộ codebase.
+    </div>
+  </div>
 
   <div class="section-label">Xử lý partial send/recv — lỗi phổ biến nhất</div>
   <div class="card">
@@ -1559,28 +1825,28 @@ strace -e trace=socket,bind,connect,accept4 ./client</pre>
       <tbody>
         <tr>
           <td><span class="ic">O_NONBLOCK</span></td>
-          <td>recv() return ngay -1 (EAGAIN) nếu chưa có data</td>
+          <td><strong>Không chờ đợi.</strong> Thay đổi trạng thái socket để các hàm như recv() hay accept() không bao giờ bị treo. Nếu gọi mà chưa có dữ liệu, chúng sẽ trả về ngay một mã lỗi (EAGAIN).</td>
           <td>Đơn giản, không block</td>
           <td>Phải tự poll liên tục → <strong>tốn CPU</strong></td>
           <td>Kết hợp với select/epoll, không dùng đơn lẻ</td>
         </tr>
         <tr>
           <td><span class="ic">select()</span> / <span class="ic">poll()</span></td>
-          <td>Block chờ <strong>nhiều fd cùng lúc</strong>, tỉnh khi bất kỳ fd nào sẵn sàng</td>
+          <td><strong>Chờ theo cụm.</strong> Treo (block) tiến trình nhưng là để chờ trên <i>nhiều socket cùng lúc</i>. Chỉ cần một socket bất kỳ có dữ liệu, hệ điều hành sẽ đánh thức tiến trình.</td>
           <td>1 thread serve nhiều client, portable</td>
           <td>select: giới hạn 1024 fd. poll: O(n) mỗi lần</td>
           <td>Server cần serve vài chục client</td>
         </tr>
         <tr>
           <td><span class="ic">epoll</span></td>
-          <td>Kernel thông báo chỉ những fd <strong>thực sự có sự kiện</strong></td>
+          <td><strong>Lắng nghe sự kiện.</strong> Bạn đăng ký socket vào Kernel. Khi có dữ liệu, Kernel sẽ chủ động trả về một danh sách <i>chỉ chứa các socket đang có dữ liệu</i> thay vì bắt bạn quét tất cả.</td>
           <td>O(1) per event, scale tốt</td>
           <td>Linux-only, phức tạp hơn select</td>
           <td>Server scale lớn, embedded hiệu năng cao</td>
         </tr>
         <tr>
           <td><span class="ic">SIGIO</span> (signal)</td>
-          <td>Kernel <strong>bắn signal</strong> khi data đến → chạy signal handler</td>
+          <td><strong>Ngắt ngang (Interrupt).</strong> Báo cho hệ điều hành: "Khi nào có dữ liệu, hãy bắn một tín hiệu (signal) ngắt ngang chương trình của tôi, tôi sẽ nhảy vào hàm handler để xử lý".</td>
           <td>Không cần poll loop</td>
           <td><strong>Rất khó dùng đúng</strong>, race condition, chỉ 1 fd/process</td>
           <td>Hầu như không dùng trong thực tế</td>
@@ -1699,66 +1965,99 @@ while (running) {
   <div class="section-label">Cách 3: epoll — hiệu năng cao nhất (Linux-only)</div>
   <div class="card">
     <div class="card-body">
-      <span class="ic">select/poll</span> mỗi lần gọi phải quét <strong>toàn bộ danh sách fd</strong> — O(n). Với 1000 client mà chỉ 5 client có data, vẫn phải kiểm tra 1000 fd.<br><br>
-      <span class="ic">epoll</span> dùng cơ chế <strong>callback trong kernel</strong>: khi data đến trên fd nào, kernel thêm fd đó vào "ready list". <span class="ic">epoll_wait()</span> chỉ trả về <strong>những fd thực sự có sự kiện</strong> — O(1) per event.<br><br>
-      Trên embedded, epoll quan trọng khi daemon cần xử lý nhiều nguồn dữ liệu (socket + serial + GPIO + timer) trên 1 thread.
+      <strong>Tại sao epoll tối ưu hơn select/poll?</strong><br>
+      Với <span class="ic">select/poll</span>, mỗi khi tiến trình tỉnh dậy, bạn phải đem một danh sách rất dài (chứa hàng ngàn socket) đi hỏi hệ điều hành: "Cái nào đang có data vậy?". Hệ điều hành phải quét lại cả ngàn cái đó — chi phí O(n), rất chậm.<br><br>
+      <strong>Cách epoll hoạt động bằng cơ chế "Callback ngầm":</strong><br>
+      1. <strong>Tạo 1 cái phễu (epoll instance):</strong> Bạn tạo một đối tượng epoll bằng <span class="ic">epoll_create1()</span>.<br>
+      2. <strong>Đăng ký 1 lần:</strong> Bạn ném các socket cần theo dõi vào phễu này bằng <span class="ic">epoll_ctl()</span>. Việc này chỉ làm 1 lần lúc socket mới ra đời.<br>
+      3. <strong>Cơ chế Callback của Kernel:</strong> Khi card mạng/thiết bị nhận được dữ liệu, nó kích hoạt ngắt (interrupt). Kernel bắt được ngắt này và tự động gọi một hàm callback ngầm để đẩy chính xác socket có dữ liệu đó vào một danh sách tên là "Ready list" (Danh sách sẵn sàng) nằm trong epoll.<br>
+      4. <strong>Thu hoạch (Wait):</strong> Khi bạn gọi <span class="ic">epoll_wait()</span>, Kernel không cần quét lại gì cả. Nó chỉ đơn giản mở "Ready list" ra, thấy ai trong đó thì bốc ra trả về cho bạn. Nếu có 5 người gửi data, nó trả về đúng 5 cái socket — chi phí O(1) bất kể server đang nuôi 10 hay 10.000 kết nối!
     </div>
   </div>
   <div class="code-block">
-    <div class="code-label">epoll — server socket + timerfd trên cùng event loop</div>
-    <pre>#include &lt;sys/epoll.h&gt;
+    <div class="code-label">Ví dụ hoàn chỉnh: Epoll Server (xử lý nhiều client trên 1 thread)</div>
+    <pre>#include &lt;sys/socket.h&gt;
+#include &lt;sys/un.h&gt;
+#include &lt;sys/epoll.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
 
-int epfd = epoll_create1(EPOLL_CLOEXEC);
+#define SOCK_PATH "/tmp/epoll_server.sock"
+#define MAX_EVENTS 16
 
-/* Đăng ký server socket */
-struct epoll_event ev;
-ev.events  = EPOLLIN;       /* Quan tâm: có client mới */
-ev.data.fd = srv_fd;
-epoll_ctl(epfd, EPOLL_CTL_ADD, srv_fd, &ev);
+int main() {
+    /* --- BƯỚC 1: Tạo Server Socket (srv_fd) --- */
+    int srv_fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    unlink(SOCK_PATH);
+    struct sockaddr_un addr = { .sun_family = AF_UNIX };
+    strncpy(addr.sun_path, SOCK_PATH, sizeof(addr.sun_path)-1);
+    bind(srv_fd, (struct sockaddr *)&addr, sizeof(addr));
+    listen(srv_fd, 128);
 
-/* Đăng ký thêm client fd sau khi accept */
-/* ev.data.fd = cli_fd;
-   epoll_ctl(epfd, EPOLL_CTL_ADD, cli_fd, &ev); */
+    /* --- BƯỚC 2: Tạo Epoll Instance (cái phễu) --- */
+    int epfd = epoll_create1(EPOLL_CLOEXEC);
 
-/* Event loop */
-struct epoll_event events[16];  /* Nhận tối đa 16 sự kiện/lần */
+    /* --- BƯỚC 3: Đăng ký srv_fd vào epoll --- */
+    struct epoll_event ev;
+    ev.events = EPOLLIN;      /* Lắng nghe sự kiện: có client mới kết nối (POLLIN) */
+    ev.data.fd = srv_fd;      /* Gắn srv_fd vào data để lúc trả về biết là fd nào */
+    epoll_ctl(epfd, EPOLL_CTL_ADD, srv_fd, &ev); 
 
-while (running) {
-    /* Block tối đa 1000ms */
-    int nfds = epoll_wait(epfd, events, 16, 1000);
+    struct epoll_event events[MAX_EVENTS]; /* Mảng hứng các sự kiện Kernel trả về */
+    int running = 1;
 
-    for (int i = 0; i < nfds; i++) {
-        if (events[i].data.fd == srv_fd) {
-            /* Client mới → accept */
-            int cli = accept4(srv_fd, NULL, NULL, SOCK_CLOEXEC);
-            if (cli != -1) {
-                ev.events  = EPOLLIN;
-                ev.data.fd = cli;
-                epoll_ctl(epfd, EPOLL_CTL_ADD, cli, &ev);
-            }
-        } else {
-            /* Data từ client */
-            char buf[256];
-            ssize_t n = recv(events[i].data.fd, buf, sizeof(buf), 0);
-            if (n <= 0) {
-                /* Client đóng hoặc lỗi → gỡ khỏi epoll */
-                epoll_ctl(epfd, EPOLL_CTL_DEL,
-                          events[i].data.fd, NULL);
-                close(events[i].data.fd);
-            } else {
-                buf[n] = '\0';
-                printf("Nhận: %s\n", buf);
-                send(events[i].data.fd, "OK", 2, MSG_NOSIGNAL);
+    printf("Server epoll đang chạy...\n");
+
+    /* --- BƯỚC 4: Vòng lặp sự kiện (Event Loop) --- */
+    while (running) {
+        /* Block tiến trình lại để chờ. 
+           -1 = chờ vô hạn đến khi có ai đó gửi data. 
+           Hàm trả về số lượng fd ĐANG THỰC SỰ CÓ SỰ KIỆN. */
+        int nfds = epoll_wait(epfd, events, MAX_EVENTS, -1);
+
+        /* CHỈ duyệt qua những thằng CÓ DATA (không quét mù như select) */
+        for (int i = 0; i < nfds; i++) {
+            
+            /* Trường hợp A: Sự kiện xảy ra trên srv_fd -> Có client MỚI */
+            if (events[i].data.fd == srv_fd) {
+                int cli_fd = accept4(srv_fd, NULL, NULL, SOCK_NONBLOCK);
+                if (cli_fd != -1) {
+                    /* Đăng ký ngay cli_fd mới này vào epoll để lắng nghe data từ nó */
+                    ev.events = EPOLLIN;
+                    ev.data.fd = cli_fd;
+                    epoll_ctl(epfd, EPOLL_CTL_ADD, cli_fd, &ev);
+                    printf("[+] Client kết nối: fd=%d\n", cli_fd);
+                }
+            } 
+            /* Trường hợp B: Sự kiện xảy ra trên client_fd -> Client CŨ gửi data */
+            else {
+                int client_fd = events[i].data.fd;
+                char buf[256];
+                ssize_t n = recv(client_fd, buf, sizeof(buf)-1, 0);
+
+                if (n <= 0) {
+                    /* Nhận được 0 bytes (EOF) hoặc lỗi -> Client ngắt kết nối */
+                    printf("[-] Client ngắt kết nối: fd=%d\n", client_fd);
+                    /* Xóa client khỏi epoll và đóng fd */
+                    epoll_ctl(epfd, EPOLL_CTL_DEL, client_fd, NULL);
+                    close(client_fd);
+                } else {
+                    /* Nhận được dữ liệu */
+                    buf[n] = '\0';
+                    printf("[fd=%d] Data: %s\n", client_fd, buf);
+                    send(client_fd, "OK", 2, MSG_NOSIGNAL); /* Gửi hồi đáp */
+                }
             }
         }
     }
+    
+    close(epfd);
+    close(srv_fd);
+    unlink(SOCK_PATH);
+    return 0;
 }
-close(epfd);
-
-/* Ưu điểm epoll trên embedded:
-   - 1 thread xử lý socket + serial + GPIO + timerfd
-   - Không cần tạo nhiều thread → tiết kiệm RAM
-   - O(1) per event → hiệu quả với nhiều fd */</pre>
+</pre>
   </div>
 
   <div class="divider"></div>
@@ -2006,13 +2305,13 @@ int main(){printf("%d\n",MSG_NOSIGNAL);}' | gcc -x c - -o /tmp/m && /tmp/m
   <div class="section-label">&lt;poll.h&gt; — poll events</div>
   <div class="card">
     <table class="compare-table">
-      <thead><tr><th>Macro</th><th>Giá trị</th><th>Ý nghĩa</th><th>Ghi chú</th></tr></thead>
+      <thead><tr><th>Macro</th><th>Giá trị</th><th>Ý nghĩa</th><th>Dùng ở đâu</th><th>Ghi chú</th></tr></thead>
       <tbody>
-        <tr><td><span class="ic">POLLIN</span></td><td>0x001</td><td>Có data đọc được / accept() ready</td><td>Set vào events, kiểm tra revents</td></tr>
-        <tr><td><span class="ic">POLLOUT</span></td><td>0x004</td><td>Có thể ghi mà không block</td><td>Set vào events, kiểm tra revents</td></tr>
-        <tr><td><span class="ic">POLLHUP</span></td><td>0x010</td><td>Peer đóng kết nối</td><td><strong>Luôn được report</strong> — không cần set</td></tr>
-        <tr><td><span class="ic">POLLERR</span></td><td>0x008</td><td>Lỗi trên fd</td><td><strong>Luôn được report</strong> — không cần set</td></tr>
-        <tr><td><span class="ic">POLLNVAL</span></td><td>0x020</td><td>fd không hợp lệ (chưa open hoặc đã close)</td><td>Bug trong code — check lại fd</td></tr>
+        <tr><td><span class="ic">POLLIN</span></td><td>0x001</td><td>Có data đọc được / accept() ready</td><td>pollfd.events (input)</td><td>Set vào events, kiểm tra revents</td></tr>
+        <tr><td><span class="ic">POLLOUT</span></td><td>0x004</td><td>Có thể ghi mà không block</td><td>pollfd.events (input)</td><td>Set vào events, kiểm tra revents</td></tr>
+        <tr><td><span class="ic">POLLHUP</span></td><td>0x010</td><td>Peer đóng kết nối</td><td>pollfd.revents (output only)</td><td><strong>Luôn được report</strong> — không cần set</td></tr>
+        <tr><td><span class="ic">POLLERR</span></td><td>0x008</td><td>Lỗi trên fd</td><td>pollfd.revents (output only)</td><td><strong>Luôn được report</strong> — không cần set</td></tr>
+        <tr><td><span class="ic">POLLNVAL</span></td><td>0x020</td><td>fd không hợp lệ (chưa open hoặc đã close)</td><td>pollfd.revents (output only)</td><td>Bug trong code — check lại fd</td></tr>
       </tbody>
     </table>
   </div>
@@ -2020,22 +2319,22 @@ int main(){printf("%d\n",MSG_NOSIGNAL);}' | gcc -x c - -o /tmp/m && /tmp/m
   <div class="section-label">&lt;sys/epoll.h&gt; — epoll events và operations</div>
   <div class="card">
     <table class="compare-table">
-      <thead><tr><th>Macro</th><th>Ý nghĩa</th><th>Ghi chú</th></tr></thead>
+      <thead><tr><th>Macro</th><th>Ý nghĩa</th><th>Dùng ở đâu</th><th>Ghi chú</th></tr></thead>
       <tbody>
-        <tr style="background:#f0faf5"><td colspan="3" style="font-weight:500;color:#1a5c3a;font-size:11px">Events</td></tr>
-        <tr><td><span class="ic">EPOLLIN</span></td><td>Có data đọc / accept ready</td><td>Tương đương POLLIN</td></tr>
-        <tr><td><span class="ic">EPOLLOUT</span></td><td>Có thể ghi</td><td>Tương đương POLLOUT</td></tr>
-        <tr><td><span class="ic">EPOLLET</span></td><td>Edge-Triggered mode</td><td>Chỉ trigger khi trạng thái thay đổi. Phải đọc hết đến EAGAIN</td></tr>
-        <tr><td><span class="ic">EPOLLONESHOT</span></td><td>Chỉ trigger 1 lần</td><td>Cần EPOLL_CTL_MOD để re-arm</td></tr>
-        <tr><td><span class="ic">EPOLLRDHUP</span></td><td>Peer đóng chiều ghi (half-close)</td><td>Linux ≥ 2.6.17</td></tr>
-        <tr><td><span class="ic">EPOLLHUP</span></td><td>Peer đóng kết nối hoàn toàn</td><td>Luôn được report</td></tr>
-        <tr><td><span class="ic">EPOLLERR</span></td><td>Lỗi trên fd</td><td>Luôn được report</td></tr>
+        <tr style="background:#f0faf5"><td colspan="4" style="font-weight:500;color:#1a5c3a;font-size:11px">Events</td></tr>
+        <tr><td><span class="ic">EPOLLIN</span></td><td>Có data đọc / accept ready</td><td>epoll_event.events</td><td>Tương đương POLLIN</td></tr>
+        <tr><td><span class="ic">EPOLLOUT</span></td><td>Có thể ghi</td><td>epoll_event.events</td><td>Tương đương POLLOUT</td></tr>
+        <tr><td><span class="ic">EPOLLET</span></td><td>Edge-Triggered mode</td><td>epoll_event.events (OR thêm)</td><td>Chỉ trigger khi trạng thái thay đổi. Phải đọc hết đến EAGAIN</td></tr>
+        <tr><td><span class="ic">EPOLLONESHOT</span></td><td>Chỉ trigger 1 lần</td><td>epoll_event.events (OR thêm)</td><td>Cần EPOLL_CTL_MOD để re-arm</td></tr>
+        <tr><td><span class="ic">EPOLLRDHUP</span></td><td>Peer đóng chiều ghi (half-close)</td><td>epoll_event.events</td><td>Linux ≥ 2.6.17</td></tr>
+        <tr><td><span class="ic">EPOLLHUP</span></td><td>Peer đóng kết nối hoàn toàn</td><td>epoll_event.events (output only)</td><td>Luôn được report — không cần set</td></tr>
+        <tr><td><span class="ic">EPOLLERR</span></td><td>Lỗi trên fd</td><td>epoll_event.events (output only)</td><td>Luôn được report — không cần set</td></tr>
 
-        <tr style="background:#f0faf5"><td colspan="3" style="font-weight:500;color:#1a5c3a;font-size:11px">Operations</td></tr>
-        <tr><td><span class="ic">EPOLL_CTL_ADD</span></td><td>Đăng ký fd mới vào epoll</td><td>Lỗi EEXIST nếu fd đã có</td></tr>
-        <tr><td><span class="ic">EPOLL_CTL_MOD</span></td><td>Thay đổi events quan tâm</td><td>Dùng sau EPOLLONESHOT để re-arm</td></tr>
-        <tr><td><span class="ic">EPOLL_CTL_DEL</span></td><td>Gỡ fd khỏi epoll</td><td>event param có thể NULL</td></tr>
-        <tr><td><span class="ic">EPOLL_CLOEXEC</span></td><td>Tự đóng epoll fd khi exec()</td><td>Luôn dùng</td></tr>
+        <tr style="background:#f0faf5"><td colspan="4" style="font-weight:500;color:#1a5c3a;font-size:11px">Operations</td></tr>
+        <tr><td><span class="ic">EPOLL_CTL_ADD</span></td><td>Đăng ký fd mới vào epoll</td><td>epoll_ctl() param 2</td><td>Lỗi EEXIST nếu fd đã có</td></tr>
+        <tr><td><span class="ic">EPOLL_CTL_MOD</span></td><td>Thay đổi events quan tâm</td><td>epoll_ctl() param 2</td><td>Dùng sau EPOLLONESHOT để re-arm</td></tr>
+        <tr><td><span class="ic">EPOLL_CTL_DEL</span></td><td>Gỡ fd khỏi epoll</td><td>epoll_ctl() param 2</td><td>event param có thể NULL</td></tr>
+        <tr><td><span class="ic">EPOLL_CLOEXEC</span></td><td>Tự đóng epoll fd khi exec()</td><td>epoll_create1() param 1</td><td>Luôn dùng</td></tr>
       </tbody>
     </table>
   </div>
@@ -2087,14 +2386,25 @@ int main(){printf("%d\n",MSG_NOSIGNAL);}' | gcc -x c - -o /tmp/m && /tmp/m
   <div class="section-label">&lt;signal.h&gt; — signals</div>
   <div class="card">
     <table class="compare-table">
-      <thead><tr><th>Macro</th><th>Số</th><th>Ý nghĩa</th><th>Ghi chú</th></tr></thead>
+      <thead><tr><th>Macro</th><th>Số</th><th>Ý nghĩa</th><th>Dùng ở đâu / Ghi chú</th></tr></thead>
       <tbody>
+        <tr style="background:#f0faf5"><td colspan="4" style="font-weight:500;color:#1a5c3a;font-size:11px">Signal điều khiển luồng và IPC</td></tr>
         <tr><td><span class="ic">SIGPIPE</span></td><td>13</td><td>Ghi vào pipe/socket đã đóng</td><td>Daemon phải ignore: <span class="ic">signal(SIGPIPE, SIG_IGN)</span></td></tr>
-        <tr><td><span class="ic">SIGTERM</span></td><td>15</td><td>Yêu cầu thoát gracefully</td><td>Dùng signalfd() + epoll</td></tr>
-        <tr><td><span class="ic">SIGINT</span></td><td>2</td><td>Ctrl+C từ terminal</td><td>Dùng signalfd() + epoll</td></tr>
-        <tr><td><span class="ic">SIGIO</span></td><td>29</td><td>Có data trên async fd</td><td>Hầu như không dùng — dùng epoll thay</td></tr>
-        <tr><td><span class="ic">SIG_IGN</span></td><td>—</td><td>Ignore signal</td><td>signal(SIGPIPE, SIG_IGN)</td></tr>
-        <tr><td><span class="ic">SIG_BLOCK</span></td><td>0</td><td>Block signal (dùng với sigprocmask)</td><td>Bắt buộc trước signalfd()</td></tr>
+        <tr><td><span class="ic">SIGTERM</span></td><td>15</td><td>Yêu cầu thoát gracefully (mặc định của lệnh kill)</td><td>Nên bắt qua signalfd() + epoll để cleanup.</td></tr>
+        <tr><td><span class="ic">SIGINT</span></td><td>2</td><td>Ngắt từ terminal (Ctrl+C)</td><td>Nên bắt qua signalfd() + epoll để cleanup.</td></tr>
+        <tr><td><span class="ic">SIGIO</span></td><td>29</td><td>Có data trên async fd</td><td>Hầu như không dùng — dùng epoll thay thế.</td></tr>
+
+        <tr style="background:#f0faf5"><td colspan="4" style="font-weight:500;color:#1a5c3a;font-size:11px">Signal báo lỗi / gây chết tiến trình (Thường gặp với WTERMSIG)</td></tr>
+        <tr><td><span class="ic">SIGSEGV</span></td><td>11</td><td>Segmentation fault (Lỗi truy cập bộ nhớ)</td><td>Truy cập con trỏ NULL, mảng out of bound, giải phóng bộ nhớ lỗi.</td></tr>
+        <tr><td><span class="ic">SIGKILL</span></td><td>9</td><td>Ép buộc giết tiến trình (kill -9)</td><td>Không thể block, không thể catch. Tiến trình chết ngay lập tức.</td></tr>
+        <tr><td><span class="ic">SIGABRT</span></td><td>6</td><td>Bị hủy bỏ (Abort)</td><td>Do chính tiến trình gọi abort() hoặc assert() bị fail.</td></tr>
+        <tr><td><span class="ic">SIGILL</span></td><td>4</td><td>Illegal instruction (Lệnh không hợp lệ)</td><td>Do lỗi biên dịch sai kiến trúc hoặc stack bị ghi đè/corrupt.</td></tr>
+        <tr><td><span class="ic">SIGBUS</span></td><td>7</td><td>Bus error (Lỗi bộ nhớ phần cứng)</td><td>Lỗi alignment (truy cập biến int không thẳng hàng) trên máy nhúng.</td></tr>
+        <tr><td><span class="ic">SIGFPE</span></td><td>8</td><td>Floating point exception</td><td>Chia cho 0 (divide by zero) hoặc tràn số nguyên/thực.</td></tr>
+
+        <tr style="background:#f0faf5"><td colspan="4" style="font-weight:500;color:#1a5c3a;font-size:11px">Macro xử lý cấu hình signal</td></tr>
+        <tr><td><span class="ic">SIG_IGN</span></td><td>—</td><td>Ignore signal (Bỏ qua signal)</td><td>Dùng làm handler: signal(SIGPIPE, SIG_IGN).</td></tr>
+        <tr><td><span class="ic">SIG_BLOCK</span></td><td>0</td><td>Block signal</td><td>Dùng trong sigprocmask() — bắt buộc trước signalfd().</td></tr>
       </tbody>
     </table>
   </div>
@@ -2111,6 +2421,20 @@ int main(){printf("%d\n",MSG_NOSIGNAL);}' | gcc -x c - -o /tmp/m && /tmp/m
         <tr><td><span class="ic">EFD_CLOEXEC</span></td><td>Tự đóng eventfd khi exec()</td><td>eventfd() flags</td></tr>
         <tr><td><span class="ic">EFD_NONBLOCK</span></td><td>Non-blocking mode cho eventfd</td><td>eventfd() flags</td></tr>
         <tr><td><span class="ic">EFD_SEMAPHORE</span></td><td>Thay đổi read() hành vi thành semaphore (trả về 1 và giảm counter đi 1)</td><td>eventfd() flags</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-label">&lt;sys/wait.h&gt; — process wait và status (dùng khi fork/daemon)</div>
+  <div class="card">
+    <table class="compare-table">
+      <thead><tr><th>Macro</th><th>Ý nghĩa</th><th>Dùng ở đâu</th><th>Ghi chú</th></tr></thead>
+      <tbody>
+        <tr><td><span class="ic">WNOHANG</span></td><td><strong>Không chờ (block)</strong>. Hàm sẽ kiểm tra và trả về ngay lập tức thay vì treo ở đó chờ tiến trình con kết thúc.</td><td>waitpid() param 3</td><td>Return 0 ngay nếu child chưa thoát. Dùng trong SIGCHLD handler.</td></tr>
+        <tr><td><span class="ic">WIFEXITED(status)</span></td><td><strong>Thoát bình thường?</strong> Kiểm tra xem tiến trình con có kết thúc tự nguyện không (chạy hết hàm main() hoặc chủ động gọi exit()).</td><td>Kiểm tra status từ waitpid()</td><td>Nếu true, dùng WEXITSTATUS(status) để lấy mã thoát.</td></tr>
+        <tr><td><span class="ic">WEXITSTATUS(status)</span></td><td><strong>Lấy giá trị exit</strong>. Trích xuất con số mà tiến trình con đã trả về qua exit(code) hoặc return code.</td><td>Sau khi WIFEXITED == true</td><td>Ví dụ: exit(1) → WEXITSTATUS trả về 1.</td></tr>
+        <tr><td><span class="ic">WIFSIGNALED(status)</span></td><td><strong>Bị ép chết (kill)?</strong> Kiểm tra xem tiến trình con có bị buộc phải dừng đột ngột bởi một signal không (vd: lỗi crash, ai đó dùng lệnh kill).</td><td>Kiểm tra status từ waitpid()</td><td>Nếu true, dùng WTERMSIG(status) lấy số hiệu signal.</td></tr>
+        <tr><td><span class="ic">WTERMSIG(status)</span></td><td><strong>Lấy số signal</strong>. Xác định chính xác tín hiệu (mã signal) nào đã gây ra cái chết của tiến trình con.</td><td>Sau khi WIFSIGNALED == true</td><td>Ví dụ: Segmentation fault → WTERMSIG trả về 11 (SIGSEGV).</td></tr>
       </tbody>
     </table>
   </div>

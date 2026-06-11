@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linux File System — Từ Cơ Bản Đến Nâng Cao</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #1a1d27;
+    --bg3: #22263a;
+    --bg4: #2a2f47;
+    --accent: #5c9dff;
+    --accent2: #7fd4b4;
+    --accent3: #f0a05a;
+    --accent4: #e06c8a;
+    --text: #d8dff0;
+    --text-dim: #8892aa;
+    --text-bright: #eef2ff;
+    --border: #303558;
+    --code-bg: #141720;
+    --green: #5dba80;
+    --yellow: #e8c56a;
+    --red: #e06c6c;
+    --purple: #a97ff2;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    line-height: 1.75;
+  }
+
+  /* HEADER */
+  .hero {
+    background: linear-gradient(135deg, #0f1117 0%, #1a1d40 50%, #0f1117 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 64px 40px 48px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -80px; left: 50%; transform: translateX(-50%);
+    width: 600px; height: 300px;
+    background: radial-gradient(ellipse, rgba(92,157,255,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero .tag {
+    display: inline-block;
+    background: rgba(92,157,255,0.15);
+    border: 1px solid rgba(92,157,255,0.35);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-size: 42px;
+    font-weight: 700;
+    color: var(--text-bright);
+    letter-spacing: -0.5px;
+    margin-bottom: 12px;
+  }
+  .hero h1 span { color: var(--accent); }
+  .hero p {
+    color: var(--text-dim);
+    font-size: 16px;
+    max-width: 540px;
+    margin: 0 auto;
+  }
+
+  /* NAV */
+  nav {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  nav a {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 14px 16px;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  nav a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* LAYOUT */
+  .container { max-width: 1000px; margin: 0 auto; padding: 48px 40px; }
+
+  /* SECTIONS */
+  .chapter {
+    margin-bottom: 64px;
+  }
+  .chapter-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 32px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .chapter-num {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 800; color: white;
+    flex-shrink: 0;
+  }
+  .chapter-title { font-size: 26px; font-weight: 700; color: var(--text-bright); }
+  .chapter-subtitle { font-size: 14px; color: var(--text-dim); margin-top: 2px; }
+
+  h2 { font-size: 20px; font-weight: 700; color: var(--text-bright); margin: 32px 0 14px; }
+  h3 { font-size: 16px; font-weight: 600; color: var(--accent); margin: 24px 0 10px; }
+
+  p { margin-bottom: 14px; color: var(--text); }
+  strong { color: var(--text-bright); font-weight: 600; }
+  em { color: var(--accent3); font-style: normal; font-weight: 500; }
+
+  /* CODE */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 20px 22px;
+    overflow-x: auto;
+    margin: 16px 0 22px;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 13.5px;
+    line-height: 1.65;
+  }
+  code {
+    background: rgba(92,157,255,0.12);
+    border: 1px solid rgba(92,157,255,0.2);
+    color: var(--accent);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 13px;
+  }
+  pre code { background: none; border: none; color: inherit; padding: 0; font-size: inherit; }
+
+  /* syntax coloring inside pre */
+  .kw { color: #a97ff2; }
+  .str { color: #7fd4b4; }
+  .cmt { color: #5a6282; font-style: italic; }
+  .num { color: #f0a05a; }
+  .fn { color: #5c9dff; }
+  .type { color: #e8c56a; }
+  .op { color: #e06c8a; }
+
+  /* CALLOUT BOXES */
+  .callout {
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin: 20px 0;
+    display: flex;
+    gap: 14px;
+    border: 1px solid;
+  }
+  .callout-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+  .callout-body { flex: 1; }
+  .callout-title { font-size: 13px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 6px; }
+  .callout p { margin-bottom: 0; font-size: 14px; }
+
+  .callout.info { background: rgba(92,157,255,0.08); border-color: rgba(92,157,255,0.25); }
+  .callout.info .callout-title { color: var(--accent); }
+  .callout.tip { background: rgba(93,186,128,0.08); border-color: rgba(93,186,128,0.25); }
+  .callout.tip .callout-title { color: var(--green); }
+  .callout.warning { background: rgba(240,160,90,0.08); border-color: rgba(240,160,90,0.25); }
+  .callout.warning .callout-title { color: var(--accent3); }
+  .callout.key { background: rgba(169,127,242,0.08); border-color: rgba(169,127,242,0.25); }
+  .callout.key .callout-title { color: var(--purple); }
+
+  /* DIAGRAM */
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px 30px;
+    margin: 20px 0;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    overflow-x: auto;
+  }
+  .diagram .d-title {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+  .d-box { color: var(--accent); }
+  .d-label { color: var(--accent2); }
+  .d-arrow { color: var(--text-dim); }
+  .d-field { color: var(--yellow); }
+  .d-val { color: var(--accent3); }
+  .d-sep { color: var(--border); }
+  .d-head { color: var(--purple); font-weight: 700; }
+
+  /* TABLE */
+  .tbl-wrap { overflow-x: auto; margin: 20px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead tr { background: var(--bg3); }
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 11px 16px;
+    border-bottom: 1px solid rgba(48,53,88,0.5);
+    color: var(--text);
+    vertical-align: top;
+  }
+  tr:hover td { background: rgba(92,157,255,0.04); }
+  td:first-child { color: var(--accent); font-family: monospace; font-size: 13px; }
+
+  /* GRID */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+  @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .card h4 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card p { font-size: 13.5px; color: var(--text-dim); margin-bottom: 0; }
+  .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .badge-blue { background: rgba(92,157,255,0.2); color: var(--accent); }
+  .badge-green { background: rgba(93,186,128,0.2); color: var(--green); }
+  .badge-orange { background: rgba(240,160,90,0.2); color: var(--accent3); }
+  .badge-purple { background: rgba(169,127,242,0.2); color: var(--purple); }
+
+  /* STEP LIST */
+  .step-list { list-style: none; padding: 0; }
+  .step-list li {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 16px;
+    align-items: flex-start;
+  }
+  .step-num {
+    width: 28px; height: 28px;
+    background: rgba(92,157,255,0.15);
+    border: 1px solid rgba(92,157,255,0.3);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: var(--accent);
+    flex-shrink: 0; margin-top: 2px;
+  }
+
+  /* SEPARATOR */
+  .sep { border: none; border-top: 1px solid var(--border); margin: 48px 0; }
+
+  /* FLOW CHART */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    margin: 24px 0;
+  }
+  .flow-box {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-bright);
+    text-align: center;
+    min-width: 220px;
+  }
+  .flow-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(92,157,255,0.08); }
+  .flow-box.green { border-color: var(--green); color: var(--green); background: rgba(93,186,128,0.08); }
+  .flow-box.orange { border-color: var(--accent3); color: var(--accent3); background: rgba(240,160,90,0.08); }
+  .flow-box.purple { border-color: var(--purple); color: var(--purple); background: rgba(169,127,242,0.08); }
+  .flow-arrow {
+    font-size: 20px;
+    color: var(--text-dim);
+    margin: 4px 0;
+    line-height: 1;
+  }
+  .flow-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: -2px;
+    margin-bottom: 2px;
+  }
+
+  /* HORIZONTAL FLOW */
+  .flow-h {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 20px 0;
+    overflow-x: auto;
+    padding: 8px 0;
+  }
+  .flow-h .flow-box { min-width: 160px; }
+  .flow-h .flow-arrow { margin: 0 8px; transform: rotate(-90deg); }
+
+  /* LAYER DIAGRAM */
+  .layers {
+    margin: 20px 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .layer {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .layer:last-child { border-bottom: none; }
+  .layer-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .layer.l1 { background: rgba(92,157,255,0.1); color: var(--accent); }
+  .layer.l1 .layer-dot { background: var(--accent); }
+  .layer.l2 { background: rgba(169,127,242,0.1); color: var(--purple); }
+  .layer.l2 .layer-dot { background: var(--purple); }
+  .layer.l3 { background: rgba(93,186,128,0.1); color: var(--green); }
+  .layer.l3 .layer-dot { background: var(--green); }
+  .layer.l4 { background: rgba(240,160,90,0.1); color: var(--accent3); }
+  .layer.l4 .layer-dot { background: var(--accent3); }
+  .layer.l5 { background: rgba(224,108,138,0.1); color: var(--red); }
+  .layer.l5 .layer-dot { background: var(--red); }
+  .layer-desc { margin-left: auto; font-size: 12px; opacity: 0.7; }
+
+  /* INODE VISUAL */
+  .inode-visual {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 2px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 20px 0;
+    font-family: monospace;
+    font-size: 13px;
+  }
+  .iv-header {
+    grid-column: 1 / -1;
+    background: var(--bg3);
+    padding: 10px 16px;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .iv-key {
+    background: var(--bg2);
+    padding: 9px 16px;
+    color: var(--accent);
+    border-right: 2px solid var(--border);
+  }
+  .iv-val {
+    background: var(--code-bg);
+    padding: 9px 16px;
+    color: var(--text);
+  }
+  .iv-val.hi { color: var(--accent3); }
+  .iv-val.ptr { color: var(--purple); }
+  .iv-val.grn { color: var(--green); }
+
+  /* SUMMARY BOX */
+  .summary {
+    background: linear-gradient(135deg, rgba(92,157,255,0.06), rgba(169,127,242,0.06));
+    border: 1px solid rgba(92,157,255,0.2);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin: 32px 0;
+  }
+  .summary h3 { color: var(--text-bright); font-size: 16px; margin-bottom: 14px; margin-top: 0; }
+  .summary ul { list-style: none; padding: 0; }
+  .summary li {
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(92,157,255,0.08);
+    font-size: 14px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .summary li:last-child { border-bottom: none; }
+  .summary li::before { content: '→'; color: var(--accent); flex-shrink: 0; }
+
+  footer {
+    border-top: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 32px 40px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="tag">Tài liệu kỹ thuật</div>
+  <h1>Linux <span>File System</span></h1>
+  <p>Từ ổ cứng vật lý đến file descriptor — hiểu toàn bộ cơ chế mà kernel quản lý tệp tin</p>
+</div>
+
+<!-- NAV -->
+<nav>
+  <a href="#overview">Tổng quan</a>
+  <a href="#disk">Ổ cứng & Phân vùng</a>
+  <a href="#fs-struct">Cấu trúc FS</a>
+  <a href="#inode">Inode</a>
+  <a href="#vfs">VFS & VNode</a>
+  <a href="#fd">File Descriptor</a>
+  <a href="#lifecycle">Vòng đời mở file</a>
+  <a href="#advanced">Nâng cao</a>
+</nav>
+
+<div class="container">
+
+<!-- ─── CHAPTER 0: TỔNG QUAN ─── -->
+<div class="chapter" id="overview">
+  <div class="chapter-header">
+    <div class="chapter-num">0</div>
+    <div>
+      <div class="chapter-title">Bức tranh toàn cảnh</div>
+      <div class="chapter-subtitle">File system Linux hoạt động theo nhiều tầng lớp</div>
+    </div>
+  </div>
+
+  <p>Khi bạn gọi <code>open("/etc/passwd", O_RDONLY)</code>, Linux trải qua <strong>nhiều tầng trừu tượng</strong> trước khi thực sự đọc dữ liệu từ đĩa. Dưới đây là kiến trúc tổng thể:</p>
+
+  <div class="layers">
+    <div class="layer l1">
+      <div class="layer-dot"></div>
+      <strong>Tầng 1: User Space (Application)</strong>
+      <span class="layer-desc">open(), read(), write(), close()</span>
+    </div>
+    <div class="layer l2">
+      <div class="layer-dot"></div>
+      <strong>Tầng 2: System Call Interface</strong>
+      <span class="layer-desc">Cầu nối user ↔ kernel (syscall)</span>
+    </div>
+    <div class="layer l3">
+      <div class="layer-dot"></div>
+      <strong>Tầng 3: VFS — Virtual File System</strong>
+      <span class="layer-desc">VNode / Dentry / Inode cache (inode cache)</span>
+    </div>
+    <div class="layer l4">
+      <div class="layer-dot"></div>
+      <strong>Tầng 4: Filesystem cụ thể</strong>
+      <span class="layer-desc">ext4, FAT32, NTFS, tmpfs, procfs…</span>
+    </div>
+    <div class="layer l5">
+      <div class="layer-dot"></div>
+      <strong>Tầng 5: Block Layer & Driver</strong>
+      <span class="layer-desc">Ổ cứng HDD/SSD/NVMe vật lý</span>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-icon">💡</div>
+    <div class="callout-body">
+      <div class="callout-title">Ý tưởng cốt lõi</div>
+      <p>VFS là "bộ phiên dịch" cho phép Linux xử lý <em>mọi loại filesystem</em> (ext4, FAT, NFS, procfs…) bằng <em>một giao diện thống nhất</em>. Application không cần biết file nằm ở ext4 hay NFS.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ─── CHAPTER 1: Ổ CỨNG ─── -->
+<div class="chapter" id="disk">
+  <div class="chapter-header">
+    <div class="chapter-num">1</div>
+    <div>
+      <div class="chapter-title">Ổ cứng, Phân vùng & Block</div>
+      <div class="chapter-subtitle">Nền tảng vật lý — nơi dữ liệu thực sự lưu trú</div>
+    </div>
+  </div>
+
+  <h2>1.1 Block Device là gì?</h2>
+  <p>Ổ cứng (HDD/SSD) là <strong>block device</strong> — thiết bị đọc/ghi dữ liệu theo từng <em>khối (block)</em> cố định, thường là <strong>512 byte</strong> (sector) hoặc <strong>4096 byte</strong> (4K sector / logical block).</p>
+
+  <div class="diagram">
+    <div class="d-title">🖴 Ổ cứng vật lý</div>
+<span class="d-box">┌────────────────────────────────────────────────────────────┐
+│                        /dev/sda  (toàn bộ đĩa)            │
+│  ┌───────────┐  ┌─────────────────────┐  ┌──────────────┐  │
+│  │  MBR/GPT  │  │  /dev/sda1 (boot)   │  │ /dev/sda2    │  │
+│  │  512 byte │  │  ext4, 500MB        │  │ ext4, 50GB   │  │
+│  └───────────┘  └─────────────────────┘  └──────────────┘  │
+│                                                             │
+│  Mỗi phân vùng gồm hàng nghìn BLOCK (4096 byte mỗi block) │
+└────────────────────────────────────────────────────────────┘</span>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Khái niệm</th><th>Kích thước điển hình</th><th>Mô tả</th></tr></thead>
+      <tbody>
+        <tr><td>Sector</td><td>512 B hoặc 4096 B</td><td>Đơn vị nhỏ nhất phần cứng đọc/ghi</td></tr>
+        <tr><td>Block</td><td>4096 B (ext4 mặc định)</td><td>Đơn vị FS quản lý. Block = N sector</td></tr>
+        <tr><td>Block Group</td><td>~128 MB (ext4)</td><td>Nhóm các block, mỗi group có superblock riêng</td></tr>
+        <tr><td>Cluster (FAT)</td><td>4–64 KB</td><td>Tương đương block trong thế giới FAT32</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>1.2 Cấu trúc Ext4 trên đĩa</h2>
+  <p>Ext4 (filesystem phổ biến nhất trên Linux) chia phân vùng thành các <strong>Block Group</strong>:</p>
+
+  <div class="diagram">
+<span class="d-head">  PHÂN VÙNG /dev/sda2 (ext4)</span>
+<span class="d-box">
+ ┌──────────┬─────────────────────────────────────────────────────────┐
+ │ Block 0  │  Superblock (siêu khối): kích thước FS, số inode,      │
+ │          │  số block tự do, magic number 0xEF53, …                │
+ ├──────────┼─────────────────────────────────────────────────────────┤
+ │ Group 0  │ ┌──────────┬───────────┬──────────┬────────────────┐   │
+ │          │ │ Group    │ Block     │ Inode    │  Data Blocks   │   │
+ │          │ │ Descr.   │ Bitmap    │ Table    │  (dữ liệu thực)│   │
+ │          │ └──────────┴───────────┴──────────┴────────────────┘   │
+ ├──────────┼─────────────────────────────────────────────────────────┤
+ │ Group 1  │ ...tương tự...                                         │
+ ├──────────┼─────────────────────────────────────────────────────────┤
+ │  ...     │                                                         │
+ └──────────┴─────────────────────────────────────────────────────────┘</span>
+  </div>
+
+  <div class="callout warning">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-body">
+      <div class="callout-title">Quan trọng: Block &ne; File</div>
+      <p>Một file <em>không nhất thiết</em> chiếm các block liên tiếp. FS dùng <strong>inode</strong> để ánh xạ "các block nào thuộc file này". Đây là lý do file bị <em>phân mảnh (fragmentation)</em> sau nhiều lần ghi/xóa.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ─── CHAPTER 2: INODE ─── -->
+<div class="chapter" id="inode">
+  <div class="chapter-header">
+    <div class="chapter-num">2</div>
+    <div>
+      <div class="chapter-title">Inode — Trái tim của mọi tệp tin</div>
+      <div class="chapter-subtitle">Index Node: cấu trúc lưu trữ metadata và con trỏ đến dữ liệu</div>
+    </div>
+  </div>
+
+  <h2>2.1 Inode là gì?</h2>
+  <p>Mỗi file/thư mục trên Linux tương ứng với <strong>một inode</strong>. Inode là một cấu trúc dữ liệu trên đĩa lưu <em>mọi thứ về file</em> — <strong>ngoại trừ tên file</strong> và nội dung.</p>
+
+  <div class="callout key">
+    <div class="callout-icon">🔑</div>
+    <div class="callout-body">
+      <div class="callout-title">Câu hỏi quan trọng</div>
+      <p>Tại sao inode <strong>không lưu tên file</strong>? Vì tên file được lưu trong <em>thư mục cha</em> (directory entry / dentry). Điều này cho phép một file có <strong>nhiều tên</strong> (hard link) cùng trỏ vào một inode.</p>
+    </div>
+  </div>
+
+  <h2>2.2 Nội dung của một Inode</h2>
+
+  <div class="inode-visual">
+    <div class="iv-header">📋 struct ext4_inode — trên đĩa (~256 byte)</div>
+    <div class="iv-key">i_mode</div>        <div class="iv-val hi">0100644  (regular file, rw-r--r--)</div>
+    <div class="iv-key">i_uid / i_gid</div> <div class="iv-val">1000 / 1000  (user/group owner)</div>
+    <div class="iv-key">i_size</div>        <div class="iv-val hi">12345  (kích thước file, byte)</div>
+    <div class="iv-key">i_atime</div>       <div class="iv-val">1717123456  (last access time)</div>
+    <div class="iv-key">i_ctime</div>       <div class="iv-val">1717000000  (inode change time)</div>
+    <div class="iv-key">i_mtime</div>       <div class="iv-val">1717100000  (last modify time)</div>
+    <div class="iv-key">i_links_count</div> <div class="iv-val grn">2  (số hard link)</div>
+    <div class="iv-key">i_blocks</div>      <div class="iv-val">24  (số 512-byte sector chiếm dụng)</div>
+    <div class="iv-key">i_block[0..11]</div><div class="iv-val ptr">→ Block trực tiếp (direct blocks)</div>
+    <div class="iv-key">i_block[12]</div>   <div class="iv-val ptr">→ Indirect block (1 cấp)</div>
+    <div class="iv-key">i_block[13]</div>   <div class="iv-val ptr">→ Double indirect (2 cấp)</div>
+    <div class="iv-key">i_block[14]</div>   <div class="iv-val ptr">→ Triple indirect (3 cấp)</div>
+  </div>
+
+  <h2>2.3 Cơ chế ánh xạ Block — Ext2/3 cũ</h2>
+  <p>Ext2/3 dùng sơ đồ <em>indirect block</em> kinh điển để file có thể lớn hơn 12 block:</p>
+
+  <div class="diagram">
+<span class="d-head">  INODE → DATA BLOCKS</span>
+<span class="d-box">
+ inode
+ ┌──────────────────┐
+ │ i_block[0]  ─────┼──→ Block 100  ← dữ liệu trực tiếp (0–11: 48KB)
+ │ i_block[1]  ─────┼──→ Block 215
+ │   ...            │
+ │ i_block[11] ─────┼──→ Block 998
+ │                  │
+ │ i_block[12] ─────┼──→ ┌─────────────────────────┐   indirect
+ │  (indirect)      │    │ ptr→100 ptr→200 ptr→305 │──→ blocks
+ │                  │    └─────────────────────────┘   (thêm 4MB)
+ │ i_block[13] ─────┼──→ double indirect → thêm 4GB
+ │ i_block[14] ─────┼──→ triple indirect → thêm 4TB
+ └──────────────────┘</span>
+  </div>
+
+  <p>Ext4 cải tiến bằng <strong>Extents</strong> — thay vì liệt kê từng block, lưu <em>dải block liên tiếp</em> <code>(block_start, length)</code>, giúp file lớn nhanh hơn và ít bị phân mảnh hơn.</p>
+
+  <h2>2.4 Inode Number & Thư mục</h2>
+  <p>Mỗi inode có một <strong>số inode (inode number)</strong> duy nhất trong filesystem. Thư mục (directory) thực ra là <em>file đặc biệt</em> chứa danh sách <code>(tên_file → inode_number)</code>:</p>
+
+  <div class="diagram">
+<span class="d-head">  NỘI DUNG THƯ MỤC /home/dat/</span>
+<span class="d-box">
+ ┌──────────────────────────────────────────────┐
+ │  Tên entry     │  Inode số   │  Loại         │
+ ├────────────────┼─────────────┼───────────────┤
+ │  "."           │    4521     │  DIR (chính nó)│
+ │  ".."          │      43     │  DIR (cha)     │
+ │  "main.c"      │    7809     │  REG           │
+ │  "build"       │    7812     │  DIR           │
+ │  "firmware.bin"│    7815     │  REG           │
+ └──────────────────────────────────────────────┘</span>
+  </div>
+
+  <p>Khi bạn gõ <code>ls -i</code>, cột đầu tiên chính là <em>inode number</em>:</p>
+  <pre><code>$ ls -i /home/dat/
+7809 main.c    7812 build/    7815 firmware.bin
+
+$ stat main.c
+  File: main.c
+  Size: 4096        Inode: 7809       Links: 1
+Access: (0644/-rw-r--r--)  Uid: 1000  Gid: 1000</code></pre>
+
+  <h2>2.5 Hard Link vs Soft Link</h2>
+  <div class="grid2">
+    <div class="card">
+      <h4>🔗 Hard Link <span class="badge badge-blue">cùng inode</span></h4>
+      <p>Tạo thêm <em>một tên khác</em> trỏ vào <em>cùng một inode</em>. Xóa tên này, inode vẫn còn nếu còn link khác. File bị xóa thật sự khi <code>i_links_count == 0</code> và không có process nào đang mở.</p>
+      <pre style="margin-top:10px"><code>ln main.c main_backup.c</code></pre>
+    </div>
+    <div class="card">
+      <h4>🔀 Soft Link (Symlink) <span class="badge badge-orange">inode riêng</span></h4>
+      <p>Tạo inode mới, loại <code>S_IFLNK</code>, nội dung là <em>đường dẫn</em> đến target. Xóa target → symlink bị "đứt" (dangling). Có thể link cross-filesystem.</p>
+      <pre style="margin-top:10px"><code>ln -s /etc/nginx/nginx.conf nginx.conf</code></pre>
+    </div>
+  </div>
+</div>
+
+<!-- ─── CHAPTER 3: VFS & VNode ─── -->
+<div class="chapter" id="vfs">
+  <div class="chapter-header">
+    <div class="chapter-num">3</div>
+    <div>
+      <div class="chapter-title">VFS & VNode</div>
+      <div class="chapter-subtitle">Virtual File System — lớp trừu tượng cho phép Linux "nói chuyện" với mọi loại FS</div>
+    </div>
+  </div>
+
+  <h2>3.1 Vì sao cần VFS?</h2>
+  <p>Linux hỗ trợ hàng chục filesystem: ext4, FAT32, NTFS, NFS, procfs, sysfs, tmpfs… Mỗi loại có cấu trúc đĩa khác nhau. Không có VFS, mỗi application phải biết mình đang dùng FS nào — điều này là không thực tế.</p>
+
+  <div class="flow">
+    <div class="flow-box accent">Application: open("/proc/cpuinfo")</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box purple">VFS: Tìm VNode cho đường dẫn này</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box orange">Dispatch đến FS driver tương ứng: procfs</div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box green">procfs tạo nội dung "on-the-fly" (không có block thật)</div>
+  </div>
+
+  <h2>3.2 Bốn đối tượng chính trong VFS Linux</h2>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Struct</th><th>Vai trò</th><th>Tương tự đĩa</th></tr></thead>
+      <tbody>
+        <tr><td>struct inode</td><td>Metadata của 1 file trong bộ nhớ</td><td>ext4_inode trên đĩa</td></tr>
+        <tr><td>struct dentry</td><td>Cache một thành phần đường dẫn (directory entry)</td><td>Entry trong thư mục</td></tr>
+        <tr><td>struct file</td><td>Đại diện cho 1 lần mở file (có vị trí đọc/ghi)</td><td>Không có trên đĩa (RAM only)</td></tr>
+        <tr><td>struct super_block</td><td>Đại diện cho 1 filesystem đã mount</td><td>Superblock trên đĩa</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>3.3 VNode là gì?</h2>
+  <p>Thuật ngữ <strong>VNode (Virtual Node)</strong> xuất phát từ BSD Unix và được dùng để chỉ <em>khái niệm trừu tượng</em> của "một node trong VFS" — tức là đại diện trong bộ nhớ cho bất kỳ đối tượng nào trong cây filesystem (file, thư mục, device, socket…).</p>
+
+  <div class="callout info">
+    <div class="callout-icon">📌</div>
+    <div class="callout-body">
+      <div class="callout-title">VNode trong Linux kernel</div>
+      <p>Linux không có struct tên là <code>vnode</code>. Thay vào đó, Linux dùng <strong><code>struct inode</code></strong> làm VNode tương đương — nó nằm trong RAM và có con trỏ đến <code>inode_operations</code> (bảng hàm ảo theo FS cụ thể). Đây là cài đặt C của polymorphism trong OOP.</p>
+    </div>
+  </div>
+
+  <h2>3.4 struct inode (VFS layer — trong RAM)</h2>
+  <pre><span class="cmt">/* include/linux/fs.h (rút gọn) */</span>
+<span class="kw">struct</span> <span class="type">inode</span> {
+    <span class="type">umode_t</span>         i_mode;       <span class="cmt">/* permissions & type */</span>
+    <span class="type">kuid_t</span>          i_uid;
+    <span class="type">kgid_t</span>          i_gid;
+    <span class="type">unsigned long</span>   i_ino;        <span class="cmt">/* inode number */</span>
+    <span class="type">loff_t</span>          i_size;       <span class="cmt">/* file size in bytes */</span>
+    <span class="type">unsigned int</span>    i_nlink;      <span class="cmt">/* hard link count */</span>
+    <span class="type">atomic_t</span>        i_count;      <span class="cmt">/* reference count */</span>
+
+    <span class="kw">const struct</span> <span class="type">inode_operations</span>  *i_op;   <span class="cmt">/* vtable: lookup, create, link… */</span>
+    <span class="kw">const struct</span> <span class="type">file_operations</span>   *i_fop;  <span class="cmt">/* vtable: read, write, mmap… */</span>
+    <span class="kw">struct</span> <span class="type">super_block</span>             *i_sb;   <span class="cmt">/* filesystem này thuộc về */</span>
+    <span class="kw">struct</span> <span class="type">address_space</span>           *i_mapping; <span class="cmt">/* page cache */</span>
+    <span class="cmt">/* ... */</span>
+};</pre>
+
+  <h2>3.5 Dentry Cache — tăng tốc path resolution</h2>
+  <p>Mỗi khi kernel phân giải đường dẫn <code>/home/dat/main.c</code>, nó phải đi qua từng thành phần: <code>/</code> → <code>home</code> → <code>dat</code> → <code>main.c</code>. Để tránh đọc đĩa mỗi lần, kernel cache các bước này trong <strong>Dentry Cache (dcache)</strong>:</p>
+
+  <div class="diagram">
+<span class="d-box">dcache
+ ┌─────────────────────────────────────────────────────┐
+ │  dentry("/")         → inode #2  (root dir)         │
+ │  dentry("home")      → inode #43                    │
+ │  dentry("dat")       → inode #4521                  │
+ │  dentry("main.c")    → inode #7809  ← HIT! (cached)│
+ └─────────────────────────────────────────────────────┘</span>
+  </div>
+
+  <h2>3.6 struct file — một lần mở cụ thể</h2>
+  <p><code>struct file</code> được tạo <em>mỗi lần <code>open()</code></em> được gọi. Nó lưu trạng thái của <em>lần mở đó</em> (vị trí đọc/ghi, flags):</p>
+  <pre><span class="kw">struct</span> <span class="type">file</span> {
+    <span class="kw">struct</span> <span class="type">path</span>          f_path;    <span class="cmt">/* dentry + vfsmount */</span>
+    <span class="kw">struct</span> <span class="type">inode</span>        *f_inode;   <span class="cmt">/* inode của file */</span>
+    <span class="kw">const struct</span> <span class="type">file_operations</span> *f_op;
+    <span class="type">loff_t</span>               f_pos;    <span class="cmt">/* vị trí đọc/ghi hiện tại */</span>
+    <span class="type">unsigned int</span>         f_flags;  <span class="cmt">/* O_RDONLY, O_WRONLY… */</span>
+    <span class="type">atomic_long_t</span>        f_count;  <span class="cmt">/* reference count */</span>
+    <span class="cmt">/* ... */</span>
+};</pre>
+
+  <div class="callout tip">
+    <div class="callout-icon">✅</div>
+    <div class="callout-body">
+      <div class="callout-title">Phân biệt inode và file</div>
+      <p>Nếu 2 process cùng <code>open()</code> một file, sẽ có <strong>2 struct file khác nhau</strong> (2 vị trí đọc độc lập) nhưng chỉ có <strong>1 inode</strong>. Ngược lại, nếu một process dùng <code>dup(fd)</code>, 2 fd sẽ dùng <em>chung một struct file</em> (cùng vị trí đọc).</p>
+    </div>
+  </div>
+</div>
+
+<!-- ─── CHAPTER 4: FILE DESCRIPTOR ─── -->
+<div class="chapter" id="fd">
+  <div class="chapter-header">
+    <div class="chapter-num">4</div>
+    <div>
+      <div class="chapter-title">File Descriptor</div>
+      <div class="chapter-subtitle">Con số nhỏ bé mà application dùng để "nói chuyện" với kernel</div>
+    </div>
+  </div>
+
+  <h2>4.1 File Descriptor là gì?</h2>
+  <p><strong>File Descriptor (fd)</strong> là một <em>số nguyên không âm</em> (0, 1, 2, 3, …) đại diện cho một tài nguyên đang mở trong tiến trình hiện tại. Nó là <em>chỉ số vào bảng file của process</em>.</p>
+
+  <div class="callout info">
+    <div class="callout-icon">💡</div>
+    <div class="callout-body">
+      <div class="callout-title">fd mặc định</div>
+      <p>Mỗi process sinh ra đã có sẵn 3 fd: <strong>0</strong> = stdin, <strong>1</strong> = stdout, <strong>2</strong> = stderr. Khi bạn <code>open()</code> một file, kernel cấp fd nhỏ nhất còn trống, bắt đầu từ <strong>3</strong>.</p>
+    </div>
+  </div>
+
+  <h2>4.2 Ba bảng của kernel</h2>
+  <p>Kernel quản lý file qua <strong>3 bảng lồng nhau</strong>:</p>
+
+  <div class="diagram">
+<span class="d-head">  PROCESS A                    KERNEL                        DISK</span>
+<span class="d-box">
+ ┌──────────────────┐    ┌──────────────────────┐    ┌─────────────────┐
+ │  fd table        │    │  Open File Table      │    │  Inode Table    │
+ │  (per-process)   │    │  (system-wide)        │    │  (on disk/cache)│
+ │                  │    │                       │    │                 │
+ │  fd 0 (stdin) ───┼──→ │  entry A: f_pos=0     │    │                 │
+ │  fd 1 (stdout)───┼──→ │  entry B: f_pos=0     │    │                 │
+ │  fd 2 (stderr)───┼──→ │  entry C: f_pos=0     │    │                 │
+ │  fd 3 ───────────┼──→ │  entry D: f_pos=1024  ├──→ │  inode #7809    │
+ │  fd 4 ───────────┼──╮  │  entry E: f_pos=0     ├──→ │  inode #7809    │
+ └──────────────────┘  │ └──────────────────────┘    └─────────────────┘
+                        │         ↑
+ ┌──────────────────┐   ╰──→ (Process B dup()/fork())
+ │  PROCESS B       │
+ │  fd 5 ───────────┼──→ entry E  (cùng struct file)
+ └──────────────────┘</span>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Bảng</th><th>Phạm vi</th><th>Lưu gì</th></tr></thead>
+      <tbody>
+        <tr><td>fd table</td><td>Per-process</td><td>Ánh xạ fd (int) → con trỏ vào Open File Table</td></tr>
+        <tr><td>Open File Table</td><td>System-wide</td><td>struct file: f_pos, flags, con trỏ inode</td></tr>
+        <tr><td>Inode/VNode Table</td><td>System-wide</td><td>struct inode: metadata + con trỏ đến block đĩa</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>4.3 Vòng đời của một File Descriptor</h2>
+  <pre><span class="cmt">/* 1. Mở file: kernel tạo struct file, cấp fd */</span>
+<span class="type">int</span> fd = <span class="fn">open</span>(<span class="str">"/home/dat/main.c"</span>, O_RDONLY);
+<span class="cmt">/* fd = 3 (ví dụ) */</span>
+
+<span class="cmt">/* 2. Đọc: kernel dùng fd để tìm struct file → inode → block */</span>
+<span class="type">char</span> buf[<span class="num">128</span>];
+<span class="fn">read</span>(fd, buf, <span class="kw">sizeof</span>(buf));   <span class="cmt">/* f_pos tự động tăng */</span>
+
+<span class="cmt">/* 3. Lseek: thay đổi f_pos trong struct file */</span>
+<span class="fn">lseek</span>(fd, <span class="num">0</span>, SEEK_SET);       <span class="cmt">/* quay về đầu file */</span>
+
+<span class="cmt">/* 4. Đóng: struct file bị giải phóng, fd được tái sử dụng */</span>
+<span class="fn">close</span>(fd);</pre>
+
+  <h2>4.4 fd không chỉ dành cho file thông thường</h2>
+  <p>Triết lý Unix: <em>"Everything is a file"</em>. Các loại tài nguyên sau đây đều dùng fd:</p>
+
+  <div class="grid2">
+    <div class="card">
+      <h4>📁 Regular File / Directory</h4>
+      <p>File thông thường, thư mục trên đĩa</p>
+    </div>
+    <div class="card">
+      <h4>🖨️ Device File</h4>
+      <p><code>/dev/sda</code>, <code>/dev/ttyUSB0</code>, <code>/dev/mem</code></p>
+    </div>
+    <div class="card">
+      <h4>🔌 Socket</h4>
+      <p>TCP/UDP socket, Unix Domain Socket cũng là fd</p>
+    </div>
+    <div class="card">
+      <h4>📡 Pipe / FIFO</h4>
+      <p><code>pipe()</code> tạo 2 fd: đầu đọc và đầu ghi</p>
+    </div>
+    <div class="card">
+      <h4>⏰ timerfd / eventfd</h4>
+      <p>Timer và event notification qua fd (Linux-specific)</p>
+    </div>
+    <div class="card">
+      <h4>🔔 signalfd / epoll</h4>
+      <p>Signal và I/O multiplexing cũng qua fd</p>
+    </div>
+  </div>
+
+  <h2>4.5 Kiểm tra fd của process đang chạy</h2>
+  <pre><span class="cmt"># Xem tất cả fd của process PID</span>
+$ ls -la /proc/<span class="num">1234</span>/fd/
+lrwxrwxrwx  lr-x------  1 dat dat  0 -> /dev/null        <span class="cmt"># fd 0 (stdin)</span>
+lrwxrwxrwx  l-wx------  1 dat dat  1 -> /dev/pts/0       <span class="cmt"># fd 1 (stdout)</span>
+lrwxrwxrwx  l-wx------  1 dat dat  2 -> /dev/pts/0       <span class="cmt"># fd 2 (stderr)</span>
+lrwxrwxrwx  lr-x------  1 dat dat  3 -> /home/dat/main.c <span class="cmt"># fd 3 (mở file)</span>
+lrwxrwxrwx  lrwx------  1 dat dat  4 -> socket:[12345]   <span class="cmt"># fd 4 (socket)</span>
+
+<span class="cmt"># Dùng lsof để xem chi tiết hơn</span>
+$ lsof -p <span class="num">1234</span>
+COMMAND  PID USER   FD   TYPE DEVICE SIZE/OFF   NODE NAME
+my_app  1234  dat  cwd    DIR    8,1     4096  4521  /home/dat
+my_app  1234  dat    0r   REG    8,1        0     2  /dev/null
+my_app  1234  dat    3r   REG    8,1     4096  7809  /home/dat/main.c</pre>
+</div>
+
+<!-- ─── CHAPTER 5: VÒNG ĐỜI MỞ FILE ─── -->
+<div class="chapter" id="lifecycle">
+  <div class="chapter-header">
+    <div class="chapter-num">5</div>
+    <div>
+      <div class="chapter-title">Vòng đời đầy đủ khi mở một file</div>
+      <div class="chapter-subtitle">Từ open() đến block đọc từ đĩa — step by step</div>
+    </div>
+  </div>
+
+  <h2>5.1 Hành trình của open("/home/dat/main.c", O_RDONLY)</h2>
+
+  <ul class="step-list">
+    <li>
+      <div class="step-num">1</div>
+      <div>
+        <strong>Syscall trap:</strong> Application gọi <code>open()</code> → CPU chuyển từ user mode sang kernel mode qua <em>syscall</em> số <code>2</code> (x86_64).
+      </div>
+    </li>
+    <li>
+      <div class="step-num">2</div>
+      <div>
+        <strong>Path resolution:</strong> VFS phân giải <code>/home/dat/main.c</code> từng bước. Với mỗi thành phần, kernel tìm trong dcache trước, nếu miss mới đọc thư mục từ đĩa.
+      </div>
+    </li>
+    <li>
+      <div class="step-num">3</div>
+      <div>
+        <strong>Permission check:</strong> Kernel kiểm tra <code>i_mode</code> và <code>i_uid/i_gid</code> trong inode so với uid/gid của process. Nếu không có quyền → <code>EACCES</code>.
+      </div>
+    </li>
+    <li>
+      <div class="step-num">4</div>
+      <div>
+        <strong>Cấp struct file:</strong> Kernel cấp một <code>struct file</code> mới, khởi tạo <code>f_pos = 0</code>, <code>f_flags = O_RDONLY</code>, trỏ đến inode.
+      </div>
+    </li>
+    <li>
+      <div class="step-num">5</div>
+      <div>
+        <strong>Cấp fd:</strong> Kernel chọn số nguyên nhỏ nhất còn trống trong fd table của process, ghi con trỏ đến struct file vừa tạo. Trả về số fd này về user space.
+      </div>
+    </li>
+    <li>
+      <div class="step-num">6</div>
+      <div>
+        <strong>Return:</strong> CPU trở về user mode, <code>open()</code> trả về <code>fd = 3</code>.
+      </div>
+    </li>
+  </ul>
+
+  <h2>5.2 Hành trình của read(fd, buf, 512)</h2>
+
+  <ul class="step-list">
+    <li>
+      <div class="step-num">1</div>
+      <div>Kernel dùng <code>fd</code> tra bảng → tìm ra <code>struct file</code> → lấy <code>f_pos</code> và con trỏ inode.
+      </div>
+    </li>
+    <li>
+      <div class="step-num">2</div>
+      <div><strong>Page Cache lookup:</strong> Kernel kiểm tra xem dữ liệu tại offset <code>f_pos</code> đã có trong <em>page cache</em> chưa. Page cache là RAM cache dữ liệu đĩa.
+      </div>
+    </li>
+    <li>
+      <div class="step-num">3</div>
+      <div><strong>Cache HIT:</strong> Dữ liệu đã có trong RAM → copy thẳng vào <code>buf</code> của user. <code>f_pos += 512</code>. Rất nhanh (ns).
+      </div>
+    </li>
+    <li>
+      <div class="step-num">4</div>
+      <div><strong>Cache MISS:</strong> Kernel phải tìm block numbers trong inode (qua extents/indirect), gửi lệnh đọc đến Block Layer → Device Driver → đĩa vật lý. Dữ liệu trả về được nạp vào page cache rồi copy sang <code>buf</code>. Chậm hơn nhiều (μs–ms).
+      </div>
+    </li>
+  </ul>
+
+  <div class="diagram">
+<span class="d-head">  READ PATH</span>
+<span class="d-box">
+ read(fd, buf, 512)
+      │
+      ↓
+ [kernel: fd → struct file → inode → offset]
+      │
+      ↓
+ PAGE CACHE: offset ∈ cache?
+   ├─ YES ──→ memcpy → buf  (fast path: ~100ns)
+   │
+   └─ NO  ──→ Block layer: inode.extent → block# 4200
+                   │
+                   ↓
+              Device driver → NVMe/SATA controller
+                   │
+                   ↓
+              🖴 Đọc sector từ đĩa (~100μs NVMe, ~10ms HDD)
+                   │
+                   ↓
+              Nạp vào page cache → memcpy → buf</span>
+  </div>
+</div>
+
+<!-- ─── CHAPTER 6: NÂNG CAO ─── -->
+<div class="chapter" id="advanced">
+  <div class="chapter-header">
+    <div class="chapter-num">6</div>
+    <div>
+      <div class="chapter-title">Chủ đề Nâng Cao</div>
+      <div class="chapter-subtitle">Page Cache, mmap, O_DIRECT, inotify, và embedded considerations</div>
+    </div>
+  </div>
+
+  <h2>6.1 Page Cache</h2>
+  <p>Page Cache là bộ nhớ kernel dùng để cache nội dung file. Khi RAM còn trống, Linux ưu tiên dùng cho page cache. Khi RAM thiếu, kernel <em>evict</em> (đẩy ra) các page sạch (không bị dirty).</p>
+  <pre><span class="cmt"># Xem dung lượng page cache hiện tại</span>
+$ cat /proc/meminfo | grep -E "Cached|Buffers"
+Buffers:          210432 kB   <span class="cmt"># block metadata cache</span>
+Cached:         5421988 kB   <span class="cmt"># page cache (file data)</span>
+
+<span class="cmt"># Flush page cache (testing only)</span>
+$ echo 3 > /proc/sys/vm/drop_caches</pre>
+
+  <h2>6.2 mmap — ánh xạ file vào địa chỉ ảo</h2>
+  <p><code>mmap()</code> ánh xạ file trực tiếp vào không gian địa chỉ ảo của process. Thay vì <code>read()/write()</code>, bạn truy cập file như truy cập mảng trong RAM:</p>
+  <pre><span class="type">int</span> fd = <span class="fn">open</span>(<span class="str">"firmware.bin"</span>, O_RDONLY);
+<span class="type">void</span> *addr = <span class="fn">mmap</span>(NULL, file_size, PROT_READ,
+                   MAP_PRIVATE, fd, <span class="num">0</span>);
+
+<span class="cmt">/* Truy cập như mảng — kernel load page khi cần (demand paging) */</span>
+<span class="type">uint32_t</span> magic = *((<span class="type">uint32_t</span>*)addr);
+
+<span class="fn">munmap</span>(addr, file_size);
+<span class="fn">close</span>(fd);</pre>
+
+  <div class="callout tip">
+    <div class="callout-icon">🚀</div>
+    <div class="callout-body">
+      <div class="callout-title">mmap zero-copy</div>
+      <p><code>mmap</code> giúp tránh copy dữ liệu từ kernel space sang user space — dữ liệu ở page cache được <em>ánh xạ trực tiếp</em> vào address space của process. Rất hiệu quả cho file lớn như firmware image hoặc database.</p>
+    </div>
+  </div>
+
+  <h2>6.3 O_DIRECT — bỏ qua Page Cache</h2>
+  <p>Trong embedded / database systems, đôi khi bạn muốn quản lý cache tự mình, không dùng page cache của kernel:</p>
+  <pre><span class="type">int</span> fd = <span class="fn">open</span>(<span class="str">"/dev/sda"</span>, O_RDWR | O_DIRECT);
+<span class="cmt">/* Buffer PHẢI căn chỉnh theo sector size (512 hoặc 4096 byte) */</span>
+<span class="type">void</span> *buf;
+<span class="fn">posix_memalign</span>(&buf, <span class="num">4096</span>, <span class="num">4096</span>);
+<span class="fn">read</span>(fd, buf, <span class="num">4096</span>);  <span class="cmt">/* DMA thẳng từ đĩa vào buf, không qua cache */</span></pre>
+
+  <h2>6.4 inotify — giám sát thay đổi file</h2>
+  <p>Linux cung cấp <code>inotify</code> API cho phép monitor sự kiện trên file/thư mục:</p>
+  <pre><span class="type">int</span> ifd = <span class="fn">inotify_init</span>();
+<span class="type">int</span> wd  = <span class="fn">inotify_add_watch</span>(ifd, <span class="str">"/etc"</span>,
+                IN_MODIFY | IN_CREATE | IN_DELETE);
+
+<span class="cmt">/* Đọc events */</span>
+<span class="kw">struct</span> <span class="type">inotify_event</span> ev;
+<span class="fn">read</span>(ifd, &ev, <span class="kw">sizeof</span>(ev));
+<span class="cmt">/* ev.name = tên file thay đổi, ev.mask = loại sự kiện */</span></pre>
+
+  <h2>6.5 /proc và /sys — Filesystem ảo</h2>
+  <p>Hai filesystem đặc biệt này <em>không có dữ liệu trên đĩa</em>. Kernel tạo nội dung on-the-fly thông qua VFS:</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Path</th><th>Nội dung</th><th>Dùng để</th></tr></thead>
+      <tbody>
+        <tr><td>/proc/&lt;pid&gt;/fd/</td><td>Symlink tới các fd của process</td><td>Debug, forensics</td></tr>
+        <tr><td>/proc/&lt;pid&gt;/maps</td><td>Memory map của process</td><td>Debug memory layout</td></tr>
+        <tr><td>/proc/cpuinfo</td><td>Thông tin CPU</td><td>Hardware detection</td></tr>
+        <tr><td>/sys/class/gpio/</td><td>GPIO control (embedded)</td><td>Điều khiển GPIO từ userspace</td></tr>
+        <tr><td>/sys/class/net/</td><td>Network interface stats</td><td>Network monitoring</td></tr>
+        <tr><td>/dev/mem</td><td>Physical memory space</td><td>Low-level hardware access</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>6.6 Giới hạn fd và tuning</h2>
+  <pre><span class="cmt"># Xem giới hạn fd của process hiện tại</span>
+$ ulimit -n
+1024
+
+<span class="cmt"># Tăng giới hạn cho session này</span>
+$ ulimit -n 65536
+
+<span class="cmt"># Xem giới hạn toàn system</span>
+$ cat /proc/sys/fs/file-max
+9223372036854775807
+
+<span class="cmt"># Xem số fd đang mở toàn system</span>
+$ cat /proc/sys/fs/file-nr
+2368    0    9223372036854775807
+<span class="cmt"># [used] [free-but-allocated] [max]</span></pre>
+
+  <div class="callout warning">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-body">
+      <div class="callout-title">Embedded Consideration: fd leak</div>
+      <p>Trong embedded Linux (Buildroot), <em>fd leak</em> (mở file mà không close) là lỗi nghiêm trọng vì giới hạn fd thấp hơn desktop. Luôn kiểm tra return value của <code>close()</code> và dùng <code>lsof</code> / <code>/proc/&lt;pid&gt;/fd</code> để debug.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SUMMARY -->
+<div class="summary">
+  <h3>📚 Tóm tắt: Các khái niệm & mối quan hệ</h3>
+  <ul>
+    <li><strong>Block</strong> — đơn vị lưu trữ vật lý nhỏ nhất mà FS quản lý (thường 4096 byte)</li>
+    <li><strong>Inode (on-disk)</strong> — cấu trúc metadata trên đĩa: permissions, size, owner, con trỏ đến data blocks. Không chứa tên file.</li>
+    <li><strong>Directory</strong> — file đặc biệt ánh xạ tên → inode number</li>
+    <li><strong>Hard Link</strong> — nhiều tên trỏ vào cùng một inode. File tồn tại đến khi link count = 0.</li>
+    <li><strong>VFS</strong> — tầng trừu tượng trong kernel cho phép xử lý mọi FS bằng interface thống nhất</li>
+    <li><strong>VNode / struct inode (VFS)</strong> — đại diện in-memory của inode, có bảng hàm ảo (vtable) theo FS</li>
+    <li><strong>struct dentry</strong> — cache một bước trong đường dẫn, tăng tốc path resolution</li>
+    <li><strong>struct file</strong> — một lần mở file: vị trí đọc/ghi (f_pos), flags, con trỏ inode</li>
+    <li><strong>File Descriptor</strong> — số nguyên trong process, chỉ vào struct file trong open file table của kernel</li>
+    <li><strong>Page Cache</strong> — RAM cache dữ liệu đĩa, giúp read/write lặp lại rất nhanh</li>
+  </ul>
+</div>
+
+</div><!-- /container -->
+
+<footer>
+  Tài liệu: Linux File System — File Descriptor, Inode, VNode &nbsp;·&nbsp;
+  Dành cho Embedded Linux Engineer &nbsp;·&nbsp;
+  Kernel version tham chiếu: Linux 6.x
+</footer>
+
+</body>
+</html>
