@@ -8,4 +8,4 @@ cd build || exit
 cmake ..
 make
 
-# ./pipe_spawn
+# ./fifo_named_pipe_p1
