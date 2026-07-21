@@ -3,6 +3,7 @@
 #include <glib-unix.h>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 /**
@@ -12,6 +13,16 @@ enum class VideoSourceType
 {
     LibCamera,  /* libcamerasrc — dành cho camera CSI trên Raspberry Pi */
     V4L2,       /* v4l2src       — dành cho camera USB (Video4Linux2)   */
+};
+
+/**
+ * @brief Loại sink video ở cuối pipeline.
+ */
+enum class VideoSinkType
+{
+    GlImageSink,    /* glimagesink   — OpenGL window (mặc định, live preview) */
+    AutoVideoSink,  /* autovideosink — tự chọn sink phù hợp với hệ thống     */
+    FakeSink,       /* fakesink      — không hiển thị, dùng để test headless  */
 };
 
 /**
@@ -29,12 +40,49 @@ static const char *VideoSourceType_To_String(VideoSourceType arg_type)
     }
 }
 
+/**
+ * @brief Chuyển đổi VideoSinkType sang tên GStreamer element tương ứng.
+ * @param arg_type  Loại sink video.
+ * @return Tên plugin GStreamer dưới dạng C-string.
+ */
+static const char *VideoSinkType_To_String(VideoSinkType arg_type)
+{
+    switch (arg_type)
+    {
+        case VideoSinkType::GlImageSink:   return "glimagesink";
+        case VideoSinkType::AutoVideoSink: return "autovideosink";
+        case VideoSinkType::FakeSink:      return "fakesink";
+        default:                            return "glimagesink";
+    }
+}
+
+/**
+ * @brief Trả về tên property để gán đường dẫn camera cho từng loại source.
+ *
+ * libcamerasrc dùng "camera-name"; v4l2src dùng "device".
+ * @param arg_type  Loại nguồn video.
+ * @return Tên property dưới dạng C-string.
+ */
+static const char *Camera_Source_Property(VideoSourceType arg_type)
+{
+    switch (arg_type)
+    {
+        case VideoSourceType::LibCamera: return "camera-name";
+        case VideoSourceType::V4L2:      return "device";
+        default:                          return "camera-name";
+    }
+}
+
 struct Device_Metadata
 {
     std::string Mime_Type;
     std::string Pixel_Format;
     int Width;
     int Height;
+    /* Danh sách framerate hỗ trợ dưới dạng (tử số, mẫu số).
+     * VD: {30,1}=30fps, {15,1}=15fps.
+     * Rỗng nếu caps không khai báo framerate. */
+    std::vector<std::pair<int, int>> Framerate_List;
 };
 
 struct Devices_Information
@@ -43,6 +91,30 @@ struct Devices_Information
     std::string Devices_Type;
     std::string Devices_Path;
     std::vector<Device_Metadata> Metadata_List;
+};
+
+/**
+ * @brief Toàn bộ tham số cấu hình cho một pipeline video.
+ *
+ * Truyền vào Start_Preview(Pipeline_Config) hoặc Set_Pipeline_Config()
+ * trước khi build pipeline. Mọi trường đều có default hợp lý —
+ * chỉ set những gì cần thay đổi.
+ */
+struct Pipeline_Config
+{
+    /* ── Nguồn ──────────────────────────────────────────────────────── */
+    VideoSourceType source_type  = VideoSourceType::LibCamera;
+    int             camera_index = 0;
+
+    /* ── Định dạng video ─────────────────────────────────────────────── */
+    std::string     pixel_format = "NV12";  /* NV12, RGBA, I420, MJPEG... */
+    int             width        = 640;
+    int             height       = 480;
+    int             framerate_n  = 0;       /* 0/1 = không ép framerate   */
+    int             framerate_d  = 1;
+
+    /* ── Sink ────────────────────────────────────────────────────────── */
+    VideoSinkType   sink_type    = VideoSinkType::GlImageSink;
 };
 
 class GStreamer_Glue
@@ -80,10 +152,21 @@ public:
     const std::vector<Devices_Information> &Get_Devices_List() const;
 
     /**
-     * @brief Khởi tạo pipeline và bắt đầu live preview (blocking).
+     * @brief Khởi tạo pipeline và bắt đầu live preview (blocking) với cấu hình tùy chọn.
      *
      * Hàm sẽ gọi g_main_loop_run() và chặn cho đến khi nhận được tín hiệu
      * dừng (Ctrl+C hoặc Stop_Preview()). Nhấn [ENTER] / [s] để switch camera.
+     *
+     * @param arg_config  Cấu hình đầy đủ cho pipeline (sink, resolution, format...).
+     * @return true nếu pipeline được khởi tạo thành công, false nếu có lỗi.
+     */
+    bool Start_Preview(const Pipeline_Config &arg_config);
+
+    /**
+     * @brief Overload backward-compatible: camera index + source type.
+     *
+     * Tương đương gọi Start_Preview(Pipeline_Config{source_type, camera_index}).
+     * Các tham số khác (sink, format, resolution) dùng default của Pipeline_Config.
      *
      * @param arg_camera_index  Chỉ số camera trong danh sách (mặc định: 0).
      * @param arg_source_type   Loại nguồn video (mặc định: LibCamera).
@@ -103,6 +186,15 @@ public:
      * Dừng pipeline hiện tại, cập nhật chỉ số camera, rồi khởi động lại pipeline.
      */
     void Switch_Camera();
+
+    /**
+     * @brief Thiết lập cấu hình pipeline trước khi gọi Start_Preview().
+     *
+     * Gọi trước Start_Preview() để cấu hình resolution, format, sink type...
+     * Nếu không gọi, Start_Preview() dùng giá trị default trong Pipeline_Config.
+     * @param arg_config  Cấu hình đầy đủ cho pipeline.
+     */
+    void Set_Pipeline_Config(const Pipeline_Config &arg_config);
 
     /**
      * @brief Đăng ký một cặp (signal, callback) được gọi khi nhận tín hiệu hệ thống.
@@ -369,11 +461,8 @@ private:
         GstElement *audio_resample  = nullptr;
         GstElement *audio_sink      = nullptr;
 
-        /* Chỉ số camera đang active trong m_Camera_Devices_List */
-        int current_camera_index    = 0;
-
-        /* Loại nguồn video (libcamerasrc hoặc v4l2src) */
-        VideoSourceType video_source_type = VideoSourceType::LibCamera;
+        /* Cấu hình pipeline đang active (dùng lại bởi Switch_Camera()) */
+        Pipeline_Config active_config;
     } GStreamer_Pipeline_Structure;
 
     struct
@@ -418,11 +507,10 @@ private:
     /**
      * @brief Khởi tạo toàn bộ elements, link pipeline và thiết lập bus watch.
      *
-     * @param arg_camera_index  Chỉ số camera trong m_Camera_Devices_List.
-     * @param arg_source_type   Loại nguồn video.
+     * @param arg_config  Cấu hình đầy đủ (camera index, source type, sink, format, resolution).
      * @return true nếu thành công, false nếu có lỗi.
      */
-    bool Private_Build_Video_Pipeline(int arg_camera_index, VideoSourceType arg_source_type);
+    bool Private_Build_Video_Pipeline(const Pipeline_Config &arg_config);
 
     /**
      * @brief Callback xử lý message EOS / ERROR từ GStreamer Bus.
@@ -581,6 +669,48 @@ std::vector<Devices_Information> GStreamer_Glue::Private_Parse_Devices_Informati
                     gst_structure_get_int(cap_struct, "width", &local_metadata.Width);
                     gst_structure_get_int(cap_struct, "height", &local_metadata.Height);
 
+                    /* Lấy Framerate — tồn tại dưới 3 dạng trong GstCaps:
+                     *   Dạng 1: fraction đơn  → framerate=(fraction)30/1
+                     *   Dạng 2: list          → framerate=(fraction){ 30/1, 15/1 }
+                     *   Dạng 3: range         → framerate=(fraction)[1/1,120/1]
+                     * Cả 3 dạng đều được thu thập vào Framerate_List. */
+                    const GValue *fps_val = gst_structure_get_value(cap_struct, "framerate");
+                    if (fps_val != nullptr)
+                    {
+                        if (GST_VALUE_HOLDS_FRACTION(fps_val))
+                        {
+                            /* Dạng 1: fraction đơn */
+                            int fps_n = gst_value_get_fraction_numerator(fps_val);
+                            int fps_d = gst_value_get_fraction_denominator(fps_val);
+                            local_metadata.Framerate_List.push_back({fps_n, fps_d});
+                        }
+                        else if (GST_VALUE_HOLDS_LIST(fps_val))
+                        {
+                            /* Dạng 2: list các fraction */
+                            guint list_size = gst_value_list_get_size(fps_val);
+                            local_metadata.Framerate_List.reserve(list_size);
+                            for (guint j = 0; j < list_size; j++)
+                            {
+                                const GValue *item = gst_value_list_get_value(fps_val, j);
+                                int fps_n = gst_value_get_fraction_numerator(item);
+                                int fps_d = gst_value_get_fraction_denominator(item);
+                                local_metadata.Framerate_List.push_back({fps_n, fps_d});
+                            }
+                        }
+                        else if (GST_VALUE_HOLDS_FRACTION_RANGE(fps_val))
+                        {
+                            /* Dạng 3: range — lưu min và max */
+                            const GValue *fps_min = gst_value_get_fraction_range_min(fps_val);
+                            const GValue *fps_max = gst_value_get_fraction_range_max(fps_val);
+                            int min_n = gst_value_get_fraction_numerator(fps_min);
+                            int min_d = gst_value_get_fraction_denominator(fps_min);
+                            int max_n = gst_value_get_fraction_numerator(fps_max);
+                            int max_d = gst_value_get_fraction_denominator(fps_max);
+                            local_metadata.Framerate_List.push_back({min_n, min_d});
+                            local_metadata.Framerate_List.push_back({max_n, max_d});
+                        }
+                    }
+
                     local_device_info.Metadata_List.push_back(local_metadata);
                 }
             }
@@ -605,7 +735,7 @@ const std::vector<Devices_Information> &GStreamer_Glue::Get_Devices_List() const
 
 /*
  */
-bool GStreamer_Glue::Private_Build_Video_Pipeline(int arg_camera_index, VideoSourceType arg_source_type)
+bool GStreamer_Glue::Private_Build_Video_Pipeline(const Pipeline_Config &arg_config)
 {
     if (m_Camera_Devices_List.empty())
     {
@@ -613,12 +743,21 @@ bool GStreamer_Glue::Private_Build_Video_Pipeline(int arg_camera_index, VideoSou
         return false;
     }
 
-    /* Lưu cấu hình vào struct để Switch_Camera() có thể dùng lại */
-    GStreamer_Pipeline_Structure.current_camera_index = arg_camera_index;
-    GStreamer_Pipeline_Structure.video_source_type    = arg_source_type;
+    if (arg_config.camera_index < 0 ||
+        arg_config.camera_index >= static_cast<int>(m_Camera_Devices_List.size()))
+    {
+        g_printerr("[GStreamer_Glue] Lỗi: camera_index=%d nằm ngoài danh sách (%zu camera).\n",
+                   arg_config.camera_index, m_Camera_Devices_List.size());
+        return false;
+    }
 
-    const std::string &camera_path = m_Camera_Devices_List[arg_camera_index].Devices_Path;
-    const char *source_plugin = VideoSourceType_To_String(arg_source_type);
+    /* Lưu cấu hình vào struct để Switch_Camera() có thể dùng lại */
+    GStreamer_Pipeline_Structure.active_config = arg_config;
+
+    const std::string &camera_path  = m_Camera_Devices_List[arg_config.camera_index].Devices_Path;
+    const char *source_plugin       = VideoSourceType_To_String(arg_config.source_type);
+    const char *source_property     = Camera_Source_Property(arg_config.source_type);
+    const char *sink_plugin         = VideoSinkType_To_String(arg_config.sink_type);
 
     /* 1. Tạo Pipeline cha */
     GStreamer_Pipeline_Structure.pipeline.reset(gst_pipeline_new("camera-preview-pipeline"));
@@ -639,28 +778,55 @@ bool GStreamer_Glue::Private_Build_Video_Pipeline(int arg_camera_index, VideoSou
         queue1                                    = gst_element_factory_make("queue",        "queue-1");
         conv                                      = gst_element_factory_make("videoconvert", "video-converter");
         queue2                                    = gst_element_factory_make("queue",        "queue-2");
-        GStreamer_Pipeline_Structure.video_sink   = gst_element_factory_make("glimagesink",  "display-sink");
+        GStreamer_Pipeline_Structure.video_sink   = gst_element_factory_make(sink_plugin,    "display-sink");
 
         if (!GStreamer_Pipeline_Structure.video_source || !filter || !queue1 ||
             !conv || !queue2 || !GStreamer_Pipeline_Structure.video_sink)
         {
-            g_printerr("[GStreamer_Glue] Lỗi: Không thể tạo một vài elements. Kiểm tra plugins.\n");
+            g_printerr("[GStreamer_Glue] Lỗi: Không thể tạo một vài elements.\n"
+                       "  source=%s  sink=%s — kiểm tra plugins đã cài đầy đủ chưa.\n",
+                       source_plugin, sink_plugin);
             return false;
         }
 
-        /* Gán camera theo đường dẫn đầy đủ */
+        /* Gán camera theo đường dẫn đầy đủ.
+         * libcamerasrc dùng "camera-name"; v4l2src dùng "device". */
         g_object_set(G_OBJECT(GStreamer_Pipeline_Structure.video_source),
-                     "camera-name", camera_path.c_str(), NULL);
-        g_print("[GStreamer_Glue] Nguồn video: %s  →  %s\n", source_plugin, camera_path.c_str());
+                     source_property, camera_path.c_str(), NULL);
+        g_print("[GStreamer_Glue] Nguồn: %-14s property=%-12s → %s\n",
+                source_plugin, source_property, camera_path.c_str());
+        g_print("[GStreamer_Glue] Sink  : %s\n", sink_plugin);
 
-        /* 3. Cấu hình Caps: NV12, 640×480
+        /* 3. Xây dựng Caps từ Pipeline_Config.
+         * Nếu framerate_n == 0: không ép framerate (camera tự chọn).
          * caps unref tự động khi ra khỏi block. */
         {
-            GstCapsPtr caps(gst_caps_new_simple("video/x-raw",
-                                                "format", G_TYPE_STRING, "NV12",
-                                                "width",  G_TYPE_INT,    640,
-                                                "height", G_TYPE_INT,    480,
-                                                NULL));
+            GstCapsPtr caps;
+            if (arg_config.framerate_n > 0)
+            {
+                caps.reset(gst_caps_new_simple("video/x-raw",
+                                               "format",    G_TYPE_STRING,   arg_config.pixel_format.c_str(),
+                                               "width",     G_TYPE_INT,      arg_config.width,
+                                               "height",    G_TYPE_INT,      arg_config.height,
+                                               "framerate", GST_TYPE_FRACTION, arg_config.framerate_n,
+                                                                               arg_config.framerate_d,
+                                               NULL));
+                g_print("[GStreamer_Glue] Caps  : %s %dx%d @ %d/%d fps\n",
+                        arg_config.pixel_format.c_str(),
+                        arg_config.width, arg_config.height,
+                        arg_config.framerate_n, arg_config.framerate_d);
+            }
+            else
+            {
+                caps.reset(gst_caps_new_simple("video/x-raw",
+                                               "format", G_TYPE_STRING, arg_config.pixel_format.c_str(),
+                                               "width",  G_TYPE_INT,    arg_config.width,
+                                               "height", G_TYPE_INT,    arg_config.height,
+                                               NULL));
+                g_print("[GStreamer_Glue] Caps  : %s %dx%d (framerate: tự động)\n",
+                        arg_config.pixel_format.c_str(),
+                        arg_config.width, arg_config.height);
+            }
             g_object_set(G_OBJECT(filter), "caps", caps.get(), NULL);
         }
 
@@ -797,9 +963,9 @@ void GStreamer_Glue::Set_Keyboard_Callback(GIOFunc arg_callback)
 
 /*
  */
-bool GStreamer_Glue::Start_Preview(int arg_camera_index, VideoSourceType arg_source_type)
+bool GStreamer_Glue::Start_Preview(const Pipeline_Config &arg_config)
 {
-    if (!Private_Build_Video_Pipeline(arg_camera_index, arg_source_type))
+    if (!Private_Build_Video_Pipeline(arg_config))
     {
         return false;
     }
@@ -822,8 +988,9 @@ bool GStreamer_Glue::Start_Preview(int arg_camera_index, VideoSourceType arg_sou
         g_io_channel_unref(channel);
     }
 
+    const char *sink_name = VideoSinkType_To_String(arg_config.sink_type);
     g_print("\n========================================================\n");
-    g_print("Đang khởi động live preview bằng OpenGL (glimagesink)...\n");
+    g_print("  Đang khởi động live preview (sink: %s)...\n", sink_name);
     g_print("========================================================\n\n");
 
     gst_element_set_state(GStreamer_Pipeline_Structure.pipeline.get(), GST_STATE_PLAYING);
@@ -835,6 +1002,23 @@ bool GStreamer_Glue::Start_Preview(int arg_camera_index, VideoSourceType arg_sou
     gst_element_set_state(GStreamer_Pipeline_Structure.pipeline.get(), GST_STATE_NULL);
 
     return true;
+}
+
+/*
+ */
+bool GStreamer_Glue::Start_Preview(int arg_camera_index, VideoSourceType arg_source_type)
+{
+    Pipeline_Config config;
+    config.camera_index = arg_camera_index;
+    config.source_type  = arg_source_type;
+    return Start_Preview(config);
+}
+
+/*
+ */
+void GStreamer_Glue::Set_Pipeline_Config(const Pipeline_Config &arg_config)
+{
+    GStreamer_Pipeline_Structure.active_config = arg_config;
 }
 
 /*
@@ -865,18 +1049,19 @@ void GStreamer_Glue::Switch_Camera()
     /* 1. Đặt pipeline về NULL để giải phóng camera hiện tại hoàn toàn */
     gst_element_set_state(GStreamer_Pipeline_Structure.pipeline.get(), GST_STATE_NULL);
 
-    /* 2. Cập nhật chỉ số camera (round-robin) */
-    GStreamer_Pipeline_Structure.current_camera_index =
-        (GStreamer_Pipeline_Structure.current_camera_index + 1) % camera_count;
+    /* 2. Cập nhật chỉ số camera (round-robin) trong active_config */
+    Pipeline_Config &cfg = GStreamer_Pipeline_Structure.active_config;
+    cfg.camera_index = (cfg.camera_index + 1) % camera_count;
 
-    const int next_index = GStreamer_Pipeline_Structure.current_camera_index;
-    const std::string &next_camera = m_Camera_Devices_List[next_index].Devices_Path;
+    const std::string &next_camera = m_Camera_Devices_List[cfg.camera_index].Devices_Path;
+    const char *source_property    = Camera_Source_Property(cfg.source_type);
 
-    g_print("[GStreamer_Glue] Chuyển sang Camera %d: %s\n", next_index + 1, next_camera.c_str());
+    g_print("[GStreamer_Glue] Chuyển sang Camera %d: %s\n",
+            cfg.camera_index + 1, next_camera.c_str());
 
-    /* 3. Gán camera mới cho video_source */
+    /* 3. Gán camera mới cho video_source (property đúng theo source type) */
     g_object_set(G_OBJECT(GStreamer_Pipeline_Structure.video_source),
-                 "camera-name", next_camera.c_str(), NULL);
+                 source_property, next_camera.c_str(), NULL);
 
     /* 4. Khởi chạy lại pipeline với camera mới */
     gst_element_set_state(GStreamer_Pipeline_Structure.pipeline.get(), GST_STATE_PLAYING);
@@ -919,29 +1104,96 @@ int main(int argc, char *argv[])
             for (size_t j = 0; j < devices[i].Metadata_List.size(); j++)
             {
                 const Device_Metadata &meta = devices[i].Metadata_List[j];
-                printf("      [%zu] %s | Format: %s | %dx%d\n",
-                       j + 1, meta.Mime_Type.c_str(), meta.Pixel_Format.c_str(),
-                       meta.Width, meta.Height);
+
+                /* In thông tin cơ bản */
+                printf("      [%zu] %s | Format: %-6s | %dx%d",
+                       j + 1,
+                       meta.Mime_Type.c_str(),
+                       meta.Pixel_Format.c_str(),
+                       meta.Width,
+                       meta.Height);
+
+                /* In framerate */
+                if (meta.Framerate_List.empty())
+                {
+                    printf(" | FPS: N/A\n");
+                }
+                else if (meta.Framerate_List.size() == 1)
+                {
+                    /* Fraction đơn hoặc range với 1 giá trị */
+                    printf(" | FPS: %d/%d\n",
+                           meta.Framerate_List[0].first,
+                           meta.Framerate_List[0].second);
+                }
+                else if (meta.Framerate_List.size() == 2)
+                {
+                    /* Có thể là range (min, max) hoặc list 2 phần tử */
+                    printf(" | FPS: %d/%d ~ %d/%d\n",
+                           meta.Framerate_List[0].first,
+                           meta.Framerate_List[0].second,
+                           meta.Framerate_List[1].first,
+                           meta.Framerate_List[1].second);
+                }
+                else
+                {
+                    /* List nhiều framerate */
+                    printf(" | FPS: ");
+                    for (size_t k = 0; k < meta.Framerate_List.size(); k++)
+                    {
+                        if (k > 0) printf(", ");
+                        printf("%d/%d",
+                               meta.Framerate_List[k].first,
+                               meta.Framerate_List[k].second);
+                    }
+                    printf("\n");
+                }
             }
         }
         printf("\n");
     }
 
+    /* ── TEST 1: Default config (backward-compat) ─────────────────────────── */
     printf("==============================================\n");
-    printf("🚀 Bắt đầu live preview (camera đầu tiên, libcamerasrc)...\n");
+    printf("🚀 TEST 1: Start_Preview(int, VideoSourceType) — backward compat\n");
+    printf("   → Camera 0, LibCamera, NV12, 640x480, glimagesink\n");
     printf("==============================================\n");
 
-    /* Cấu hình tùy chọn: bật Ctrl+C và switch camera bằng bàn phím.
-     * Bỏ hai dòng này nếu chạy headless / dùng appsink / không cần terminal input. */
     gstreamer_glue.Set_Interrupt_Callback({SIGINT,  GStreamer_Glue::Default_Interrupt_Handler});
     gstreamer_glue.Set_Interrupt_Callback({SIGTERM, GStreamer_Glue::Default_Interrupt_Handler});
     gstreamer_glue.Set_Keyboard_Callback(GStreamer_Glue::Default_Keyboard_Handler);
 
-    /* Khởi động preview — blocking cho đến khi Stop_Preview() được gọi */
-    gstreamer_glue.Start_Preview(0, VideoSourceType::LibCamera);
+    bool result = gstreamer_glue.Start_Preview(0, VideoSourceType::LibCamera);
 
     printf("==============================================\n");
-    printf("✅ Preview đã dừng.\n");
+    printf("%s TEST 1 %s.\n", result ? "✅" : "❌", result ? "thành công" : "thất bại");
+    printf("==============================================\n\n");
+
+    /* ── TEST 2: Pipeline_Config tường minh — FakeSink (headless) ──────────── */
+    printf("==============================================\n");
+    printf("🚀 TEST 2: Pipeline_Config — FakeSink (headless)\n");
+    printf("   → Camera 0, LibCamera, NV12, 640x480, fakesink\n");
+    printf("==============================================\n");
+
+    {
+        Pipeline_Config config_fake;
+        config_fake.camera_index = 0;
+        config_fake.source_type  = VideoSourceType::LibCamera;
+        config_fake.pixel_format = "NV12";
+        config_fake.width        = 640;
+        config_fake.height       = 480;
+        config_fake.framerate_n  = 0;   /* không ép framerate */
+        config_fake.sink_type    = VideoSinkType::FakeSink;
+
+        /* fakesink không hiển thị — tự thoát sau 3 giây qua SIGALRM không có ở đây.
+         * Dùng Ctrl+C để thoát thủ công khi test. */
+        bool result2 = gstreamer_glue.Start_Preview(config_fake);
+        printf("==============================================\n");
+        printf("%s TEST 2 %s.\n", result2 ? "✅" : "❌", result2 ? "thành công" : "thất bại");
+        printf("==============================================\n\n");
+    }
+
+    printf("==============================================\n");
+    printf("✅ Tất cả test đã hoàn tất.\n");
     printf("==============================================\n");
 
     return 0;
