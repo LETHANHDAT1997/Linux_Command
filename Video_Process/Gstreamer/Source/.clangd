@@ -1,0 +1,8 @@
+CompileFlags:
+  Add:
+    - -I/usr/include/gstreamer-1.0
+    - -I/usr/include/glib-2.0
+    - -I/usr/lib/aarch64-linux-gnu/glib-2.0/include
+    - -I/usr/include/sysprof-6
+    - -I/usr/include/c++/14/memory
+    - -pthread

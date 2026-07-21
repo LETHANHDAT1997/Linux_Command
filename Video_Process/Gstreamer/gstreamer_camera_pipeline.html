@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GStreamer cho Camera CSI | 3/4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0e14; --bg-alt:#0e1219; --surface:#141a22; --surface-2:#1a212b;
+  --border:#232b37; --border-soft:#1c232d;
+  --text:#e7ecf2; --text-muted:#8a94a6; --text-dim:#5b6474;
+  --accent:#e8a33d; --accent-soft:rgba(232,163,61,.12); --accent-dim:#a97a35;
+  --accent2:#5fa8a0; --accent2-soft:rgba(95,168,160,.12);
+  --danger:#e0636f; --danger-soft:rgba(224,99,111,.1);
+  --success:#7cb88f; --success-soft:rgba(124,184,143,.1);
+  --sans:'Be Vietnam Pro',-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --sidebar-w:290px;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); font-size:16px; line-height:1.7; -webkit-font-smoothing:antialiased;}
+::selection{background:var(--accent-soft); color:var(--accent);}
+a{color:var(--accent2);}
+.layout{display:grid; grid-template-columns:var(--sidebar-w) 1fr; min-height:100vh;}
+.sidebar{position:sticky; top:0; height:100vh; overflow-y:auto; background:var(--bg-alt); border-right:1px solid var(--border-soft); padding:28px 20px 40px; scrollbar-width:thin; scrollbar-color:var(--border) transparent;}
+.sidebar::-webkit-scrollbar{width:6px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px;}
+.brand .kicker{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:600;}
+.brand h1{font-size:19px; margin:6px 0 2px; font-weight:700; line-height:1.35;}
+.brand .meta{font-size:12.5px; color:var(--text-dim); font-family:var(--mono); line-height:1.6;}
+.series{display:flex; flex-wrap:wrap; gap:6px; margin:16px 0 22px; padding:12px; background:var(--surface); border:1px solid var(--border-soft); border-radius:8px;}
+.series a, .series span{font-size:11px; font-family:var(--mono); padding:4px 8px; border-radius:5px; text-decoration:none; color:var(--text-dim); border:1px solid transparent;}
+.series .current{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-dim); font-weight:600;}
+.series a:hover{color:var(--accent2); border-color:var(--border);}
+nav.toc .group-label{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dim); margin:20px 0 8px; font-weight:600;}
+nav.toc a{display:block; padding:6px 10px; margin:1px 0; border-radius:6px; font-size:13.5px; color:var(--text-muted); text-decoration:none; border-left:2px solid transparent; transition:.12s;}
+nav.toc a:hover{color:var(--text); background:var(--surface);}
+nav.toc a.active{color:var(--accent); background:var(--accent-soft); border-left-color:var(--accent); font-weight:600;}
+main{padding:56px 48px 120px; max-width:920px;}
+.page-header{margin-bottom:44px; padding-bottom:32px; border-bottom:1px solid var(--border-soft);}
+.page-header .eyebrow{font-family:var(--mono); color:var(--accent); font-size:12.5px; letter-spacing:.1em; text-transform:uppercase; font-weight:600; margin-bottom:14px; display:flex; align-items:center; gap:10px;}
+.page-header .eyebrow .dot{width:6px; height:6px; border-radius:50%; background:var(--accent);}
+.page-header h1{font-size:34px; margin:0 0 14px; font-weight:800; line-height:1.25; letter-spacing:-.01em;}
+.page-header .sub{color:var(--text-muted); font-size:16.5px; max-width:700px;}
+.specs{display:flex; flex-wrap:wrap; gap:10px 28px; margin-top:22px; font-family:var(--mono); font-size:12.5px;}
+.specs div{color:var(--text-dim);}
+.specs strong{color:var(--text-muted); font-weight:600;}
+h2{font-size:24px; font-weight:700; margin:52px 0 8px; padding-top:8px; letter-spacing:-.005em; scroll-margin-top:24px; display:flex; align-items:baseline; gap:12px;}
+h2 .num{font-family:var(--mono); color:var(--accent-dim); font-size:16px; font-weight:600;}
+h3{font-size:18px; font-weight:700; margin:34px 0 10px; scroll-margin-top:24px;}
+h4{margin:24px 0 8px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; font-size:12.5px; font-weight:600;}
+p{margin:12px 0; color:var(--text);}
+p.lead{color:var(--text-muted); font-size:16.5px;}
+ul,ol{padding-left:22px; margin:12px 0;}
+li{margin:6px 0;}
+code.inline{font-family:var(--mono); background:var(--surface-2); color:var(--accent2); padding:2px 6px; border-radius:4px; font-size:.86em; border:1px solid var(--border-soft);}
+strong{color:var(--text); font-weight:700;}
+.badge{display:inline-flex; align-items:center; gap:5px; font-family:var(--mono); font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:5px; letter-spacing:.02em; vertical-align:middle;}
+.badge-verified{background:var(--success-soft); color:var(--success); border:1px solid rgba(124,184,143,.3);}
+.badge-new{background:var(--accent-soft); color:var(--accent); border:1px solid rgba(232,163,61,.3);}
+.callout{border-radius:10px; padding:18px 20px; margin:20px 0; border:1px solid var(--border-soft); background:var(--surface); font-size:14.5px;}
+.callout-title{font-weight:700; font-size:13.5px; margin-bottom:8px; display:flex; align-items:center; gap:7px;}
+.callout p{margin:6px 0; color:var(--text-muted);}
+.callout.note{border-left:3px solid var(--accent2);}
+.callout.note .callout-title{color:var(--accent2);}
+.callout.warn{border-left:3px solid var(--accent);}
+.callout.warn .callout-title{color:var(--accent);}
+.code-block{margin:18px 0; border-radius:10px; overflow:hidden; border:1px solid var(--border); background:#0a0d12;}
+.code-header{display:flex; justify-content:space-between; align-items:center; padding:9px 14px; background:var(--surface-2); border-bottom:1px solid var(--border);}
+.code-lang{font-family:var(--mono); font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em;}
+.copy-btn{font-family:var(--mono); font-size:11.5px; background:transparent; color:var(--text-muted); border:1px solid var(--border); padding:4px 10px; border-radius:6px; cursor:pointer; transition:.12s;}
+.copy-btn:hover{color:var(--text); border-color:var(--text-dim);}
+.copy-btn.copied{color:var(--success); border-color:var(--success);}
+pre{margin:0; padding:16px 18px; overflow-x:auto;}
+pre code{font-family:var(--mono); font-size:13px; line-height:1.65; color:var(--text); white-space:pre; background:none;}
+.table-wrap{overflow-x:auto; margin:18px 0; border-radius:10px; border:1px solid var(--border-soft);}
+table{border-collapse:collapse; width:100%; font-size:13.5px;}
+th{background:var(--surface-2); color:var(--text-muted); text-align:left; font-weight:600; padding:10px 14px; border-bottom:1px solid var(--border); font-size:11.5px; text-transform:uppercase; letter-spacing:.03em;}
+td{padding:10px 14px; border-bottom:1px solid var(--border-soft); color:var(--text-muted); vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+td:first-child{color:var(--text); font-weight:500;}
+.diagram{background:var(--surface); border:1px solid var(--border-soft); border-radius:10px; padding:22px 24px; margin:20px 0; overflow-x:auto;}
+.diagram pre{margin:0; font-family:var(--mono); font-size:12.5px; line-height:1.55; color:var(--text-muted); white-space:pre;}
+.diagram .hl{color:var(--accent); font-weight:600;}
+.diagram .hl2{color:var(--accent2); font-weight:600;}
+.win{color:var(--success); font-weight:700;}
+.lose{color:var(--danger);}
+footer{margin-top:80px; padding-top:24px; border-top:1px solid var(--border-soft); color:var(--text-dim); font-size:12.5px; font-family:var(--mono); display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;}
+.nav-toggle{display:none;}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr;}
+  .sidebar{position:fixed; left:0; top:0; z-index:40; width:82vw; max-width:320px; transform:translateX(-100%); transition:transform .2s ease; box-shadow:20px 0 40px rgba(0,0,0,.4);}
+  .sidebar.open{transform:translateX(0);}
+  .nav-toggle{display:flex; position:fixed; top:16px; left:16px; z-index:50; width:42px; height:42px; align-items:center; justify-content:center; background:var(--surface); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:18px; cursor:pointer;}
+  main{padding:88px 22px 80px;}
+  .page-header h1{font-size:26px;}
+}
+</style>
+</head>
+<body>
+<button class="nav-toggle" id="navToggle">☰</button>
+<div class="layout">
+
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <div class="kicker">Camera Pipeline Series · 3/4</div>
+    <h1>GStreamer cho<br>Camera CSI</h1>
+    <div class="meta">GStreamer 1.26.2<br>gstreamer1.0-libcamera</div>
+  </div>
+  <div class="series">
+    <a href="./v4l2_camera_fundamentals.html">1. Nền tảng</a>
+    <a href="./capture_tools_comparison.html">2. So sánh công cụ</a>
+    <span class="current">3. GStreamer</span>
+    <a href="./picamera2_opencv_ai_bridge.html">4. picamera2 + AI</a>
+  </div>
+  <nav class="toc">
+    <div class="group-label">Nội dung</div>
+    <a href="#gioi-thieu">1. GStreamer là gì</a>
+    <a href="#cai-dat">2. Cài đặt</a>
+    <a href="#nhan-dien">3. Nhận diện camera</a>
+    <a href="#caps">4. Cấu hình caps</a>
+    <a href="#chup-anh">5. Chụp ảnh / quay video</a>
+    <a href="#preview">6. Preview live &amp; Wayland</a>
+    <a href="#so-sanh-src">7. libcamerasrc vs v4l2src</a>
+    <a href="#appsink">8. 🆕 appsink → Python/OpenCV</a>
+    <a href="#streaming-mang">9. 🆕 Streaming qua mạng</a>
+    <a href="#tham-khao">10. Lệnh tham khảo nhanh</a>
+  </nav>
+</aside>
+
+<main>
+  <header class="page-header">
+    <div class="eyebrow"><span class="dot"></span>Phần 3 / 4 — GStreamer thực hành</div>
+    <h1>GStreamer cho Camera CSI trên RPi5</h1>
+    <p class="sub">Pipeline text đơn giản, cross-platform thật sự, và framework duy nhất trong bộ 4 hỗ trợ pipeline động lẫn streaming mạng native. Phần cuối mở rộng sang <code class="inline">appsink</code> để đưa frame vào Python cho xử lý AI.</p>
+    <div class="specs">
+      <div><strong>GStreamer:</strong> 1.26.2</div>
+      <div><strong>Plugin CSI:</strong> gstreamer1.0-libcamera 0.7.1+rpt20260609</div>
+    </div>
+  </header>
+
+  <section id="gioi-thieu">
+    <h2><span class="num">01</span>GStreamer là gì</h2>
+    <p class="lead">Multimedia pipeline framework: dữ liệu chảy qua chuỗi <strong>element</strong> nối bằng <code class="inline">!</code>.</p>
+    <div class="diagram"><pre>[<span class="hl">source</span>] ! [<span class="hl2">filter/transform</span>] ! [<span class="hl">sink</span>]</pre></div>
+    <p>GStreamer là lớp <em>trên</em> — nó vẫn cần backend bên dưới để thật sự nói chuyện với phần cứng:</p>
+    <div class="diagram">
+<pre>gst-launch-1.0 (pipeline text)
+       │
+       ▼
+GStreamer Framework
+       │
+       ├── <span class="hl">v4l2src</span> plugin      → V4L2 kernel API  → Camera USB / CSI (board cũ)
+       ├── <span class="hl2">libcamerasrc</span> plugin → libcamera        → Camera CSI (RPi5, hiện đại)
+       └── pipewiresrc plugin  → PipeWire          → Camera qua audio/video server</pre>
+    </div>
+    <p style="font-size:13.5px; color:var(--text-dim);">Đây là lý do GStreamer giải quyết được vấn đề routing của RPi5 đã gặp ở <a href="./capture_tools_comparison.html">Phần 2</a>: khi dùng <code class="inline">libcamerasrc</code>, chính libcamera lo cấu hình Media Controller — GStreamer chỉ cần biết caps mong muốn.</p>
+  </section>
+
+  <section id="cai-dat">
+    <h2><span class="num">02</span>Cài đặt</h2>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># Gói bắt buộc — chứa gst-launch-1.0, gst-inspect-1.0
+sudo apt install gstreamer1.0-tools
+
+# gst-device-monitor-1.0
+sudo apt install gstreamer1.0-plugins-base-apps
+
+# Plugin camera CSI (RPi5)
+sudo apt install gstreamer1.0-libcamera
+
+# Plugin encode ảnh &amp; USB camera
+sudo apt install gstreamer1.0-plugins-good
+
+# Kiểm tra sau cài
+gst-launch-1.0 --version
+gst-inspect-1.0 libcamerasrc | head -5</code></pre>
+    </div>
+    <div class="callout note">
+      <div class="callout-title">Ghi chú gói</div>
+      <p><code class="inline">gst-device-monitor-1.0</code> nằm trong <code class="inline">gstreamer1.0-plugins-base-apps</code>, không phải <code class="inline">gstreamer1.0-tools</code>. Nếu chưa cài, dùng cách thay thế ở mục 3B.</p>
+    </div>
+  </section>
+
+  <section id="nhan-dien">
+    <h2><span class="num">03</span>Nhận diện camera bằng GStreamer</h2>
+    <h3>3A. Kiểm tra plugin libcamerasrc</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code>gst-inspect-1.0 libcamerasrc</code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">output</span></div>
+      <pre><code>Factory Details:
+  Rank: primary (256)
+  Long-name: libcamera Source
+  Klass: Source/Video
+
+Pad Templates:
+  SRC template: 'src'
+    Capabilities:
+      video/x-raw
+      image/jpeg
+      video/x-bayer
+    Pad Properties:
+      stream-role: video-recording | still-capture | raw | view-finder</code></pre>
+    </div>
+
+    <h3>3B. Liệt kê camera <span class="badge badge-verified">✅ Đã kiểm chứng</span></h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># Nếu chưa cài gstreamer1.0-tools đầy đủ, dùng cách này:
+timeout 3 gst-launch-1.0 libcamerasrc ! fakesink 2&gt;&amp;1 | grep -iE "Adding camera|ov5|imx|ar[0-9]"
+
+# Nếu đã cài đầy đủ:
+gst-device-monitor-1.0 Video/Source</code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">output</span></div>
+      <pre><code>[INFO] Camera camera_manager.cpp Adding camera '/base/axi/pcie@.../ov5647@36'</code></pre>
+    </div>
+
+    <h3>3C. Xem tất cả resolution hỗ trợ</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># Sắp xếp từ thấp đến cao, tránh giới hạn dòng bởi grep
+gst-device-monitor-1.0 Video/Source | grep -E "width|height" | sort -u</code></pre>
+    </div>
+    <p style="font-size:13.5px; color:var(--text-dim);">Muốn kiểm tra ở mức driver phần cứng thay vì qua GStreamer, dùng <code class="inline">v4l2-ctl</code> như ở <a href="./v4l2_camera_fundamentals.html">Phần 1</a>.</p>
+  </section>
+
+  <section id="caps">
+    <h2><span class="num">04</span>Cấu hình thông số qua caps</h2>
+    <p>Với GStreamer, thông số nằm trong <strong>caps (capabilities)</strong> — filter giữa 2 element: <code class="inline">element ! caps-filter ! element</code></p>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">caps syntax</span></div>
+      <pre><code>video/x-raw,format=NV12,width=1296,height=972,framerate=46/1</code></pre>
+    </div>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Trường</th><th>Ý nghĩa</th><th>Ví dụ</th></tr>
+      <tr><td><code class="inline">format</code></td><td>Pixel format — <strong>phải chỉ định rõ</strong></td><td>NV12, YUY2, I420</td></tr>
+      <tr><td><code class="inline">width</code>/<code class="inline">height</code></td><td>Kích thước pixel</td><td>1296, 972</td></tr>
+      <tr><td><code class="inline">framerate</code></td><td>FPS dạng fraction</td><td>46/1, 30/1</td></tr>
+    </table>
+    </div>
+    <div class="callout warn">
+      <div class="callout-title">⚠️ Bắt buộc: format=NV12 với libcamerasrc</div>
+      <p>Nếu chỉ viết <code class="inline">video/x-raw,width=...,height=...</code> mà không có <code class="inline">format</code>, <code class="inline">libcamerasrc</code> sẽ tự negotiate sang <code class="inline">video/x-bayer</code> (RAW Bayer chưa debayer) → pipeline lỗi <code class="inline">not-negotiated (-4)</code> ngay khi gặp <code class="inline">videoconvert</code> (element này không hiểu RAW Bayer).</p>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># ĐÚNG — có format=NV12
+gst-launch-1.0 libcamerasrc ! "video/x-raw,format=NV12,width=1296,height=972" ! fakesink
+
+# SAI — thiếu format → not-negotiated
+# gst-launch-1.0 libcamerasrc ! "video/x-raw,width=1296,height=972" ! fakesink
+
+# USB camera (v4l2src)
+gst-launch-1.0 v4l2src device=/dev/video0 \
+  ! "video/x-raw,format=YUY2,width=1280,height=720,framerate=30/1" ! fakesink</code></pre>
+    </div>
+    <h4>Set control camera (exposure, gain)</h4>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># Với libcamerasrc: dùng v4l2-ctl trên subdev trước khi chạy pipeline
+v4l2-ctl --device=/dev/v4l-subdev2 --set-ctrl=auto_exposure=0
+v4l2-ctl --device=/dev/v4l-subdev2 --set-ctrl=gain_automatic=1
+
+# Với v4l2src: property extra-controls
+gst-launch-1.0 v4l2src device=/dev/video0 extra-controls="c,exposure=500" \
+  ! "video/x-raw,format=YUY2" ! fakesink</code></pre>
+    </div>
+  </section>
+
+  <section id="chup-anh">
+    <h2><span class="num">05</span>Chụp ảnh / quay video <span class="badge badge-verified">✅ Đã kiểm chứng</span></h2>
+    <div class="diagram">
+<pre>[Camera Source] ! [Caps filter]      ! [Convert]    ! [Encode JPEG]     ! [Lưu file]
+
+libcamerasrc  video/x-raw,          videoconvert   jpegenc            filesink
+              format=NV12,                         snapshot=true      location=out.jpg
+              width=1296,
+              height=972</pre>
+    </div>
+
+    <h3>5A. Chụp 1 ảnh từ CSI camera</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># snapshot=true: jpegenc tự gửi EOS sau khi encode 1 frame → pipeline tự dừng
+gst-launch-1.0 libcamerasrc ! "video/x-raw,format=NV12,width=1296,height=972" \
+  ! videoconvert ! jpegenc snapshot=true ! filesink location=photo_hd.jpg</code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">output</span></div>
+      <pre><code>Setting pipeline to PLAYING ...
+[INFO] configuring streams: (0) 1296x972-NV12/Rec709
+Got EOS from element "pipeline0".</code></pre>
+    </div>
+    <p style="font-size:13.5px; color:var(--text-dim);">File output ~42KB — 1 frame JPEG đúng.</p>
+
+    <h3>5B. Chụp từ USB camera</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># v4l2src có property num-buffers (khác libcamerasrc)
+gst-launch-1.0 v4l2src device=/dev/video0 num-buffers=1 \
+  ! "video/x-raw,format=YUY2,width=1280,height=720" \
+  ! videoconvert ! jpegenc ! filesink location=photo_usb.jpg</code></pre>
+    </div>
+
+    <h3>5C. Quay video</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># H.264, 10 giây (dùng timeout để dừng)
+timeout 10 gst-launch-1.0 libcamerasrc \
+  ! "video/x-raw,format=NV12,width=1296,height=972" \
+  ! videoconvert ! x264enc ! mp4mux ! filesink location=video.mp4
+
+# MJPEG — đơn giản hơn, không cần x264enc
+timeout 10 gst-launch-1.0 libcamerasrc \
+  ! "video/x-raw,format=NV12,width=1296,height=972" \
+  ! videoconvert ! jpegenc ! avimux ! filesink location=video.avi</code></pre>
+    </div>
+
+    <h4>Lỗi thường gặp</h4>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Lỗi</th><th>Nguyên nhân</th><th>Sửa</th></tr>
+      <tr><td><code class="inline">no property "num-buffers" in element "libcamerasrc"</code></td><td>libcamerasrc không có property này</td><td>Dùng <code class="inline">jpegenc snapshot=true</code> để tự dừng sau 1 frame</td></tr>
+      <tr><td><code class="inline">not-negotiated (-4)</code></td><td>Caps filter thiếu <code class="inline">format=</code></td><td>Thêm <code class="inline">format=NV12</code></td></tr>
+      <tr><td><code class="inline">gst-device-monitor-1.0: command not found</code></td><td>Chưa cài <code class="inline">gstreamer1.0-tools</code></td><td>Dùng <code class="inline">timeout 3 gst-launch-1.0 libcamerasrc ! fakesink</code></td></tr>
+    </table>
+    </div>
+  </section>
+
+  <section id="preview">
+    <h2><span class="num">06</span>Preview live &amp; vấn đề Wayland</h2>
+    <p>RPi5 dùng display server <strong>Wayland</strong>. <code class="inline">autovideosink</code> mặc định thường chọn <code class="inline">xvimagesink</code> (X11) — chạy qua Xwayland gây lỗi đồng bộ frame, biểu hiện là <strong>chớp tắt (alternating black frames)</strong>.</p>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Sink</th><th>Đặc điểm</th></tr>
+      <tr><td><code class="inline">waylandsink</code></td><td>Native cho Wayland, vẽ trực tiếp lên compositor. Chỉ chạy được trên Wayland.</td></tr>
+      <tr><td><code class="inline">glimagesink</code> <span class="badge badge-verified">khuyên dùng</span></td><td>Dùng lớp trừu tượng OpenGL (EGL) — tự động kết nối Wayland compositor không qua Xwayland. Zero-copy: upload buffer camera (dma-buf) thẳng lên GPU texture, giải phóng CPU. Portable: chạy được cả X11/Wayland/Windows/macOS — mang nguyên pipeline sang máy khác không cần sửa.</td></tr>
+    </table>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># Preview OpenGL — mượt, không chớp tắt, chạy cả Wayland &amp; X11
+gst-launch-1.0 libcamerasrc ! video/x-raw,format=NV12,width=1296,height=972 \
+  ! queue ! videoconvert ! queue ! glimagesink
+
+# Preview Wayland native — chỉ chạy trên hệ thống Wayland
+gst-launch-1.0 libcamerasrc ! video/x-raw,format=NV12,width=1296,height=972 \
+  ! queue ! videoconvert ! queue ! waylandsink</code></pre>
+    </div>
+  </section>
+
+  <section id="so-sanh-src">
+    <h2><span class="num">07</span>So sánh: libcamerasrc vs v4l2src</h2>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Tiêu chí</th><th>libcamerasrc</th><th>v4l2src</th></tr>
+      <tr><td>Backend</td><td>libcamera</td><td>V4L2 kernel API trực tiếp</td></tr>
+      <tr><td>CSI camera RPi5</td><td class="win">✅ Hoạt động</td><td class="lose">❌ Routing issue</td></tr>
+      <tr><td>CSI camera RPi4/cũ</td><td class="win">✅ Hoạt động</td><td class="win">✅ Hoạt động</td></tr>
+      <tr><td>USB camera</td><td>⚠️ Chạy được nhưng thừa</td><td class="win">✅ Hoạt động tốt, đúng mục đích</td></tr>
+      <tr><td>Nền tảng non-RPi có ISP riêng</td><td class="win">✅ Nếu có pipeline handler (IPU3, rkisp1...)</td><td class="lose">❌ Phải tự cấu hình Media Controller thủ công</td></tr>
+      <tr><td>Auto-exposure/WB</td><td class="win">✅ Tự động (IPA 3A)</td><td>⚠️ Phải set thủ công</td></tr>
+      <tr><td>Cài đặt</td><td><code class="inline">gstreamer1.0-libcamera</code></td><td><code class="inline">gstreamer1.0-plugins-good</code></td></tr>
+    </table>
+    </div>
+    <div class="callout note">
+      <div class="callout-title">🔧 libcamera phổ quát tới đâu? <span class="badge badge-fixed">Bổ sung sau câu hỏi</span></div>
+      <p>"libcamerasrc chủ yếu cho RPi" (câu gốc ở bản trước) là cách nói rút gọn quá tay. libcamera có pipeline handler thật cho nhiều nền tảng khác: <strong>Intel IPU3/IPU6</strong> (một số laptop Kaby Lake/Apollo Lake trở lên), <strong>RockChip RK3399</strong> (<code class="inline">rkisp1</code> — nhiều board SBC dùng chip này), <strong>NXP i.MX8MP</strong>, <strong>TI J721e</strong>, <strong>Arm Mali C55</strong>, một phần <strong>Qualcomm Snapdragon</strong> — cộng <strong>UVC webcam</strong> thông thường qua pipeline handler <code class="inline">uvcvideo</code>. Vài nền tảng khác (Allwinner A31, i.MX7, MediaTek Genio 300) mới chỉ hỗ trợ raw capture, chưa đầy đủ ISP.</p>
+      <p>Nên tách 2 nghĩa của "phổ quát": <strong>cài đặt được</strong> — đúng, package GStreamer/libcamera không khoá cứng vào RPi, apt cài trên mọi Linux. <strong>Cần thiết/có ích</strong> — chỉ khi camera không phải UVC thường, vì UVC đã chạy tốt sẵn qua <code class="inline">v4l2src</code>, dùng libcamerasrc cho nó là thừa việc. Và trong toàn bộ danh sách trên, pipeline handler của RPi vẫn là bản trưởng thành/được đầu tư nhiều nhất — vì chính kỹ sư Raspberry Pi Ltd trực tiếp maintain phần đó của dự án libcamera; các nền tảng khác độ hoàn thiện không đồng đều.</p>
+    </div>
+  </section>
+
+  <section id="appsink">
+    <h2><span class="num">08</span><span class="badge badge-new">🆕 Mới</span> appsink — đưa frame vào Python/OpenCV</h2>
+    <p class="lead">Mọi ví dụ ở trên dừng ở "lưu file" hoặc "hiển thị màn hình". Để xử lý ảnh/AI thật sự, cần lấy từng frame ra dưới dạng mảng số trong code — đây là việc của <code class="inline">appsink</code>.</p>
+    <div class="callout note">
+      <div class="callout-title">Khi nào dùng appsink thay vì picamera2 (Phần 4)?</div>
+      <p>Dùng <code class="inline">appsink</code> khi pipeline cần các khối GStreamer khác không có trong picamera2 — ví dụ tee ra vừa AI vừa RTSP stream cùng lúc, hoặc hardware encode phức tạp. Nếu chỉ cần "camera → numpy array → OpenCV" đơn giản, picamera2 ở Phần 4 gọn hơn và không cần học GObject Introspection.</p>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash — cài đặt</span><button class="copy-btn">Copy</button></div>
+      <pre><code>sudo apt install python3-gi gir1.2-gst-plugins-base-1.0
+python3 -c "import gi; gi.require_version('Gst','1.0'); print('OK')"</code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">python — appsink_opencv.py</span><button class="copy-btn">Copy</button></div>
+      <pre><code>import gi
+gi.require_version('Gst', '1.0')
+from gi.repository import Gst, GLib
+import numpy as np
+import cv2
+
+Gst.init(None)
+
+WIDTH, HEIGHT = 640, 480
+
+# BGR: format OpenCV muốn ngay từ videoconvert, khỏi phải tự đổi kênh màu
+pipeline_str = (
+    f"libcamerasrc ! video/x-raw,format=NV12,width={WIDTH},height={HEIGHT} "
+    f"! videoconvert ! video/x-raw,format=BGR "
+    f"! appsink name=sink emit-signals=true max-buffers=1 drop=true"
+)
+pipeline = Gst.parse_launch(pipeline_str)
+appsink = pipeline.get_by_name("sink")
+
+def on_new_sample(sink):
+    sample = sink.emit("pull-sample")
+    buf = sample.get_buffer()
+    ok, mapinfo = buf.map(Gst.MapFlags.READ)
+    if not ok:
+        return Gst.FlowReturn.ERROR
+
+    frame = np.ndarray((HEIGHT, WIDTH, 3), buffer=mapinfo.data, dtype=np.uint8)
+
+    # ---- xử lý ảnh / gọi model AI tại đây ----
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray, 80, 160)
+    cv2.imshow("edges", edges)
+    cv2.waitKey(1)
+    # -------------------------------------------
+
+    buf.unmap(mapinfo)
+    return Gst.FlowReturn.OK
+
+appsink.connect("new-sample", on_new_sample)
+pipeline.set_state(Gst.State.PLAYING)
+
+loop = GLib.MainLoop()
+try:
+    loop.run()
+except KeyboardInterrupt:
+    pass
+finally:
+    pipeline.set_state(Gst.State.NULL)</code></pre>
+    </div>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Tham số appsink</th><th>Vì sao quan trọng cho AI/CV</th></tr>
+      <tr><td><code class="inline">emit-signals=true</code></td><td>Bật callback <code class="inline">new-sample</code> — bắt buộc để đọc frame trong Python thay vì chỉ pull thủ công</td></tr>
+      <tr><td><code class="inline">max-buffers=1 drop=true</code></td><td>Luôn giữ frame mới nhất, tự động drop frame cũ nếu code xử lý chậm hơn camera — tránh loop bị dồn ứ (backlog) làm tăng latency dần theo thời gian</td></tr>
+      <tr><td><code class="inline">format=BGR</code> trên caps sau <code class="inline">videoconvert</code></td><td>Khớp thẳng thứ tự kênh màu OpenCV dùng — khỏi phải <code class="inline">cv2.cvtColor(..., COLOR_RGB2BGR)</code> mỗi frame</td></tr>
+    </table>
+    </div>
+  </section>
+
+  <section id="streaming-mang">
+    <h2><span class="num">09</span><span class="badge badge-new">🆕 Mới</span> Streaming qua mạng cho AI từ xa</h2>
+    <p class="lead">Khác với chụp ảnh tĩnh — nếu model AI chạy trên máy khác (server mạnh hơn, hoặc muốn tách camera node khỏi compute node), cần đẩy stream qua mạng thay vì xử lý tại chỗ.</p>
+    <h3>UDP/RTP — đơn giản, độ trễ thấp, không cần server</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash — bên gửi (RPi5)</span><button class="copy-btn">Copy</button></div>
+      <pre><code>gst-launch-1.0 libcamerasrc ! video/x-raw,format=NV12,width=1296,height=972 \
+  ! videoconvert ! x264enc tune=zerolatency bitrate=2000 speed-preset=ultrafast \
+  ! rtph264pay ! udpsink host=192.168.1.100 port=5000</code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash — bên nhận (server chạy model AI)</span><button class="copy-btn">Copy</button></div>
+      <pre><code>gst-launch-1.0 udpsrc port=5000 \
+  ! "application/x-rtp,encoding-name=H264,payload=96" \
+  ! rtph264depay ! avdec_h264 ! videoconvert \
+  ! appsink emit-signals=true max-buffers=1 drop=true</code></pre>
+    </div>
+    <p style="font-size:13.5px; color:var(--text-dim);"><code class="inline">tune=zerolatency</code> + <code class="inline">speed-preset=ultrafast</code>: đánh đổi chất lượng nén lấy độ trễ thấp — đúng hướng cho pipeline AI thời gian thực hơn là streaming xem giải trí.</p>
+
+    <h3>RTSP thật sự — nhiều client cùng xem, có thể reconnect</h3>
+    <p>UDP điểm-điểm phù hợp 1 gửi–1 nhận đã biết trước IP. Muốn có URL RTSP chuẩn (<code class="inline">rtsp://ip:8554/stream</code>) để nhiều client kết nối/ngắt tuỳ ý, cần một RTSP server thật — GStreamer tự thân không phải là server, phải dùng thêm thư viện <code class="inline">gst-rtsp-server</code> (viết vài chục dòng Python/C) hoặc một binary có sẵn như <strong>MediaMTX</strong> nhận input RTP từ lệnh <code class="inline">udpsink</code> ở trên và tự phục vụ RTSP.</p>
+    <div class="callout note">
+      <div class="callout-title">Khi nào cần RTSP thay vì UDP thẳng</div>
+      <p>Nếu chỉ có 1 model AI cố định đọc stream, UDP/RTP thẳng đơn giản và đủ dùng. Nếu cần nhiều tiến trình cùng xem stream (ví dụ vừa ghi log vừa chạy inference vừa xem trực tiếp để debug), RTSP server đáng đầu tư hơn.</p>
+    </div>
+  </section>
+
+  <section id="tham-khao">
+    <h2><span class="num">10</span>Lệnh tham khảo nhanh</h2>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># Kiểm tra plugin
+gst-inspect-1.0 libcamerasrc
+gst-inspect-1.0 v4l2src
+
+# Liệt kê cameras
+timeout 3 gst-launch-1.0 libcamerasrc ! fakesink 2&gt;&amp;1 | grep -iE "Adding camera|ov5|imx"
+gst-device-monitor-1.0 Video/Source
+
+# Chụp 1 ảnh CSI (RPi5)
+gst-launch-1.0 libcamerasrc ! "video/x-raw,format=NV12,width=1296,height=972" \
+  ! videoconvert ! jpegenc snapshot=true ! filesink location=photo.jpg
+
+# Chụp 1 ảnh USB camera
+gst-launch-1.0 v4l2src device=/dev/video0 num-buffers=1 \
+  ! "video/x-raw,format=YUY2,width=1280,height=720" \
+  ! videoconvert ! jpegenc snapshot=true ! filesink location=photo_usb.jpg
+
+# Preview OpenGL (không chớp tắt trên Wayland)
+gst-launch-1.0 libcamerasrc ! "video/x-raw,format=NV12,width=640,height=480" \
+  ! queue ! videoconvert ! queue ! glimagesink
+
+# Quay video 10 giây
+timeout 10 gst-launch-1.0 libcamerasrc ! "video/x-raw,format=NV12,width=1296,height=972" \
+  ! videoconvert ! x264enc ! mp4mux ! filesink location=video.mp4
+
+# Stream UDP/RTP tới server AI
+gst-launch-1.0 libcamerasrc ! video/x-raw,format=NV12,width=1296,height=972 \
+  ! videoconvert ! x264enc tune=zerolatency ! rtph264pay ! udpsink host=IP port=5000
+
+# Debug: xem caps negotiation chi tiết
+GST_DEBUG=2 timeout 3 gst-launch-1.0 libcamerasrc ! "video/x-raw,format=NV12" ! fakesink 2&gt;&amp;1 | grep -iE "caps|negot|format"</code></pre>
+    </div>
+    <div class="diagram">
+<pre>Ứng dụng của bạn
+       │  gst-launch-1.0 (CLI) HOẶC GStreamer API (Python/C/Rust)
+       ▼
+GStreamer Framework (cross-platform)
+       │
+       ├─── <span class="hl2">libcamerasrc</span> ──→ libcamera ──→ rp1-cfe/pispbe ──→ OV5647 (CSI)
+       ├─── <span class="hl">v4l2src</span> ────────→ V4L2 ──────→ USB Camera / CSI board cũ
+       └─── appsink ────────────→ numpy array ──→ OpenCV / model AI (Phần 4)</pre>
+    </div>
+  </section>
+
+  <footer>
+    <span>Phần 3/4 — GStreamer cho Camera CSI</span>
+    <span><a href="./capture_tools_comparison.html" style="color:var(--accent2)">← 2. So sánh công cụ</a> · Tiếp theo → <a href="./picamera2_opencv_ai_bridge.html" style="color:var(--accent2)">4. picamera2 + AI</a></span>
+  </footer>
+</main>
+</div>
+
+<script>
+document.querySelectorAll('.copy-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const block = btn.closest('.code-block');
+    const codeEl = block.querySelector('code');
+    const text = codeEl.innerText;
+    navigator.clipboard.writeText(text).then(()=>{
+      const original = btn.textContent;
+      btn.textContent = 'Copied ✓';
+      btn.classList.add('copied');
+      setTimeout(()=>{ btn.textContent = original; btn.classList.remove('copied'); }, 1600);
+    });
+  });
+});
+const sidebar = document.getElementById('sidebar');
+const navToggle = document.getElementById('navToggle');
+navToggle.addEventListener('click', ()=> sidebar.classList.toggle('open'));
+document.querySelectorAll('.sidebar nav a').forEach(a=>{
+  a.addEventListener('click', ()=> sidebar.classList.remove('open'));
+});
+const sections = document.querySelectorAll('main section[id]');
+const navLinks = document.querySelectorAll('nav.toc a');
+const linkMap = {};
+navLinks.forEach(l=>{
+  const href = l.getAttribute('href').replace('#','');
+  if(!linkMap[href]) linkMap[href] = [];
+  linkMap[href].push(l);
+});
+const observer = new IntersectionObserver((entries)=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      navLinks.forEach(l=>l.classList.remove('active'));
+      const id = entry.target.getAttribute('id');
+      (linkMap[id]||[]).forEach(l=>l.classList.add('active'));
+    }
+  });
+}, {rootMargin:'-15% 0px -70% 0px'});
+sections.forEach(s=>observer.observe(s));
+</script>
+</body>
+</html>

@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>So Sánh Công Cụ Capture | 2/4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0e14; --bg-alt:#0e1219; --surface:#141a22; --surface-2:#1a212b;
+  --border:#232b37; --border-soft:#1c232d;
+  --text:#e7ecf2; --text-muted:#8a94a6; --text-dim:#5b6474;
+  --accent:#e8a33d; --accent-soft:rgba(232,163,61,.12); --accent-dim:#a97a35;
+  --accent2:#5fa8a0; --accent2-soft:rgba(95,168,160,.12);
+  --danger:#e0636f; --danger-soft:rgba(224,99,111,.1);
+  --success:#7cb88f; --success-soft:rgba(124,184,143,.1);
+  --sans:'Be Vietnam Pro',-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --sidebar-w:290px;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); font-size:16px; line-height:1.7; -webkit-font-smoothing:antialiased;}
+::selection{background:var(--accent-soft); color:var(--accent);}
+a{color:var(--accent2);}
+.layout{display:grid; grid-template-columns:var(--sidebar-w) 1fr; min-height:100vh;}
+.sidebar{position:sticky; top:0; height:100vh; overflow-y:auto; background:var(--bg-alt); border-right:1px solid var(--border-soft); padding:28px 20px 40px; scrollbar-width:thin; scrollbar-color:var(--border) transparent;}
+.sidebar::-webkit-scrollbar{width:6px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px;}
+.brand .kicker{font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:600;}
+.brand h1{font-size:19px; margin:6px 0 2px; font-weight:700; line-height:1.35;}
+.brand .meta{font-size:12.5px; color:var(--text-dim); font-family:var(--mono); line-height:1.6;}
+.series{display:flex; flex-wrap:wrap; gap:6px; margin:16px 0 22px; padding:12px; background:var(--surface); border:1px solid var(--border-soft); border-radius:8px;}
+.series a, .series span{font-size:11px; font-family:var(--mono); padding:4px 8px; border-radius:5px; text-decoration:none; color:var(--text-dim); border:1px solid transparent;}
+.series .current{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-dim); font-weight:600;}
+.series a:hover{color:var(--accent2); border-color:var(--border);}
+nav.toc .group-label{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dim); margin:20px 0 8px; font-weight:600;}
+nav.toc a{display:block; padding:6px 10px; margin:1px 0; border-radius:6px; font-size:13.5px; color:var(--text-muted); text-decoration:none; border-left:2px solid transparent; transition:.12s;}
+nav.toc a:hover{color:var(--text); background:var(--surface);}
+nav.toc a.active{color:var(--accent); background:var(--accent-soft); border-left-color:var(--accent); font-weight:600;}
+main{padding:56px 48px 120px; max-width:920px;}
+.page-header{margin-bottom:44px; padding-bottom:32px; border-bottom:1px solid var(--border-soft);}
+.page-header .eyebrow{font-family:var(--mono); color:var(--accent); font-size:12.5px; letter-spacing:.1em; text-transform:uppercase; font-weight:600; margin-bottom:14px; display:flex; align-items:center; gap:10px;}
+.page-header .eyebrow .dot{width:6px; height:6px; border-radius:50%; background:var(--accent);}
+.page-header h1{font-size:34px; margin:0 0 14px; font-weight:800; line-height:1.25; letter-spacing:-.01em;}
+.page-header .sub{color:var(--text-muted); font-size:16.5px; max-width:700px;}
+h2{font-size:24px; font-weight:700; margin:52px 0 8px; padding-top:8px; letter-spacing:-.005em; scroll-margin-top:24px; display:flex; align-items:baseline; gap:12px;}
+h2 .num{font-family:var(--mono); color:var(--accent-dim); font-size:16px; font-weight:600;}
+h3{font-size:18px; font-weight:700; margin:34px 0 10px; scroll-margin-top:24px;}
+h4{margin:24px 0 8px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; font-size:12.5px; font-weight:600;}
+p{margin:12px 0; color:var(--text);}
+p.lead{color:var(--text-muted); font-size:16.5px;}
+ul,ol{padding-left:22px; margin:12px 0;}
+li{margin:6px 0;}
+code.inline{font-family:var(--mono); background:var(--surface-2); color:var(--accent2); padding:2px 6px; border-radius:4px; font-size:.86em; border:1px solid var(--border-soft);}
+strong{color:var(--text); font-weight:700;}
+hr{border:none; border-top:1px solid var(--border-soft); margin:48px 0;}
+.badge{display:inline-flex; align-items:center; gap:5px; font-family:var(--mono); font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:5px; letter-spacing:.02em; vertical-align:middle;}
+.badge-verified{background:var(--success-soft); color:var(--success); border:1px solid rgba(124,184,143,.3);}
+.badge-fixed{background:var(--danger-soft); color:var(--danger); border:1px solid rgba(224,99,111,.3);}
+.badge-new{background:var(--accent-soft); color:var(--accent); border:1px solid rgba(232,163,61,.3);}
+.callout{border-radius:10px; padding:18px 20px; margin:20px 0; border:1px solid var(--border-soft); background:var(--surface); font-size:14.5px;}
+.callout-title{font-weight:700; font-size:13.5px; margin-bottom:8px; display:flex; align-items:center; gap:7px;}
+.callout p{margin:6px 0; color:var(--text-muted);}
+.callout.note{border-left:3px solid var(--accent2);}
+.callout.note .callout-title{color:var(--accent2);}
+.callout.warn{border-left:3px solid var(--accent);}
+.callout.warn .callout-title{color:var(--accent);}
+.callout.danger{border-left:3px solid var(--danger); background:linear-gradient(180deg, rgba(224,99,111,.06), var(--surface) 40%);}
+.callout.danger .callout-title{color:var(--danger); font-size:14.5px;}
+.code-block{margin:18px 0; border-radius:10px; overflow:hidden; border:1px solid var(--border); background:#0a0d12;}
+.code-header{display:flex; justify-content:space-between; align-items:center; padding:9px 14px; background:var(--surface-2); border-bottom:1px solid var(--border);}
+.code-lang{font-family:var(--mono); font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em;}
+.copy-btn{font-family:var(--mono); font-size:11.5px; background:transparent; color:var(--text-muted); border:1px solid var(--border); padding:4px 10px; border-radius:6px; cursor:pointer; transition:.12s;}
+.copy-btn:hover{color:var(--text); border-color:var(--text-dim);}
+.copy-btn.copied{color:var(--success); border-color:var(--success);}
+pre{margin:0; padding:16px 18px; overflow-x:auto;}
+pre code{font-family:var(--mono); font-size:13px; line-height:1.65; color:var(--text); white-space:pre; background:none;}
+.table-wrap{overflow-x:auto; margin:18px 0; border-radius:10px; border:1px solid var(--border-soft);}
+table{border-collapse:collapse; width:100%; font-size:13.5px;}
+th{background:var(--surface-2); color:var(--text-muted); text-align:left; font-weight:600; padding:10px 14px; border-bottom:1px solid var(--border); font-size:11.5px; text-transform:uppercase; letter-spacing:.03em;}
+td{padding:10px 14px; border-bottom:1px solid var(--border-soft); color:var(--text-muted); vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+td:first-child{color:var(--text); font-weight:500;}
+.diagram{background:var(--surface); border:1px solid var(--border-soft); border-radius:10px; padding:22px 24px; margin:20px 0; overflow-x:auto;}
+.diagram pre{margin:0; font-family:var(--mono); font-size:12.5px; line-height:1.55; color:var(--text-muted); white-space:pre;}
+.diagram .hl{color:var(--accent); font-weight:600;}
+.diagram .hl2{color:var(--accent2); font-weight:600;}
+.win{color:var(--success); font-weight:700;}
+.lose{color:var(--danger);}
+.decision-card{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin:20px 0;}
+.dcard{background:var(--surface); border:1px solid var(--border-soft); border-radius:10px; padding:18px;}
+.dcard .tool{font-family:var(--mono); font-weight:700; color:var(--accent); font-size:14px; margin-bottom:8px;}
+.dcard p{margin:0; font-size:13px; color:var(--text-muted);}
+@media (max-width:700px){.decision-card{grid-template-columns:1fr;}}
+footer{margin-top:80px; padding-top:24px; border-top:1px solid var(--border-soft); color:var(--text-dim); font-size:12.5px; font-family:var(--mono); display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;}
+.nav-toggle{display:none;}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr;}
+  .sidebar{position:fixed; left:0; top:0; z-index:40; width:82vw; max-width:320px; transform:translateX(-100%); transition:transform .2s ease; box-shadow:20px 0 40px rgba(0,0,0,.4);}
+  .sidebar.open{transform:translateX(0);}
+  .nav-toggle{display:flex; position:fixed; top:16px; left:16px; z-index:50; width:42px; height:42px; align-items:center; justify-content:center; background:var(--surface); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:18px; cursor:pointer;}
+  main{padding:88px 22px 80px;}
+  .page-header h1{font-size:26px;}
+}
+</style>
+</head>
+<body>
+<button class="nav-toggle" id="navToggle">☰</button>
+<div class="layout">
+
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <div class="kicker">Camera Pipeline Series · 2/4</div>
+    <h1>So Sánh Công Cụ<br>Capture</h1>
+    <div class="meta">V4L2 · FFmpeg · GStreamer<br>rpicam-apps</div>
+  </div>
+  <div class="series">
+    <a href="./v4l2_camera_fundamentals.html">1. Nền tảng</a>
+    <span class="current">2. So sánh công cụ</span>
+    <a href="./gstreamer_camera_pipeline.html">3. GStreamer</a>
+    <a href="./picamera2_opencv_ai_bridge.html">4. picamera2 + AI</a>
+  </div>
+  <nav class="toc">
+    <div class="group-label">Nội dung</div>
+    <a href="#tong-quan">1. 4 lựa chọn &amp; vai trò</a>
+    <a href="#so-sanh-kha-nang">2. Bảng so sánh kỹ thuật</a>
+    <a href="#quyet-dinh">3. Bảng quyết định use-case</a>
+    <a href="#usb-de">4. Camera USB — trường hợp dễ</a>
+    <a href="#csi-kho">5. Camera CSI RPi5 — vì sao khó</a>
+    <a href="#nhat-ky-loi">6. Nhật ký lỗi thực tế</a>
+    <a href="#dinh-chinh">7. 🔧 Đính chính: ffmpeg + libcamera</a>
+    <a href="#tong-ket">8. Tổng kết USB vs CSI</a>
+    <a href="#tham-khao">9. Lệnh tham khảo nhanh</a>
+  </nav>
+</aside>
+
+<main>
+  <header class="page-header">
+    <div class="eyebrow"><span class="dot"></span>Phần 2 / 4 — So sánh &amp; lựa chọn công cụ</div>
+    <h1>V4L2 vs FFmpeg vs GStreamer vs rpicam-apps</h1>
+    <p class="sub">Bốn công cụ, bốn tầng trừu tượng khác nhau. Bảng quyết định theo use-case, nhật ký lỗi thực tế khi thử thay thế rpicam trên RPi5 CSI, và một đính chính quan trọng về <code class="inline">ffmpeg + libcamera</code>.</p>
+  </header>
+
+  <section id="tong-quan">
+    <h2><span class="num">01</span>4 lựa chọn &amp; vai trò từng lớp</h2>
+    <p class="lead">Đây không phải 4 công cụ cạnh tranh nhau — chúng nằm ở các tầng khác nhau của cùng một chồng phần mềm.</p>
+    <div class="diagram">
+<pre>┌──────────────────────────────────────────────────────────┐
+│  <span class="hl">rpicam-apps</span>   CLI chính thức RPi, gọi thẳng libcamera    │
+├──────────────────────────────────────────────────────────┤
+│  <span class="hl">GStreamer</span>     Framework pipeline, plugin-based           │
+│  <span class="hl">FFmpeg</span>        Toolkit đa năng, mạnh về codec/transcode   │
+├──────────────────────────────────────────────────────────┤
+│  <span class="hl2">libcamera</span>     (tuỳ chọn) quản lý pipeline camera phức tạp │
+├──────────────────────────────────────────────────────────┤
+│  <span class="hl2">V4L2</span>          Kernel API — tầng thấp nhất, ai cũng phải  │
+│              đi qua tầng này cuối cùng                     │
+└──────────────────────────────────────────────────────────┘</pre>
+    </div>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Công cụ</th><th>Loại</th><th>Chỉ có trên RPi?</th></tr>
+      <tr><td><code class="inline">rpicam-apps</code></td><td>CLI tool</td><td class="lose">✅ Chỉ RPi</td></tr>
+      <tr><td><code class="inline">libcamera</code></td><td>Userspace library</td><td>Chủ yếu dùng trên RPi, nhưng không giới hạn kỹ thuật ở RPi</td></tr>
+      <tr><td><code class="inline">V4L2</code></td><td>Kernel API</td><td class="win">✅ Mọi Linux</td></tr>
+      <tr><td><code class="inline">ffmpeg</code></td><td>Toolkit/Library</td><td class="win">✅ Mọi Linux, cross-platform</td></tr>
+      <tr><td><code class="inline">GStreamer</code></td><td>Pipeline Framework</td><td class="win">✅ Mọi Linux, cross-platform</td></tr>
+    </table>
+    </div>
+  </section>
+
+  <section id="so-sanh-kha-nang">
+    <h2><span class="num">02</span>Bảng so sánh khả năng kỹ thuật</h2>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Khả năng</th><th>V4L2</th><th>FFmpeg</th><th>GStreamer</th></tr>
+      <tr><td>Capture video từ camera</td><td class="win">✅ Native</td><td class="win">✅ <code class="inline">-f v4l2</code></td><td class="win">✅ <code class="inline">v4l2src</code></td></tr>
+      <tr><td>Encode/Decode</td><td>⚠️ Chỉ HW nếu driver hỗ trợ</td><td class="win">✅ SW+HW, hầu hết mọi codec</td><td class="win">✅ SW+HW qua plugin</td></tr>
+      <tr><td>Transcode file</td><td class="lose">❌</td><td class="win">✅ Core feature</td><td>✅ Được, không phải thế mạnh</td></tr>
+      <tr><td>Streaming RTSP/RTP/HLS</td><td class="lose">❌</td><td class="win">✅ Tốt</td><td class="win">✅ Rất mạnh, native</td></tr>
+      <tr><td>Pipeline động (runtime)</td><td class="lose">❌</td><td class="lose">❌ Tĩnh</td><td class="win">✅ Đổi khi đang chạy</td></tr>
+      <tr><td>Zero-copy / DMA buffer</td><td class="win">✅ mmap, dmabuf</td><td>⚠️ Hạn chế</td><td class="win">✅ Native</td></tr>
+      <tr><td>Điều khiển camera (exposure, WB...)</td><td class="win">✅ Trực tiếp</td><td class="lose">❌</td><td>⚠️ Qua V4L2 backend</td></tr>
+      <tr><td>Độ khó học</td><td class="lose">🔴 Rất cao</td><td>🟡 Trung bình (CLI dễ)</td><td class="lose">🔴 Cao</td></tr>
+    </table>
+    </div>
+    <p style="font-size:13.5px; color:var(--text-dim);">V4L2 là chuẩn kernel gốc (1999, thay thế hoàn toàn V4L1 vốn đã lỗi thời) — cả FFmpeg lẫn GStreamer đều build phía trên nó khi chạy trên Linux.</p>
+  </section>
+
+  <section id="quyet-dinh">
+    <h2><span class="num">03</span>Bảng quyết định nhanh theo use-case</h2>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Use-case</th><th>Chọn</th><th>Lý do</th></tr>
+      <tr><td>Capture webcam thô, latency thấp nhất</td><td class="win">V4L2</td><td>Truy cập trực tiếp, không lớp trung gian</td></tr>
+      <tr><td>Convert / batch transcode file</td><td class="win">FFmpeg</td><td>Một dòng lệnh, CLI mạnh, nhanh</td></tr>
+      <tr><td>Live streaming (RTSP/HLS)</td><td class="win">GStreamer</td><td>Pipeline dynamic, QoS, low-latency native</td></tr>
+      <tr><td>Embedded camera + AI (Jetson, RPi)</td><td class="win">GStreamer + V4L2</td><td>HW accel, zero-copy DMA buffer</td></tr>
+      <tr><td><strong>Computer Vision / AI trên RPi</strong></td><td class="win">picamera2 <span class="badge badge-new">🆕 xem Phần 4</span></td><td>numpy array trực tiếp, xử lý sẵn routing của RPi5</td></tr>
+      <tr><td>Trích metadata video</td><td class="win">FFmpeg (<code class="inline">ffprobe</code>)</td><td>Nhanh, JSON output dễ parse</td></tr>
+    </table>
+    </div>
+    <div class="decision-card">
+      <div class="dcard"><div class="tool">Đơn giản, offline</div><p>→ FFmpeg. Một lệnh giải quyết xong.</p></div>
+      <div class="dcard"><div class="tool">Real-time, phức tạp</div><p>→ GStreamer. Pipeline động, QoS tích hợp.</p></div>
+      <div class="dcard"><div class="tool">Điều khiển HW trực tiếp</div><p>→ V4L2. Không lớp trừu tượng nào thấp hơn.</p></div>
+    </div>
+  </section>
+
+  <section id="usb-de">
+    <h2><span class="num">04</span>Camera USB — trường hợp đơn giản nhất</h2>
+    <p>Webcam USB (UVC) tự expose <code class="inline">/dev/video0</code> hoàn chỉnh, không cần cấu hình Media Controller. Cả 3 công cụ đều dùng trực tiếp được, ngay lập tức:</p>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash — ffmpeg</span><button class="copy-btn">Copy</button></div>
+      <pre><code>ffmpeg -f v4l2 -video_size 1280x720 -i /dev/video0 -frames:v 1 photo.jpg -y</code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash — v4l2-ctl</span><button class="copy-btn">Copy</button></div>
+      <pre><code>v4l2-ctl --device=/dev/video0 \
+  --set-fmt-video=width=1280,height=720,pixelformat=YUYV \
+  --stream-mmap --stream-to=photo.raw --stream-count=1
+
+# Convert raw YUYV sang JPEG
+ffmpeg -f rawvideo -pixel_format yuyv422 -video_size 1280x720 \
+       -i photo.raw photo.jpg</code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash — gstreamer</span><button class="copy-btn">Copy</button></div>
+      <pre><code>gst-launch-1.0 v4l2src device=/dev/video0 num-buffers=1 \
+  ! "video/x-raw,format=YUY2,width=1280,height=720" \
+  ! videoconvert ! jpegenc ! filesink location=photo.jpg</code></pre>
+    </div>
+    <p style="color:var(--text-dim); font-size:13.5px;">Không có gì đặc biệt ở đây — đây chính xác là trải nghiệm "V4L2 hoạt động như quảng cáo". Vấn đề chỉ bắt đầu khi sang camera CSI trên RPi5.</p>
+  </section>
+
+  <section id="csi-kho">
+    <h2><span class="num">05</span>Camera CSI trên RPi5 — vì sao phức tạp hơn hẳn</h2>
+    <p class="lead">Camera USB: sensor + ISP nằm trong 1 thiết bị, driver expose ra <code class="inline">/dev/video0</code> đơn giản. Camera CSI trên RPi5: sensor, CSI receiver, ISP là <strong>3 phần cứng tách biệt</strong>, nối qua Media Controller pipeline (xem chi tiết kiến trúc ở <a href="./v4l2_camera_fundamentals.html">Phần 1</a>).</p>
+    <div class="callout warn">
+      <div class="callout-title">⚠️ Gốc rễ kỹ thuật: multiplexed streams</div>
+      <p>RPi5 dùng driver <code class="inline">rp1-cfe</code> hỗ trợ nhiều stream ảo trên 1 link CSI vật lý (multiplexed streams) — một tính năng RPi4 trở về trước không có. Muốn dùng đúng, mỗi output node phải được cấu hình qua một <strong>routing table</strong> (ioctl <code class="inline">VIDIOC_SUBDEV_S_ROUTING</code>) trước khi stream. libcamera tự làm việc này; tool V4L2 thuần thì không.</p>
+    </div>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Thế hệ</th><th>Driver CSI</th><th>Multiplexed streams</th></tr>
+      <tr><td>RPi 1–4</td><td><code class="inline">bcm2835-unicam</code></td><td>Không</td></tr>
+      <tr><td><strong>RPi 5</strong></td><td><code class="inline">rp1-cfe</code></td><td><strong>Có</strong> — cần routing table</td></tr>
+      <tr><td>Jetson / i.MX8</td><td><code class="inline">tegra-vi</code> / <code class="inline">imx-mipi-csis</code></td><td>Không</td></tr>
+    </table>
+    </div>
+  </section>
+
+  <section id="nhat-ky-loi">
+    <h2><span class="num">06</span>Nhật ký lỗi thực tế <span class="badge badge-verified">✅ Đã kiểm chứng</span></h2>
+    <p>Ba lỗi gặp phải khi thử capture RAW trực tiếp từ <code class="inline">/dev/video0</code> bằng V4L2/ffmpeg thuần, bỏ qua libcamera:</p>
+
+    <h3>❌ Lỗi 1 — VIDIOC_STREAMON: Invalid argument</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">output</span></div>
+      <pre><code>VIDIOC_STREAMON returned -1 (Invalid argument)
+Buffer size sau REQBUFS: length=0, offset=0x0</code></pre>
+    </div>
+    <p><strong>Nguyên nhân:</strong> chưa cấu hình routing table cho subdevice <code class="inline">csi2</code>. <code class="inline">v4l2-ctl 1.30.1</code> (bản đang dùng) chưa có option CLI <code class="inline">--set-subdev-routing</code>. Thử ioctl thủ công bằng Python cũng trả <code class="inline">ENOTTY</code> trên cả 3 subdev (<code class="inline">csi2</code>, <code class="inline">pisp-fe</code>, <code class="inline">ov5647</code>) — driver <code class="inline">rp1-cfe</code> hiện chưa expose ioctl này ra userspace theo cách tool có thể gọi trực tiếp.</p>
+
+    <h3>❌ Lỗi 2 — ffmpeg: cùng nguyên nhân</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">output</span></div>
+      <pre><code>[video4linux2,v4l2 @ 0x...] ioctl(VIDIOC_STREAMON): Invalid argument
+[in#0 @ 0x...] Error opening input: Invalid argument
+...
+The V4L2 driver changed the pixel format from 0x32315559 to 0x41414270</code></pre>
+    </div>
+    <p>ffmpeg thử nhiều format (YUYV, yuv420p...) nhưng driver luôn reset về Bayer format nội bộ (<code class="inline">pBAA</code>) — vẫn không stream được vì thiếu routing, không phải vì sai format.</p>
+
+    <h3>❌ Lỗi 3 — VIDIOC_STREAMON: Broken pipe</h3>
+    <p><strong>Nguyên nhân:</strong> có 2 consumer cùng lúc tranh nhau 1 nguồn — link <code class="inline">csi2 → pisp-fe</code> vẫn đang <code class="inline">ENABLED</code> trong khi cố enable thêm <code class="inline">csi2 → csi2_ch0</code>. Không có routing table đúng, CSI2 không stream ra 2 nơi cùng lúc được.</p>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># Đúng thứ tự: disable link cũ TRƯỚC, enable link mới SAU
+media-ctl -d /dev/media0 -l "'csi2':4-&gt;'pisp-fe':0[0]"          # disable trước
+media-ctl -d /dev/media0 -l "'csi2':4-&gt;'rp1-cfe-csi2_ch0':0[1]"  # enable sau</code></pre>
+    </div>
+
+    <div class="callout note">
+      <div class="callout-title">Đây là giới hạn của driver mặc định, không phải phần cứng</div>
+      <p>Hành vi ENOTTY trên đúng với báo cáo từ cộng đồng RPi5 (kernel 6.18.x) tại thời điểm viết tài liệu này. Cần biết thêm: <code class="inline">rp1-cfe</code> có 2 biến thể — <strong>downstream</strong> (module <code class="inline">rp1_cfe_downstream</code>, mặc định trên Raspberry Pi OS, chỉ hỗ trợ multiplex 1 subdev/1 stream, không expose routing ioctl cho userspace) và <strong>upstream/mainline</strong> (module <code class="inline">rp1_cfe</code>, compatible string <code class="inline">raspberrypi,rp1-cfe-upstream</code>, đã nằm trong <a href="https://docs.kernel.org/admin-guide/media/raspberrypi-rp1-cfe.html" target="_blank" rel="noopener">kernel mainline chính thức</a>) đang tiếp tục phát triển hỗ trợ multiplexed streams đầy đủ hơn. Đây là trạng thái phát triển hiện tại, có thể thay đổi ở bản Raspberry Pi OS sau này — không nên coi là giới hạn vĩnh viễn của phần cứng.</p>
+    </div>
+  </section>
+
+  <section id="dinh-chinh">
+    <h2><span class="num">07</span>🔧 Đính chính: <code class="inline">ffmpeg -f libcamera</code></h2>
+    <div class="callout danger">
+      <div class="callout-title">❌ Thông tin sai trong tài liệu gốc <span class="badge badge-fixed">Đã sửa</span></div>
+      <p>Bản gốc đề xuất <code class="inline">ffmpeg -f libcamera -i ...</code> như "Phương án A — có sẵn trên RPi OS". Qua tra cứu, đây <strong>không phải</strong> tính năng thật của FFmpeg mainline (kể cả bản build của Raspberry Pi OS). Danh sách input device chính thức của <code class="inline">libavdevice</code> (<code class="inline">ffmpeg -devices</code>) không có mục <code class="inline">libcamera</code>.</p>
+    </div>
+    <p>Một kỹ sư của Raspberry Pi Ltd (nick <code class="inline">6by9</code>, thường xuyên trả lời kỹ thuật driver camera trên forum chính thức) xác nhận trực tiếp:</p>
+    <blockquote style="border-left:3px solid var(--border); margin:16px 0; padding:4px 0 4px 18px; color:var(--text-muted); font-style:italic; font-size:14.5px;">
+      "Pi cameras now use libcamera. FFmpeg doesn't know how to drive libcamera, and tries various invalid things (eg <code class="inline">VIDIOC_G_PARM</code>) with the raw image sensor V4L2 devices, and hasn't configured the pipeline using Media Controller."
+    </blockquote>
+    <p>Nói cách khác: <code class="inline">ffmpeg -f v4l2 -i /dev/video0</code> trên camera CSI RPi5 thất bại với đúng loại lỗi <code class="inline">VIDIOC_STREAMON: Invalid argument</code> đã ghi nhận ở mục 6 — vì cùng lý do (thiếu routing), <strong>và không có cờ <code class="inline">-f libcamera</code> nào để né việc này cả.</strong></p>
+
+    <h3>✅ Hai cách THẬT SỰ hoạt động</h3>
+    <h4>Cách 1 — Pipe từ rpicam-vid (khuyên dùng, verified rộng rãi)</h4>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># rpicam-vid xuất raw/H264 ra stdout, ffmpeg nhận qua pipe — không đụng V4L2/libcamera trực tiếp
+rpicam-vid -t 0 --codec yuv420 --width 1296 --height 972 -o - \
+  | ffmpeg -f rawvideo -pixel_format yuv420p -video_size 1296x972 \
+    -i - -frames:v 1 photo.jpg -y
+
+# Hoặc lấy H264 đã encode sẵn (nhẹ CPU hơn, không cần re-encode)
+rpicam-vid -t 10000 --codec h264 -o - \
+  | ffmpeg -i - -c copy video.mp4</code></pre>
+    </div>
+
+    <h4>Cách 2 — libcamerify (V4L2 compatibility layer của chính libcamera)</h4>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># libcamerify dùng LD_PRELOAD để "giả lập" device V4L2 thường,
+# ffmpeg tưởng đang nói chuyện với /dev/video0 kiểu cũ, nhưng thực chất
+# libcamera xử lý phía sau — không cần tự cấu hình Media Controller
+sudo apt install libcamera-tools libcamera-v4l2
+
+libcamerify ffmpeg -f v4l2 -i /dev/video0 -frames:v 1 photo.jpg -y
+libcamerify v4l2-ctl --list-devices   # cũng dùng được với v4l2-ctl thường</code></pre>
+    </div>
+    <div class="callout warn">
+      <div class="callout-title">⚠️ Lưu ý khi dùng libcamerify</div>
+      <p>Gói chứa <code class="inline">v4l2-compat.so</code> đã tách khỏi <code class="inline">libcamera0</code> sang gói riêng <code class="inline">libcamera-v4l2</code> từ Bookworm — thiếu gói này sẽ gặp lỗi <code class="inline">object 'v4l2-compat.so' cannot be preloaded</code>. Ngoài ra, cộng đồng RPi ghi nhận <code class="inline">libcamerify</code> + OpenCV có thêm <strong>độ trễ khoảng 1–2 giây</strong> so với gọi libcamera trực tiếp — không lý tưởng cho pipeline AI thời gian thực có ngân sách latency chặt. Với Python, <a href="./picamera2_opencv_ai_bridge.html">picamera2 ở Phần 4</a> là lựa chọn nhanh hơn vì không đi qua lớp giả lập này.</p>
+    </div>
+  </section>
+
+  <section id="tong-ket">
+    <h2><span class="num">08</span>Tổng kết: USB Camera vs CSI Camera (RPi5)</h2>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Tiêu chí</th><th>USB Camera</th><th>CSI Camera (RPi5)</th></tr>
+      <tr><td>Cấu hình pipeline</td><td class="win">Tự động</td><td>Phải thủ công hoặc dùng libcamera</td></tr>
+      <tr><td>ffmpeg -f v4l2 trực tiếp</td><td class="win">✅ Hoạt động ngay</td><td class="lose">❌ VIDIOC_STREAMON lỗi</td></tr>
+      <tr><td>v4l2-ctl --stream-mmap</td><td class="win">✅ Dễ</td><td class="lose">⚠️ Cần routing chưa expose đủ</td></tr>
+      <tr><td>fswebcam</td><td class="win">✅ Dễ</td><td class="lose">❌ Không hỗ trợ</td></tr>
+      <tr><td>rpicam-still / picamera2</td><td class="lose">❌ Không có</td><td class="win">✅ Tốt nhất</td></tr>
+      <tr><td>libcamerify + tool V4L2 cũ</td><td>Không cần</td><td>✅ Hoạt động, có thêm latency</td></tr>
+    </table>
+    </div>
+    <div class="callout note">
+      <div class="callout-title">Kết luận thực tế</div>
+      <p>Với camera CSI trên RPi5, <strong>libcamera là lớp bắt buộc phải đi qua</strong> — dù trực tiếp (rpicam-apps, picamera2), gián tiếp (GStreamer <code class="inline">libcamerasrc</code>), hay giả lập (libcamerify). Không có đường tắt V4L2 thuần nào tốt hơn ba cách này trên driver mặc định hiện tại.</p>
+    </div>
+  </section>
+
+  <section id="tham-khao">
+    <h2><span class="num">09</span>Lệnh tham khảo nhanh</h2>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># USB camera — hoạt động ngay với mọi công cụ
+ffmpeg -f v4l2 -video_size 1920x1080 -i /dev/video0 -frames:v 1 out.jpg -y
+
+# CSI RPi5 — cách 1: pipe qua rpicam-vid
+rpicam-vid -t 0 --codec yuv420 -o - | ffmpeg -f rawvideo \
+  -pixel_format yuv420p -video_size 1296x972 -i - out.jpg -y
+
+# CSI RPi5 — cách 2: libcamerify wrapper
+libcamerify ffmpeg -f v4l2 -i /dev/video0 -frames:v 1 out.jpg -y
+
+# CSI RPi5 — cách 3 (khuyên dùng cho AI/CV): picamera2, xem Phần 4
+python3 -c "from picamera2 import Picamera2; p=Picamera2(); p.start(); print(p.capture_array('main').shape)"
+
+# Trích metadata với ffprobe
+ffprobe -v quiet -print_format json -show_streams input.mp4</code></pre>
+    </div>
+  </section>
+
+  <footer>
+    <span>Phần 2/4 — So sánh công cụ capture</span>
+    <span><a href="./v4l2_camera_fundamentals.html" style="color:var(--accent2)">← 1. Nền tảng</a> · Tiếp theo → <a href="./gstreamer_camera_pipeline.html" style="color:var(--accent2)">3. GStreamer</a></span>
+  </footer>
+</main>
+</div>
+
+<script>
+document.querySelectorAll('.copy-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const block = btn.closest('.code-block');
+    const codeEl = block.querySelector('code');
+    const text = codeEl.innerText;
+    navigator.clipboard.writeText(text).then(()=>{
+      const original = btn.textContent;
+      btn.textContent = 'Copied ✓';
+      btn.classList.add('copied');
+      setTimeout(()=>{ btn.textContent = original; btn.classList.remove('copied'); }, 1600);
+    });
+  });
+});
+const sidebar = document.getElementById('sidebar');
+const navToggle = document.getElementById('navToggle');
+navToggle.addEventListener('click', ()=> sidebar.classList.toggle('open'));
+document.querySelectorAll('.sidebar nav a').forEach(a=>{
+  a.addEventListener('click', ()=> sidebar.classList.remove('open'));
+});
+const sections = document.querySelectorAll('main section[id]');
+const navLinks = document.querySelectorAll('nav.toc a');
+const linkMap = {};
+navLinks.forEach(l=>{
+  const href = l.getAttribute('href').replace('#','');
+  if(!linkMap[href]) linkMap[href] = [];
+  linkMap[href].push(l);
+});
+const observer = new IntersectionObserver((entries)=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      navLinks.forEach(l=>l.classList.remove('active'));
+      const id = entry.target.getAttribute('id');
+      (linkMap[id]||[]).forEach(l=>l.classList.add('active'));
+    }
+  });
+}, {rootMargin:'-15% 0px -70% 0px'});
+sections.forEach(s=>observer.observe(s));
+</script>
+</body>
+</html>

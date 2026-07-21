@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>V4L2 &amp; Camera Stack — Nền Tảng | 1/4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0e14; --bg-alt:#0e1219; --surface:#141a22; --surface-2:#1a212b;
+  --border:#232b37; --border-soft:#1c232d;
+  --text:#e7ecf2; --text-muted:#8a94a6; --text-dim:#5b6474;
+  --accent:#e8a33d; --accent-soft:rgba(232,163,61,.12); --accent-dim:#a97a35;
+  --accent2:#5fa8a0; --accent2-soft:rgba(95,168,160,.12);
+  --danger:#e0636f; --danger-soft:rgba(224,99,111,.1);
+  --success:#7cb88f; --success-soft:rgba(124,184,143,.1);
+  --sans:'Be Vietnam Pro',-apple-system,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --sidebar-w:290px;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0; background:var(--bg); color:var(--text); font-family:var(--sans);
+  font-size:16px; line-height:1.7; -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--accent-soft); color:var(--accent);}
+a{color:var(--accent2);}
+.layout{display:grid; grid-template-columns:var(--sidebar-w) 1fr; min-height:100vh;}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  position:sticky; top:0; height:100vh; overflow-y:auto;
+  background:var(--bg-alt); border-right:1px solid var(--border-soft);
+  padding:28px 20px 40px; scrollbar-width:thin; scrollbar-color:var(--border) transparent;
+}
+.sidebar::-webkit-scrollbar{width:6px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px;}
+.brand{margin-bottom:6px;}
+.brand .kicker{
+  font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--accent); font-weight:600;
+}
+.brand h1{font-size:19px; margin:6px 0 2px; font-weight:700; line-height:1.35;}
+.brand .meta{font-size:12.5px; color:var(--text-dim); font-family:var(--mono); line-height:1.6;}
+.series{
+  display:flex; flex-wrap:wrap; gap:6px; margin:16px 0 22px; padding:12px;
+  background:var(--surface); border:1px solid var(--border-soft); border-radius:8px;
+}
+.series a, .series span{
+  font-size:11px; font-family:var(--mono); padding:4px 8px; border-radius:5px;
+  text-decoration:none; color:var(--text-dim); border:1px solid transparent;
+}
+.series .current{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-dim); font-weight:600;}
+.series a:hover{color:var(--accent2); border-color:var(--border);}
+nav.toc{margin-top:8px;}
+nav.toc .group-label{
+  font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dim);
+  margin:20px 0 8px; font-weight:600;
+}
+nav.toc a{
+  display:block; padding:6px 10px; margin:1px 0; border-radius:6px; font-size:13.5px;
+  color:var(--text-muted); text-decoration:none; border-left:2px solid transparent;
+  transition:.12s;
+}
+nav.toc a:hover{color:var(--text); background:var(--surface);}
+nav.toc a.active{color:var(--accent); background:var(--accent-soft); border-left-color:var(--accent); font-weight:600;}
+nav.toc a.sub{padding-left:22px; font-size:12.5px;}
+
+/* ---------- Main ---------- */
+main{padding:56px 48px 120px; max-width:900px;}
+.page-header{margin-bottom:44px; padding-bottom:32px; border-bottom:1px solid var(--border-soft);}
+.page-header .eyebrow{
+  font-family:var(--mono); color:var(--accent); font-size:12.5px; letter-spacing:.1em;
+  text-transform:uppercase; font-weight:600; margin-bottom:14px; display:flex; align-items:center; gap:10px;
+}
+.page-header .eyebrow .dot{width:6px; height:6px; border-radius:50%; background:var(--accent);}
+.page-header h1{font-size:34px; margin:0 0 14px; font-weight:800; line-height:1.25; letter-spacing:-.01em;}
+.page-header .sub{color:var(--text-muted); font-size:16.5px; max-width:680px;}
+.specs{display:flex; flex-wrap:wrap; gap:10px 28px; margin-top:22px; font-family:var(--mono); font-size:12.5px;}
+.specs div{color:var(--text-dim);}
+.specs strong{color:var(--text-muted); font-weight:600;}
+
+h2{
+  font-size:24px; font-weight:700; margin:52px 0 8px; padding-top:8px; letter-spacing:-.005em;
+  scroll-margin-top:24px; display:flex; align-items:baseline; gap:12px;
+}
+h2 .num{font-family:var(--mono); color:var(--accent-dim); font-size:16px; font-weight:600;}
+h3{font-size:18px; font-weight:700; margin:34px 0 10px; scroll-margin-top:24px; color:var(--text);}
+h4{font-size:15px; font-weight:600; margin:24px 0 8px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; font-size:12.5px;}
+p{margin:12px 0; color:var(--text); }
+p.lead{color:var(--text-muted); font-size:16.5px;}
+ul,ol{padding-left:22px; margin:12px 0;}
+li{margin:6px 0;}
+code.inline{
+  font-family:var(--mono); background:var(--surface-2); color:var(--accent2);
+  padding:2px 6px; border-radius:4px; font-size:.86em; border:1px solid var(--border-soft);
+}
+strong{color:var(--text); font-weight:700;}
+hr{border:none; border-top:1px solid var(--border-soft); margin:48px 0;}
+
+/* ---------- badges ---------- */
+.badge{
+  display:inline-flex; align-items:center; gap:5px; font-family:var(--mono); font-size:10.5px;
+  font-weight:700; padding:3px 8px; border-radius:5px; letter-spacing:.02em; vertical-align:middle;
+}
+.badge-verified{background:var(--success-soft); color:var(--success); border:1px solid rgba(124,184,143,.3);}
+.badge-fixed{background:var(--danger-soft); color:var(--danger); border:1px solid rgba(224,99,111,.3);}
+.badge-new{background:var(--accent-soft); color:var(--accent); border:1px solid rgba(232,163,61,.3);}
+.badge-warn{background:rgba(232,163,61,.08); color:var(--accent); border:1px solid rgba(232,163,61,.25);}
+
+/* ---------- callouts ---------- */
+.callout{
+  border-radius:10px; padding:16px 18px; margin:20px 0; border:1px solid var(--border-soft);
+  background:var(--surface); font-size:14.5px;
+}
+.callout-title{font-weight:700; font-size:13px; margin-bottom:6px; display:flex; align-items:center; gap:7px;}
+.callout p{margin:6px 0; color:var(--text-muted);}
+.callout.note{border-left:3px solid var(--accent2);}
+.callout.note .callout-title{color:var(--accent2);}
+.callout.warn{border-left:3px solid var(--accent);}
+.callout.warn .callout-title{color:var(--accent);}
+.callout.danger{border-left:3px solid var(--danger);}
+.callout.danger .callout-title{color:var(--danger);}
+
+/* ---------- code blocks ---------- */
+.code-block{
+  margin:18px 0; border-radius:10px; overflow:hidden; border:1px solid var(--border);
+  background:#0a0d12;
+}
+.code-header{
+  display:flex; justify-content:space-between; align-items:center; padding:9px 14px;
+  background:var(--surface-2); border-bottom:1px solid var(--border);
+}
+.code-lang{font-family:var(--mono); font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em;}
+.copy-btn{
+  font-family:var(--mono); font-size:11.5px; background:transparent; color:var(--text-muted);
+  border:1px solid var(--border); padding:4px 10px; border-radius:6px; cursor:pointer; transition:.12s;
+}
+.copy-btn:hover{color:var(--text); border-color:var(--text-dim);}
+.copy-btn.copied{color:var(--success); border-color:var(--success);}
+pre{margin:0; padding:16px 18px; overflow-x:auto;}
+pre code{
+  font-family:var(--mono); font-size:13px; line-height:1.65; color:var(--text);
+  white-space:pre; background:none;
+}
+.c-cm{color:var(--text-dim); font-style:italic;}
+.c-str{color:var(--accent2);}
+.c-kw{color:var(--accent);}
+.c-flag{color:#c9a4d9;}
+.c-var{color:#7fb0d9;}
+.c-out{color:var(--text-muted);}
+
+/* ---------- tables ---------- */
+.table-wrap{overflow-x:auto; margin:18px 0; border-radius:10px; border:1px solid var(--border-soft);}
+table{border-collapse:collapse; width:100%; font-size:13.5px;}
+th{
+  background:var(--surface-2); color:var(--text-muted); text-align:left; font-weight:600;
+  padding:10px 14px; border-bottom:1px solid var(--border); font-size:12px; text-transform:uppercase; letter-spacing:.03em;
+}
+td{padding:10px 14px; border-bottom:1px solid var(--border-soft); color:var(--text-muted); vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+td code.inline, th code.inline{white-space:nowrap;}
+td:first-child{color:var(--text); font-weight:500;}
+
+/* ---------- diagram box ---------- */
+.diagram{
+  background:var(--surface); border:1px solid var(--border-soft); border-radius:10px;
+  padding:22px 24px; margin:20px 0; overflow-x:auto;
+}
+.diagram pre{
+  margin:0; font-family:var(--mono); font-size:12.5px; line-height:1.55; color:var(--text-muted);
+  white-space:pre;
+}
+.diagram .hl{color:var(--accent); font-weight:600;}
+.diagram .hl2{color:var(--accent2); font-weight:600;}
+
+/* ---------- comparison chips ---------- */
+.chip-row{display:flex; gap:8px; flex-wrap:wrap; margin:16px 0;}
+.chip{
+  font-family:var(--mono); font-size:12px; padding:6px 12px; border-radius:20px;
+  border:1px solid var(--border); color:var(--text-muted); background:var(--surface);
+}
+
+footer{
+  margin-top:80px; padding-top:24px; border-top:1px solid var(--border-soft);
+  color:var(--text-dim); font-size:12.5px; font-family:var(--mono);
+  display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;
+}
+
+/* ---------- mobile ---------- */
+.nav-toggle{display:none;}
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr;}
+  .sidebar{
+    position:fixed; left:0; top:0; z-index:40; width:82vw; max-width:320px;
+    transform:translateX(-100%); transition:transform .2s ease; box-shadow:20px 0 40px rgba(0,0,0,.4);
+  }
+  .sidebar.open{transform:translateX(0);}
+  .nav-toggle{
+    display:flex; position:fixed; top:16px; left:16px; z-index:50; width:42px; height:42px;
+    align-items:center; justify-content:center; background:var(--surface); border:1px solid var(--border);
+    border-radius:8px; color:var(--text); font-size:18px; cursor:pointer;
+  }
+  main{padding:88px 22px 80px;}
+  .page-header h1{font-size:26px;}
+}
+</style>
+</head>
+<body>
+<button class="nav-toggle" id="navToggle">☰</button>
+<div class="layout">
+
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <div class="kicker">Camera Pipeline Series · 1/4</div>
+    <h1>V4L2 &amp; Camera Stack<br>Nền Tảng</h1>
+    <div class="meta">Raspberry Pi 5 · kernel 6.18.34<br>Sensor OV5647</div>
+  </div>
+
+  <div class="series">
+    <span class="current">1. Nền tảng</span>
+    <a href="./capture_tools_comparison.html">2. So sánh công cụ</a>
+    <a href="./gstreamer_camera_pipeline.html">3. GStreamer</a>
+    <a href="./picamera2_opencv_ai_bridge.html">4. picamera2 + AI</a>
+  </div>
+
+  <nav class="toc">
+    <div class="group-label">Nội dung</div>
+    <a href="#v4l2-la-gi">1. V4L2 là gì</a>
+    <a href="#kien-truc">2. Kiến trúc Camera Stack RPi5</a>
+    <a href="#nhan-dien">3. Nhận diện camera</a>
+    <a href="#nhan-dien" class="sub">3A. Device file /dev</a>
+    <a href="#nhan-dien" class="sub">3B. v4l2-ctl --list-devices</a>
+    <a href="#nhan-dien" class="sub">3C. dmesg kernel log</a>
+    <a href="#media-controller">4. Đọc pipeline Media Controller</a>
+    <a href="#sensor-info">5. Truy vấn thông tin sensor</a>
+    <a href="#bayer">6. Bayer Pattern &amp; ISP</a>
+    <a href="#rpicam">7. Xác nhận nhanh: rpicam-hello</a>
+    <a href="#loi-thuong-gap">8. Lỗi thường gặp</a>
+    <a href="#tham-khao">9. Lệnh tham khảo nhanh</a>
+  </nav>
+</aside>
+
+<main>
+  <header class="page-header">
+    <div class="eyebrow"><span class="dot"></span>Phần 1 / 4 — Kiến thức nền</div>
+    <h1>V4L2 &amp; Kiến Trúc Camera Stack trên Raspberry Pi 5</h1>
+    <p class="sub">Cách kernel Linux nhìn thấy camera, vì sao camera CSI trên RPi5 phức tạp hơn webcam USB, và cách đọc pipeline phần cứng thông qua Media Controller trước khi chạm vào bất kỳ công cụ capture nào.</p>
+    <div class="specs">
+      <div><strong>Sensor:</strong> OV5647 (OmniVision, 5MP)</div>
+      <div><strong>CSI receiver:</strong> rp1-cfe</div>
+      <div><strong>ISP:</strong> pispbe (PiSP Back End)</div>
+      <div><strong>I2C addr:</strong> 0x36 (bus 10)</div>
+    </div>
+  </header>
+
+  <section id="v4l2-la-gi">
+    <h2><span class="num">01</span>V4L2 là gì</h2>
+    <p class="lead">V4L2 (Video4Linux2) là kernel subsystem quản lý toàn bộ thiết bị video trên Linux — camera, TV tuner, HW codec, video output.</p>
+    <p>Nó expose ra userspace dưới dạng device node (<code class="inline">/dev/video*</code>, <code class="inline">/dev/media*</code>, <code class="inline">/dev/v4l-subdev*</code>) cùng một bộ ioctl chuẩn hoá (<code class="inline">VIDIOC_*</code>). Với camera đơn giản như webcam USB (UVC), driver USB tự làm hết việc negotiate giữa sensor và ISP nội bộ, nên một device node <code class="inline">/dev/video0</code> là đủ dùng.</p>
+    <p>Camera CSI (MIPI) như OV5647 thì khác: sensor, bộ nhận CSI-2, và ISP là <strong>3 khối phần cứng tách biệt</strong>, kết nối với nhau qua một pipeline có thể cấu hình được. Để mô tả và điều khiển pipeline này, V4L2 có thêm hai API mở rộng:</p>
+    <div class="table-wrap">
+    <table>
+      <tr><th>API</th><th>Vai trò</th><th>Device node</th></tr>
+      <tr><td>V4L2 core</td><td>Capture buffer, format, streaming trên node cuối cùng</td><td><code class="inline">/dev/videoN</code></td></tr>
+      <tr><td>V4L2 subdev</td><td>Điều khiển từng khối phần cứng riêng lẻ (sensor, CSI bridge, ISP front-end)</td><td><code class="inline">/dev/v4l-subdevN</code></td></tr>
+      <tr><td>Media Controller (MC)</td><td>Mô tả graph kết nối giữa các subdev — entity, pad, link</td><td><code class="inline">/dev/mediaN</code></td></tr>
+    </table>
+    </div>
+    <div class="callout note">
+      <div class="callout-title">💡 Ý chính</div>
+      <p>Webcam USB = 1 hộp đen, 1 device node. Camera CSI = nhiều IC rời cần Media Controller để "nối dây" bằng phần mềm trước khi capture được. Đây là gốc rễ của mọi phức tạp sẽ gặp trong Phần 2 và 3.</p>
+    </div>
+  </section>
+
+  <section id="kien-truc">
+    <h2><span class="num">02</span>Kiến trúc Camera Stack trên RPi5</h2>
+    <p>RPi5 dùng chip <strong>RP1</strong> (I/O controller phụ trợ, tách biệt khỏi SoC BCM2712 chính) để xử lý CSI-2. Đường đi từ ánh sáng đến file JPEG đi qua 4 lớp:</p>
+    <div class="diagram">
+<pre>┌──────────────────────────────────────────────────────┐
+│              Ứng dụng (rpicam-still, app...)          │
+└───────────────────────┬────────────────────────────────┘
+                         │ libcamera API
+┌───────────────────────▼────────────────────────────────┐
+│                    <span class="hl">libcamera</span> (userspace)               │
+│         quản lý pipeline, IPA (3A: AE/AWB/AF), tuning   │
+└──────┬──────────────────────────────────┬──────────────┘
+       │ V4L2 subdev + Media Controller    │ IPA (thuật toán)
+┌──────▼──────────┐                ┌───────▼──────────────┐
+│   <span class="hl2">rp1-cfe</span>          │                │   pisp IPA module      │
+│  (CSI-2 receiver) │                │   (ov5647.json tuning) │
+│  driver kernel     │                └────────────────────────┘
+└──────┬──────────┘
+       │ nội bộ (memory / FE hardware path)
+┌──────▼──────────┐
+│   <span class="hl2">pispbe</span>          │   ISP phần cứng: debayer, denoise, AWB apply
+│  (PiSP Back End)  │   RAW Bayer → YUV/RGB/JPEG
+└──────┬──────────┘
+       │ MIPI CSI-2 (ngược dòng lên trên)
+┌──────▲──────────┐
+│   <span class="hl">OV5647</span>          │  Sensor vật lý — I2C 10-0036 (điều khiển) + CSI-2 (dữ liệu)
+└──────────────────┘</pre>
+    </div>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Thành phần</th><th>Loại</th><th>Vai trò</th></tr>
+      <tr><td>OV5647</td><td>Phần cứng</td><td>Sensor — thu ánh sáng, xuất RAW Bayer 10-bit qua MIPI CSI-2, nhận lệnh điều khiển (exposure, gain...) qua I2C</td></tr>
+      <tr><td>rp1-cfe</td><td>Kernel driver</td><td>Camera Front End — nhận luồng CSI-2, expose ra dạng V4L2 (video node + subdev)</td></tr>
+      <tr><td>pispbe</td><td>Kernel driver + HW</td><td>PiSP Back End — ISP phần cứng: debayer, denoise, AWB, xuất YUV/RGB</td></tr>
+      <tr><td>libcamera</td><td>Userspace library</td><td>Quản lý toàn bộ pipeline, chạy thuật toán 3A, negotiate format — <strong>đây là lớp xử lý toàn bộ độ phức tạp mà Phần 2 sẽ bàn tới khi bỏ qua nó</strong></td></tr>
+      <tr><td>rpicam-apps</td><td>CLI tool</td><td><code class="inline">rpicam-hello/-still/-vid</code> — chỉ có trên RPi, gọi libcamera trực tiếp</td></tr>
+    </table>
+    </div>
+    <div class="callout warn">
+      <div class="callout-title">⚠️ Khác biệt quan trọng so với RPi4 trở về trước</div>
+      <p>RPi 1-4 dùng driver <code class="inline">bcm2835-unicam</code> — đơn giản, mỗi CSI link chỉ có 1 stream. RPi5 dùng <code class="inline">rp1-cfe</code> hỗ trợ <strong>multiplexed streams</strong> (nhiều stream ảo trên 1 link CSI vật lý, dùng cho ống kính đa camera, embedded metadata...). Tính năng này là nguyên nhân trực tiếp gây lỗi <code class="inline">VIDIOC_STREAMON: Invalid argument</code> khi thử capture V4L2 thuần trên RPi5 — sẽ mổ xẻ kỹ ở Phần 2.</p>
+    </div>
+  </section>
+
+  <section id="nhan-dien">
+    <h2><span class="num">03</span>Nhận diện camera — 3 cách</h2>
+    <p class="lead">Ba cách độc lập để xác nhận kernel đã "thấy" camera, dùng bổ sung cho nhau khi debug.</p>
+
+    <h3>3A. Device file trong /dev</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code>ls /dev/video* 2&gt;/dev/null &amp;&amp; echo "--- Camera devices found ---" || echo "No video devices found"</code></pre>
+    </div>
+    <p>Trên RPi5 sẽ thấy <strong>rất nhiều</strong> node — <code class="inline">/dev/video0</code> đến <code class="inline">/dev/video35</code> là bình thường. Phần lớn là virtual subdevice của ISP (<code class="inline">pispbe</code>), không phải camera vật lý. So sánh: laptop/PC với webcam USB thường chỉ có <code class="inline">/dev/video0</code> và <code class="inline">/dev/video1</code> (1 capture + 1 metadata).</p>
+
+    <h3>3B. v4l2-ctl --list-devices</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code>v4l2-ctl --list-devices</code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">output</span></div>
+      <pre><code>pispbe (platform:1000880000.pisp_be):
+        /dev/video20 đến /dev/video35
+        /dev/media2, /dev/media3
+
+rp1-cfe (platform:1f00110000.csi):
+        /dev/video0 đến /dev/video7
+        /dev/media0
+
+rpi-hevc-dec (platform:rpi-hevc-dec):
+        /dev/video19
+        /dev/media1</code></pre>
+    </div>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Driver</th><th>Ý nghĩa</th></tr>
+      <tr><td><code class="inline">rp1-cfe</code></td><td>Camera Front End — nhận dữ liệu RAW từ sensor qua CSI-2 → <strong>camera thật nằm phía sau driver này</strong></td></tr>
+      <tr><td><code class="inline">pispbe</code></td><td>PiSP Back End — ISP xử lý ảnh (debayer, denoise)</td></tr>
+      <tr><td><code class="inline">rpi-hevc-dec</code></td><td>Bộ giải mã video HEVC (H.265) — không liên quan camera, có thể bỏ qua</td></tr>
+    </table>
+    </div>
+
+    <h3>3C. Kernel log (dmesg)</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code>dmesg | grep -iE "(csi|ov5|imx|ar[0-9]{4}|sensor|camera)" \
+       | grep -v "ieee80211\|brcm\|SCSI" \
+       | tail -20</code></pre>
+    </div>
+    <p>Bộ lọc <code class="inline">imx|ov|ar[0-9]{4}</code> bắt tên các sensor phổ biến: <code class="inline">imx</code> = Sony, <code class="inline">ov</code> = OmniVision, <code class="inline">ar</code> = onsemi/ams. Dòng loại trừ <code class="inline">ieee80211|brcm|SCSI</code> giúp bớt nhiễu từ log WiFi/storage trên RPi.</p>
+    <div class="callout note">
+      <div class="callout-title">Dòng log hay gặp — không phải lỗi</div>
+      <p><code class="inline">rp1-cfe ...csi: csi2_ch0 node link is not enabled.</code> — đây là log <em>trạng thái khởi tạo</em>, xuất hiện khi link chưa từng được bật (chưa có app nào capture). Không cần xử lý gì; libcamera/rpicam sẽ tự enable link khi bắt đầu chụp.</p>
+    </div>
+
+    <h4>Cách nhanh: đếm sensor thật qua /sys/class/video4linux</h4>
+    <p>3 cách trên cho biết camera "có tồn tại", nhưng để biết chính xác subdev nào là sensor thật (khác với các bridge/ISP nội bộ tên <code class="inline">csi2</code>, <code class="inline">pisp-fe</code>, <code class="inline">rp1-*</code>):</p>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code>for dev in /sys/class/video4linux/v4l-subdev*; do
+    name=$(cat "$dev/name" 2&gt;/dev/null)
+    if echo "$name" | grep -qvE "^csi|^pisp|^rp1|^isp"; then
+        echo "[SENSOR] $name -&gt; /dev/$(basename $dev)"
+    else
+        echo "[HW]     $name -&gt; /dev/$(basename $dev)"
+    fi
+done</code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">output</span></div>
+      <pre><code>[HW]     csi2      -&gt; /dev/v4l-subdev0    # CSI-2 bridge
+[HW]     pisp-fe   -&gt; /dev/v4l-subdev1    # ISP front end
+[SENSOR] ov5647 10-0036 -&gt; /dev/v4l-subdev2   # ← CAMERA THẬT</code></pre>
+    </div>
+    <p><code class="inline">10-0036</code> = quy ước đặt tên chuẩn cho subdevice gắn qua I2C: <strong>bus 10, địa chỉ 0x36</strong> — đây chính là địa chỉ I2C cố định của OV5647.</p>
+  </section>
+
+  <section id="media-controller">
+    <h2><span class="num">04</span>Đọc pipeline qua Media Controller</h2>
+    <p class="lead"><code class="inline">media-ctl</code> là công cụ duy nhất cho bạn thấy <strong>toàn bộ graph kết nối phần cứng</strong> — thứ mà <code class="inline">v4l2-ctl --list-devices</code> không thể hiện.</p>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code>ls /dev/media*
+media-ctl -d /dev/media0 -p</code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">output</span></div>
+      <pre><code>Media device information
+    driver   rp1-cfe
+    model    rp1-cfe
+
+- entity 16: ov5647 10-0036
+    -&gt; "csi2":0 [ENABLED,IMMUTABLE]
+
+- entity 1: csi2 (8 pads, 8 links)
+    &lt;- "ov5647 10-0036":0 [ENABLED,IMMUTABLE]
+    -&gt; "rp1-cfe-csi2_ch0":0 []           # disabled — bypass ISP (raw)
+    -&gt; "pisp-fe":0 [ENABLED]             # enabled — qua ISP (mặc định)
+
+- entity 18: rp1-cfe-csi2_ch0 (/dev/video0)   # Raw Bayer output
+    &lt;- "csi2":4 []
+
+- entity 34: rp1-cfe-fe_image0 (/dev/video4)  # Processed output (qua ISP)
+    &lt;- "pisp-fe":2 [ENABLED]</code></pre>
+    </div>
+    <p>3 khái niệm cần nắm để đọc output này:</p>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Khái niệm</th><th>Ý nghĩa</th></tr>
+      <tr><td><strong>Entity</strong></td><td>Một khối chức năng — sensor, bridge, hoặc 1 video device node</td></tr>
+      <tr><td><strong>Pad</strong></td><td>Điểm kết nối vào/ra của entity (SINK = nhận, SOURCE = xuất)</td></tr>
+      <tr><td><strong>Link</strong></td><td>Dây nối giữa 2 pad — có thể <code class="inline">ENABLED</code> hoặc disabled, <code class="inline">IMMUTABLE</code> nghĩa là không thể đổi (link vật lý cố định)</td></tr>
+    </table>
+    </div>
+    <div class="callout note">
+      <div class="callout-title">Đọc nhanh sơ đồ trên</div>
+      <p>Mặc định, dữ liệu chảy: <code class="inline">ov5647 → csi2 → pisp-fe (ISP) → /dev/video4</code>. Đường <code class="inline">csi2 → rp1-cfe-csi2_ch0 (/dev/video0)</code> là đường "tắt qua ISP" để lấy RAW Bayer thô, mặc định đang <em>disabled</em>. Muốn RAW thì phải tự bật link này bằng <code class="inline">media-ctl -l</code> — chi tiết và các lỗi thường gặp khi làm việc này nằm ở <a href="./capture_tools_comparison.html">Phần 2</a>.</p>
+    </div>
+  </section>
+
+  <section id="sensor-info">
+    <h2><span class="num">05</span>Truy vấn thông tin sensor chi tiết</h2>
+    <p>Sau khi biết subdev nào là sensor thật (<code class="inline">/dev/v4l-subdev2</code> trong ví dụ này), có thể hỏi trực tiếp format, resolution, và toàn bộ control mà sensor hỗ trợ.</p>
+
+    <h3>Format hiện tại (mediabus format)</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code>v4l2-ctl --device=/dev/v4l-subdev2 --get-subdev-fmt</code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">output</span></div>
+      <pre><code>ioctl: VIDIOC_SUBDEV_G_FMT (pad=0,stream=0)
+    Width/Height  : 1920/1080
+    Mediabus Code : 0x300e (MEDIA_BUS_FMT_SGBRG10_1X10)   ← Bayer 10-bit GBRG
+    Field         : None
+    Colorspace    : Raw</code></pre>
+    </div>
+
+    <h3>Tất cả resolution sensor hỗ trợ</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># code=0x300e là SGBRG10_1X10 (Bayer 10-bit gốc của OV5647)
+v4l2-ctl --device=/dev/v4l-subdev2 \
+         --list-subdev-framesizes=pad=0,code=0x300e</code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">output</span></div>
+      <pre><code>Size Range: 2592x1944 - 2592x1944   ← Full resolution (5MP)
+Size Range: 1920x1080 - 1920x1080   ← 1080p (crop mode)
+Size Range: 1296x972  - 1296x972    ← ~1.3MP, mode gần HD nhất (binned)
+Size Range: 640x480   - 640x480     ← VGA</code></pre>
+    </div>
+    <div class="callout note">
+      <div class="callout-title">Không có 1280×720 native</div>
+      <p>OV5647 <strong>không có</strong> sensor mode 1280×720 gốc. <code class="inline">1920x1080</code> tồn tại nhưng là <em>crop mode</em> (cắt từ vùng cảm biến lớn hơn, không phải scale), còn mode gần "HD" nhất theo tỉ lệ đầy đủ khung hình là <code class="inline">1296x972</code> (binned mode — gộp pixel để tăng độ nhạy sáng và giảm noise).</p>
+    </div>
+
+    <h3>Controls điều chỉnh được</h3>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code>v4l2-ctl --device=/dev/v4l-subdev2 --list-ctrls</code></pre>
+    </div>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Nhóm</th><th>Control</th><th>Ghi chú</th></tr>
+      <tr><td>User</td><td><code class="inline">exposure</code></td><td>int, min=4 max=1100 step=1 default=1000</td></tr>
+      <tr><td>User</td><td><code class="inline">gain_automatic</code></td><td>bool, default=0</td></tr>
+      <tr><td>User</td><td><code class="inline">horizontal_flip</code> / <code class="inline">vertical_flip</code></td><td>bool</td></tr>
+      <tr><td>Camera</td><td><code class="inline">auto_exposure</code></td><td>menu — <strong>0 = Auto, 1 = Manual</strong> (ngược trực giác!)</td></tr>
+      <tr><td>Image Source</td><td><code class="inline">analogue_gain</code></td><td>int, min=16 max=1023 default=32</td></tr>
+      <tr><td>Image Processing</td><td><code class="inline">pixel_rate</code>, <code class="inline">link_frequency</code></td><td>read-only, thông tin timing</td></tr>
+    </table>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># Set exposure thủ công
+v4l2-ctl --device=/dev/v4l-subdev2 --set-ctrl=auto_exposure=1  # 1 = Manual
+v4l2-ctl --device=/dev/v4l-subdev2 --set-ctrl=exposure=500
+
+# Đọc lại nhiều control cùng lúc
+v4l2-ctl --device=/dev/v4l-subdev2 \
+  --get-ctrl=auto_exposure,gain_automatic,exposure,analogue_gain</code></pre>
+    </div>
+  </section>
+
+  <section id="bayer">
+    <h2><span class="num">06</span>Bayer Pattern &amp; vai trò của ISP</h2>
+    <p>Sensor màu không đo đủ 3 kênh RGB tại mỗi pixel — nó dùng lưới lọc màu (Color Filter Array), mỗi pixel chỉ thu <strong>một</strong> màu:</p>
+    <div class="diagram">
+<pre>G B G B G B
+R G R G R G
+G B G B G B
+R G R G R G</pre>
+    </div>
+    <p><code class="inline">SGBRG10</code> (format của OV5647) nghĩa là: hàng đầu bắt đầu bằng <strong>G-B</strong>, hàng kế bắt đầu bằng <strong>R-G</strong>, mỗi giá trị 10-bit. ISP (<code class="inline">pispbe</code>) thực hiện bước <strong>debayer</strong> (hay demosaic) — nội suy để tính đủ 3 kênh RGB cho từng pixel, đồng thời chạy các thuật toán denoise và White Balance.</p>
+    <div class="callout note">
+      <div class="callout-title">Vì sao điều này quan trọng cho xử lý ảnh/AI</div>
+      <p>Nếu lấy RAW Bayer trực tiếp từ <code class="inline">/dev/video0</code> (bỏ qua ISP), bạn nhận dữ liệu <em>chưa debayer</em> — không thể đưa thẳng vào OpenCV như ảnh RGB thường mà phải tự debayer bằng <code class="inline">cv2.cvtColor(..., cv2.COLOR_BayerGB2BGR)</code> hoặc tương đương. Với hầu hết tác vụ AI/CV, lấy ảnh đã qua ISP (YUV/RGB) từ <code class="inline">pispbe</code> — như <a href="./picamera2_opencv_ai_bridge.html">picamera2 làm mặc định</a> — đơn giản và ít lỗi hơn nhiều.</p>
+    </div>
+  </section>
+
+  <section id="rpicam">
+    <h2><span class="num">07</span>Xác nhận nhanh: rpicam-hello</h2>
+    <p>Sau khi đã hiểu kiến trúc, cách nhanh nhất để xác nhận toàn bộ chuỗi (sensor → CSI → ISP → libcamera) hoạt động đúng là dùng bộ công cụ chính thức của Raspberry Pi.</p>
+    <div class="callout warn">
+      <div class="callout-title">Đổi tên tool trên Bookworm trở lên</div>
+      <p>Raspberry Pi OS Bookworm+ đã đổi tên: <code class="inline">libcamera-hello</code> → <code class="inline">rpicam-hello</code> (tương tự <code class="inline">-still</code>, <code class="inline">-vid</code>). Bản cũ vẫn còn dạng symlink ở một số bản dựng nhưng không nên phụ thuộc vào đó.</p>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code>rpicam-hello --list-cameras</code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">output</span></div>
+      <pre><code>Available cameras
+-----------------
+0 : ov5647 [2592x1944 10-bit GBRG] (/base/axi/pcie@1000120000/rp1/i2c@88000/ov5647@36)
+    Modes: 'SGBRG10_CSI2P' : 640x480 [62.50 fps - (16, 0)/2560x1920 crop]
+                             1296x972 [46.34 fps - (0, 0)/2592x1944 crop]
+                             1920x1080 [32.81 fps - (348, 434)/1928x1080 crop]
+                             2592x1944 [15.63 fps - (0, 0)/2592x1944 crop]</code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code>rpicam-still -o photo_$(date +%Y%m%d_%H%M%S).jpg \
+             --width 1920 --height 1080 \
+             -t 3000</code></pre>
+    </div>
+    <p><code class="inline">-t 3000</code>: 3 giây preview trước khi chụp để auto-exposure/AWB ổn định. Nếu thấy cảnh báo <code class="inline">Consider using the --zsl option</code> — đây chỉ là gợi ý tối ưu (Zero Shutter Lag, dùng temporal denoise), không phải lỗi; thêm <code class="inline">--zsl</code> vào lệnh cho chất lượng tốt hơn.</p>
+  </section>
+
+  <section id="loi-thuong-gap">
+    <h2><span class="num">08</span>Lỗi thường gặp ở bước khám phá</h2>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Lỗi</th><th>Nguyên nhân</th><th>Xử lý</th></tr>
+      <tr><td><code class="inline">libcamera-hello: command not found</code></td><td>RPi OS Bookworm+ đổi tên tool</td><td>Dùng <code class="inline">rpicam-hello</code></td></tr>
+      <tr><td><code class="inline">csi2_ch0 node link is not enabled</code> (dmesg)</td><td>Link chưa được kích hoạt lần đầu — trạng thái khởi tạo bình thường</td><td>Không cần xử lý, tự bật khi có app capture</td></tr>
+      <tr><td><code class="inline">Unsupported V4L2 pixel format Nc30/Nc12</code></td><td>Format nội bộ PiSP mà V4L2 core chưa có tên chuẩn để hiển thị</td><td>Không ảnh hưởng — chỉ là log cảnh báo hiển thị tên</td></tr>
+    </table>
+    </div>
+    <h4>Checklist debug khi camera không được nhận</h4>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># 1. Camera có được nhận không
+rpicam-hello --list-cameras
+
+# 2. Kernel log có lỗi không
+dmesg | grep -i "error\|fail\|camera\|ov5647"
+
+# 3. Bus I2C (camera giao tiếp qua I2C) — thử vài bus nếu không chắc số
+i2cdetect -y 10
+
+# 4. Quyền truy cập device
+ls -la /dev/video0
+groups $USER
+
+# 5. Thêm user vào group video nếu thiếu quyền
+sudo usermod -aG video $USER</code></pre>
+    </div>
+  </section>
+
+  <section id="tham-khao">
+    <h2><span class="num">09</span>Lệnh tham khảo nhanh</h2>
+    <div class="code-block">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+      <pre><code># Liệt kê tất cả camera device
+v4l2-ctl --list-devices
+
+# Xem chi tiết một device
+v4l2-ctl --device=/dev/video0 --all
+
+# Đọc toàn bộ pipeline Media Controller
+media-ctl -d /dev/media0 -p
+
+# Tìm subdev là sensor thật (không phải csi2/pisp/rp1)
+for dev in /sys/class/video4linux/v4l-subdev*; do
+    grep -qvE "^csi|^pisp|^rp1|^isp" "$dev/name" 2&gt;/dev/null &amp;&amp; \
+    echo "$(cat $dev/name) -&gt; /dev/$(basename $dev)"
+done
+
+# Format &amp; resolution của sensor
+v4l2-ctl --device=/dev/v4l-subdev2 --get-subdev-fmt
+v4l2-ctl --device=/dev/v4l-subdev2 --list-subdev-framesizes=pad=0,code=0x300e
+v4l2-ctl --device=/dev/v4l-subdev2 --list-ctrls
+
+# Kernel log liên quan camera
+dmesg | grep -i "camera\|csi\|ov5647"
+
+# Xác nhận nhanh bằng rpicam
+rpicam-hello --list-cameras
+rpicam-still --zsl -o anh.jpg</code></pre>
+    </div>
+  </section>
+
+  <footer>
+    <span>Phần 1/4 — Nền tảng V4L2 &amp; Camera Stack</span>
+    <span>Tiếp theo → <a href="./capture_tools_comparison.html" style="color:var(--accent2)">2. So sánh công cụ capture</a></span>
+  </footer>
+</main>
+</div>
+
+<script>
+// Copy buttons
+document.querySelectorAll('.copy-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const block = btn.closest('.code-block');
+    const codeEl = block.querySelector('code');
+    const text = codeEl.innerText;
+    navigator.clipboard.writeText(text).then(()=>{
+      const original = btn.textContent;
+      btn.textContent = 'Copied ✓';
+      btn.classList.add('copied');
+      setTimeout(()=>{ btn.textContent = original; btn.classList.remove('copied'); }, 1600);
+    });
+  });
+});
+
+// Mobile nav
+const sidebar = document.getElementById('sidebar');
+const navToggle = document.getElementById('navToggle');
+navToggle.addEventListener('click', ()=> sidebar.classList.toggle('open'));
+document.querySelectorAll('.sidebar nav a').forEach(a=>{
+  a.addEventListener('click', ()=> sidebar.classList.remove('open'));
+});
+
+// Scrollspy
+const sections = document.querySelectorAll('main section[id]');
+const navLinks = document.querySelectorAll('nav.toc a');
+const linkMap = {};
+navLinks.forEach(l=>{
+  const href = l.getAttribute('href').replace('#','');
+  if(!linkMap[href]) linkMap[href] = [];
+  linkMap[href].push(l);
+});
+const observer = new IntersectionObserver((entries)=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      navLinks.forEach(l=>l.classList.remove('active'));
+      const id = entry.target.getAttribute('id');
+      (linkMap[id]||[]).forEach(l=>l.classList.add('active'));
+    }
+  });
+}, {rootMargin:'-15% 0px -70% 0px'});
+sections.forEach(s=>observer.observe(s));
+</script>
+</body>
+</html>
