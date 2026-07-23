@@ -1,6 +1,8 @@
 #include <gst/gst.h>
+#include <gst/app/gstappsink.h>
 #include <glib.h>
 #include <glib-unix.h>
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -20,9 +22,10 @@ enum class VideoSourceType
  */
 enum class VideoSinkType
 {
-    GlImageSink,    /* glimagesink   — OpenGL window (mặc định, live preview) */
-    AutoVideoSink,  /* autovideosink — tự chọn sink phù hợp với hệ thống     */
-    FakeSink,       /* fakesink      — không hiển thị, dùng để test headless  */
+    GlImageSink,    /* glimagesink   — OpenGL window (mặc định, live preview)         */
+    AutoVideoSink,  /* autovideosink — tự chọn sink phù hợp với hệ thống           */
+    FakeSink,       /* fakesink      — không hiển thị, dùng để test headless       */
+    AppSink,        /* appsink       — nhận raw frame qua callback (LVGL / record) */
 };
 
 /**
@@ -52,6 +55,7 @@ static const char *VideoSinkType_To_String(VideoSinkType arg_type)
         case VideoSinkType::GlImageSink:   return "glimagesink";
         case VideoSinkType::AutoVideoSink: return "autovideosink";
         case VideoSinkType::FakeSink:      return "fakesink";
+        case VideoSinkType::AppSink:       return "appsink";
         default:                            return "glimagesink";
     }
 }
@@ -94,12 +98,17 @@ struct Devices_Information
 };
 
 /**
- * @brief Toàn bộ tham số cấu hình cho một pipeline video.
+ * @brief Signature của callback nhận frame từ appsink.
  *
- * Truyền vào Start_Preview(Pipeline_Config) hoặc Set_Pipeline_Config()
- * trước khi build pipeline. Mọi trường đều có default hợp lý —
- * chỉ set những gì cần thay đổi.
+ * @param arg_data    Con trỏ tới dữ liệu pixel thô (format theo pixel_format).
+ * @param arg_width   Chiều rộng frame (pixel).
+ * @param arg_height  Chiều cao frame (pixel).
+ * @param arg_user_data  Con trỏ người dùng truyền vào Pipeline_Config.
  */
+using Frame_Callback = std::function<void(const uint8_t *arg_data,
+                                          int arg_width, int arg_height,
+                                          gpointer arg_user_data)>;
+
 struct Pipeline_Config
 {
     /* ── Nguồn ──────────────────────────────────────────────────────── */
@@ -107,14 +116,22 @@ struct Pipeline_Config
     int             camera_index = 0;
 
     /* ── Định dạng video ─────────────────────────────────────────────── */
-    std::string     pixel_format = "NV12";  /* NV12, RGBA, I420, MJPEG... */
+    std::string     pixel_format = "NV12";  /* NV12, RGBA, I420... */
     int             width        = 640;
     int             height       = 480;
-    int             framerate_n  = 0;       /* 0/1 = không ép framerate   */
+    int             framerate_n  = 0;       /* 0/1 = không ép framerate */
     int             framerate_d  = 1;
 
     /* ── Sink ────────────────────────────────────────────────────────── */
     VideoSinkType   sink_type    = VideoSinkType::GlImageSink;
+
+    /* ── AppSink (chỉ hiệu lực khi sink_type == AppSink) ─────────────── */
+    /* Callback được gọi mỗi khi có frame mới từ appsink.
+     * nullptr = không xử lý frame (chỉ drop). */
+    Frame_Callback  appsink_frame_callback = nullptr;
+    gpointer        appsink_user_data      = nullptr;
+    /* Số frame tối đa trong queue. Drop frame cũ khi đầy (tránh lag). */
+    int             appsink_max_buffers    = 1;
 };
 
 class GStreamer_Glue
@@ -161,19 +178,6 @@ public:
      * @return true nếu pipeline được khởi tạo thành công, false nếu có lỗi.
      */
     bool Start_Preview(const Pipeline_Config &arg_config);
-
-    /**
-     * @brief Overload backward-compatible: camera index + source type.
-     *
-     * Tương đương gọi Start_Preview(Pipeline_Config{source_type, camera_index}).
-     * Các tham số khác (sink, format, resolution) dùng default của Pipeline_Config.
-     *
-     * @param arg_camera_index  Chỉ số camera trong danh sách (mặc định: 0).
-     * @param arg_source_type   Loại nguồn video (mặc định: LibCamera).
-     * @return true nếu pipeline được khởi tạo thành công, false nếu có lỗi.
-     */
-    bool Start_Preview(int arg_camera_index = 0,
-                       VideoSourceType arg_source_type = VideoSourceType::LibCamera);
 
     /**
      * @brief Dừng pipeline và thoát khỏi main loop.
@@ -505,12 +509,71 @@ private:
     void Private_Device_Monitor_Get_Devices(const std::string arg_filter_devices);
 
     /**
+     * @brief Struct trung gian chứa các GstElement tạm (filter, queues, conv).
+     *
+     * Chỉ dùng trong quá trình build pipeline. Sau gst_bin_add_many() pipeline
+     * nắm ownership toàn bộ raw pointers bên trong — không cần giải phóng thủ công.
+     */
+    struct Pipeline_Elements
+    {
+        GstElement *filter  = nullptr;
+        GstElement *queue1  = nullptr;
+        GstElement *conv    = nullptr;
+        GstElement *queue2  = nullptr;
+    };
+
+    /**
      * @brief Khởi tạo toàn bộ elements, link pipeline và thiết lập bus watch.
+     *
+     * Hàm coordinator: validate → tạo pipeline cha → gọi các Private_Step_*.
      *
      * @param arg_config  Cấu hình đầy đủ (camera index, source type, sink, format, resolution).
      * @return true nếu thành công, false nếu có lỗi.
      */
     bool Private_Build_Video_Pipeline(const Pipeline_Config &arg_config);
+
+    /**
+     * @brief [Step 1] Tạo tất cả GstElement, gán camera path vào video_source.
+     *
+     * @param arg_config   Cấu hình pipeline.
+     * @param arg_out      Output: các element tạm (filter, queue1, conv, queue2).
+     * @return true nếu tạo thành công tất cả elements.
+     */
+    bool Private_Step_Create_Elements(const Pipeline_Config &arg_config,
+                                      Pipeline_Elements &arg_out);
+
+    /**
+     * @brief [Step 2] Tạo GstCaps từ Pipeline_Config và gán vào capsfilter.
+     *
+     * Nếu framerate_n == 0: caps không ép framerate (camera tự chọn).
+     *
+     * @param arg_config  Cấu hình pipeline.
+     * @param arg_filter  Con trỏ tới capsfilter element.
+     */
+    void Private_Step_Build_Caps(const Pipeline_Config &arg_config, GstElement *arg_filter);
+
+    /**
+     * @brief [Step 3] Thêm elements vào pipeline bin và link theo thứ tự.
+     *
+     * @param arg_elems  Các element tạm cần add+link.
+     * @return true nếu link thành công.
+     */
+    bool Private_Step_Add_And_Link(const Pipeline_Elements &arg_elems);
+
+    /**
+     * @brief [Step 4] Cấu hình sink theo loại: switch-case trên VideoSinkType.
+     *
+     * - AppSink: set max-buffers/drop/sync và đăng ký GstAppSinkCallbacks.
+     * - Các loại khác: không cần cấu hình thêm.
+     *
+     * @param arg_config  Cấu hình pipeline (dùng sink_type, appsink_*).
+     */
+    void Private_Step_Configure_Sink(const Pipeline_Config &arg_config);
+
+    /**
+     * @brief [Step 5] Thiết lập GstBus watch và tạo GMainLoop.
+     */
+    void Private_Step_Setup_Bus_And_Loop();
 
     /**
      * @brief Callback xử lý message EOS / ERROR từ GStreamer Bus.
@@ -754,12 +817,7 @@ bool GStreamer_Glue::Private_Build_Video_Pipeline(const Pipeline_Config &arg_con
     /* Lưu cấu hình vào struct để Switch_Camera() có thể dùng lại */
     GStreamer_Pipeline_Structure.active_config = arg_config;
 
-    const std::string &camera_path  = m_Camera_Devices_List[arg_config.camera_index].Devices_Path;
-    const char *source_plugin       = VideoSourceType_To_String(arg_config.source_type);
-    const char *source_property     = Camera_Source_Property(arg_config.source_type);
-    const char *sink_plugin         = VideoSinkType_To_String(arg_config.sink_type);
-
-    /* 1. Tạo Pipeline cha */
+    /* Tạo Pipeline cha */
     GStreamer_Pipeline_Structure.pipeline.reset(gst_pipeline_new("camera-preview-pipeline"));
     if (!GStreamer_Pipeline_Structure.pipeline)
     {
@@ -767,86 +825,200 @@ bool GStreamer_Glue::Private_Build_Video_Pipeline(const Pipeline_Config &arg_con
         return false;
     }
 
-    /* 2. Tạo các Elements con
-     * filter, queue1, conv, queue2 chỉ cần trong giai đoạn khởi tạo:
-     * sau gst_bin_add_many(), pipeline nắm ownership → dùng block cục bộ. */
+    Pipeline_Elements elems;
+    if (!Private_Step_Create_Elements(arg_config, elems)) return false;
+    Private_Step_Build_Caps(arg_config, elems.filter);
+    if (!Private_Step_Add_And_Link(elems))                return false;
+    Private_Step_Configure_Sink(arg_config);
+    Private_Step_Setup_Bus_And_Loop();
+    return true;
+}
+
+/*
+ */
+bool GStreamer_Glue::Private_Step_Create_Elements(const Pipeline_Config &arg_config,
+                                                   Pipeline_Elements &arg_out)
+{
+    const std::string &camera_path  = m_Camera_Devices_List[arg_config.camera_index].Devices_Path;
+    const char *source_plugin       = VideoSourceType_To_String(arg_config.source_type);
+    const char *source_property     = Camera_Source_Property(arg_config.source_type);
+    const char *sink_plugin         = VideoSinkType_To_String(arg_config.sink_type);
+
+    GStreamer_Pipeline_Structure.video_source = gst_element_factory_make(source_plugin, "video-source");
+    arg_out.filter                            = gst_element_factory_make("capsfilter",   "caps-filter");
+    arg_out.queue1                            = gst_element_factory_make("queue",        "queue-1");
+    arg_out.conv                              = gst_element_factory_make("videoconvert", "video-converter");
+    arg_out.queue2                            = gst_element_factory_make("queue",        "queue-2");
+    GStreamer_Pipeline_Structure.video_sink   = gst_element_factory_make(sink_plugin,    "display-sink");
+
+    if (!GStreamer_Pipeline_Structure.video_source || !arg_out.filter || !arg_out.queue1 ||
+        !arg_out.conv || !arg_out.queue2 || !GStreamer_Pipeline_Structure.video_sink)
     {
-        GstElement *filter, *queue1, *conv, *queue2;
+        g_printerr("[GStreamer_Glue] Lỗi: Không thể tạo một vài elements.\n"
+                   "  source=%s  sink=%s — kiểm tra plugins đã cài đầy đủ chưa.\n",
+                   source_plugin, sink_plugin);
+        return false;
+    }
 
-        GStreamer_Pipeline_Structure.video_source = gst_element_factory_make(source_plugin, "video-source");
-        filter                                    = gst_element_factory_make("capsfilter",   "caps-filter");
-        queue1                                    = gst_element_factory_make("queue",        "queue-1");
-        conv                                      = gst_element_factory_make("videoconvert", "video-converter");
-        queue2                                    = gst_element_factory_make("queue",        "queue-2");
-        GStreamer_Pipeline_Structure.video_sink   = gst_element_factory_make(sink_plugin,    "display-sink");
+    /* Gán camera theo đường dẫn đầy đủ.
+     * libcamerasrc dùng "camera-name"; v4l2src dùng "device". */
+    g_object_set(G_OBJECT(GStreamer_Pipeline_Structure.video_source),
+                 source_property, camera_path.c_str(), NULL);
+    g_print("[GStreamer_Glue] Nguồn: %-14s property=%-12s → %s\n",
+            source_plugin, source_property, camera_path.c_str());
+    g_print("[GStreamer_Glue] Sink  : %s\n", sink_plugin);
+    return true;
+}
 
-        if (!GStreamer_Pipeline_Structure.video_source || !filter || !queue1 ||
-            !conv || !queue2 || !GStreamer_Pipeline_Structure.video_sink)
+/*
+ */
+void GStreamer_Glue::Private_Step_Build_Caps(const Pipeline_Config &arg_config, GstElement *arg_filter)
+{
+    /* Tạo GstCaps từ config và gán vào capsfilter.
+     * caps unref tự động khi ra khỏi scope (GstCapsPtr). */
+    GstCapsPtr caps;
+    if (arg_config.framerate_n > 0)
+    {
+        caps.reset(gst_caps_new_simple("video/x-raw",
+                                       "format",    G_TYPE_STRING,     arg_config.pixel_format.c_str(),
+                                       "width",     G_TYPE_INT,        arg_config.width,
+                                       "height",    G_TYPE_INT,        arg_config.height,
+                                       "framerate", GST_TYPE_FRACTION, arg_config.framerate_n,
+                                                                       arg_config.framerate_d,
+                                       NULL));
+        g_print("[GStreamer_Glue] Caps  : %s %dx%d @ %d/%d fps\n",
+                arg_config.pixel_format.c_str(),
+                arg_config.width, arg_config.height,
+                arg_config.framerate_n, arg_config.framerate_d);
+    }
+    else
+    {
+        caps.reset(gst_caps_new_simple("video/x-raw",
+                                       "format", G_TYPE_STRING, arg_config.pixel_format.c_str(),
+                                       "width",  G_TYPE_INT,    arg_config.width,
+                                       "height", G_TYPE_INT,    arg_config.height,
+                                       NULL));
+        g_print("[GStreamer_Glue] Caps  : %s %dx%d (framerate: tự động)\n",
+                arg_config.pixel_format.c_str(),
+                arg_config.width, arg_config.height);
+    }
+    g_object_set(G_OBJECT(arg_filter), "caps", caps.get(), NULL);
+}
+
+/*
+ */
+bool GStreamer_Glue::Private_Step_Add_And_Link(const Pipeline_Elements &arg_elems)
+{
+    /* Thêm tất cả elements vào pipeline bin.
+     * Sau lời gọi này pipeline nắm ownership của tất cả raw pointers. */
+    gst_bin_add_many(GST_BIN(GStreamer_Pipeline_Structure.pipeline.get()),
+                     GStreamer_Pipeline_Structure.video_source,
+                     arg_elems.filter,
+                     arg_elems.queue1,
+                     arg_elems.conv,
+                     arg_elems.queue2,
+                     GStreamer_Pipeline_Structure.video_sink,
+                     NULL);
+
+    /* Liên kết theo thứ tự: source → filter → queue1 → conv → queue2 → sink */
+    if (!gst_element_link_many(GStreamer_Pipeline_Structure.video_source,
+                               arg_elems.filter,
+                               arg_elems.queue1,
+                               arg_elems.conv,
+                               arg_elems.queue2,
+                               GStreamer_Pipeline_Structure.video_sink,
+                               NULL))
+    {
+        g_printerr("[GStreamer_Glue] Lỗi: Không thể liên kết các elements.\n");
+        return false;
+    }
+    return true;
+}
+
+/*
+ */
+void GStreamer_Glue::Private_Step_Configure_Sink(const Pipeline_Config &arg_config)
+{
+    switch (arg_config.sink_type)
+    {
+        case VideoSinkType::AppSink:
         {
-            g_printerr("[GStreamer_Glue] Lỗi: Không thể tạo một vài elements.\n"
-                       "  source=%s  sink=%s — kiểm tra plugins đã cài đầy đủ chưa.\n",
-                       source_plugin, sink_plugin);
-            return false;
-        }
+            GstAppSink *appsink = GST_APP_SINK(GStreamer_Pipeline_Structure.video_sink);
+            g_object_set(G_OBJECT(appsink),
+                         "emit-signals", FALSE,
+                         "max-buffers",  (guint)arg_config.appsink_max_buffers,
+                         "drop",         TRUE,
+                         "sync",         TRUE,
+                         NULL);
 
-        /* Gán camera theo đường dẫn đầy đủ.
-         * libcamerasrc dùng "camera-name"; v4l2src dùng "device". */
-        g_object_set(G_OBJECT(GStreamer_Pipeline_Structure.video_source),
-                     source_property, camera_path.c_str(), NULL);
-        g_print("[GStreamer_Glue] Nguồn: %-14s property=%-12s → %s\n",
-                source_plugin, source_property, camera_path.c_str());
-        g_print("[GStreamer_Glue] Sink  : %s\n", sink_plugin);
-
-        /* 3. Xây dựng Caps từ Pipeline_Config.
-         * Nếu framerate_n == 0: không ép framerate (camera tự chọn).
-         * caps unref tự động khi ra khỏi block. */
-        {
-            GstCapsPtr caps;
-            if (arg_config.framerate_n > 0)
+            if (arg_config.appsink_frame_callback != nullptr)
             {
-                caps.reset(gst_caps_new_simple("video/x-raw",
-                                               "format",    G_TYPE_STRING,   arg_config.pixel_format.c_str(),
-                                               "width",     G_TYPE_INT,      arg_config.width,
-                                               "height",    G_TYPE_INT,      arg_config.height,
-                                               "framerate", GST_TYPE_FRACTION, arg_config.framerate_n,
-                                                                               arg_config.framerate_d,
-                                               NULL));
-                g_print("[GStreamer_Glue] Caps  : %s %dx%d @ %d/%d fps\n",
-                        arg_config.pixel_format.c_str(),
-                        arg_config.width, arg_config.height,
-                        arg_config.framerate_n, arg_config.framerate_d);
+                Pipeline_Config *cfg_ptr = &GStreamer_Pipeline_Structure.active_config;
+
+                /* static: GStreamer giữ con trỏ đến struct này trong suốt vòng đời
+                 * pipeline → không được dùng local variable (sẽ bị dangling). */
+                static GstAppSinkCallbacks appsink_cbs;
+                appsink_cbs.eos         = nullptr;
+                appsink_cbs.new_preroll = nullptr;
+                appsink_cbs.new_sample  = [](GstAppSink *sink, gpointer user_data) -> GstFlowReturn
+                {
+                    Pipeline_Config *cfg = static_cast<Pipeline_Config *>(user_data);
+
+                    GstSample *sample = gst_app_sink_pull_sample(sink);
+                    if (!sample) return GST_FLOW_ERROR;
+
+                    GstBuffer *buffer = gst_sample_get_buffer(sample);
+                    GstCaps   *caps   = gst_sample_get_caps(sample);
+
+                    int w = 0, h = 0;
+                    if (caps)
+                    {
+                        const GstStructure *st = gst_caps_get_structure(caps, 0);
+                        gst_structure_get_int(st, "width",  &w);
+                        gst_structure_get_int(st, "height", &h);
+                    }
+
+                    GstMapInfo map;
+                    if (gst_buffer_map(buffer, &map, GST_MAP_READ))
+                    {
+                        if (cfg->appsink_frame_callback)
+                        {
+                            cfg->appsink_frame_callback(
+                                static_cast<const uint8_t *>(map.data),
+                                w, h,
+                                cfg->appsink_user_data);
+                        }
+                        gst_buffer_unmap(buffer, &map);
+                    }
+
+                    gst_sample_unref(sample);
+                    return GST_FLOW_OK;
+                };
+
+                gst_app_sink_set_callbacks(appsink, &appsink_cbs, cfg_ptr, nullptr);
+                g_print("[GStreamer_Glue] AppSink: frame callback đã được đăng ký.\n");
             }
             else
             {
-                caps.reset(gst_caps_new_simple("video/x-raw",
-                                               "format", G_TYPE_STRING, arg_config.pixel_format.c_str(),
-                                               "width",  G_TYPE_INT,    arg_config.width,
-                                               "height", G_TYPE_INT,    arg_config.height,
-                                               NULL));
-                g_print("[GStreamer_Glue] Caps  : %s %dx%d (framerate: tự động)\n",
-                        arg_config.pixel_format.c_str(),
-                        arg_config.width, arg_config.height);
+                g_print("[GStreamer_Glue] AppSink: không có callback (frame sẽ bị drop).\n");
             }
-            g_object_set(G_OBJECT(filter), "caps", caps.get(), NULL);
+            break;
         }
 
-        /* 4. Thêm tất cả elements vào pipeline */
-        gst_bin_add_many(GST_BIN(GStreamer_Pipeline_Structure.pipeline.get()),
-                         GStreamer_Pipeline_Structure.video_source, filter,
-                         queue1, conv, queue2,
-                         GStreamer_Pipeline_Structure.video_sink, NULL);
+        case VideoSinkType::GlImageSink:
+        case VideoSinkType::AutoVideoSink:
+        case VideoSinkType::FakeSink:
+        default:
+            /* Các sink này không yêu cầu cấu hình bổ sung sau khi link. */
+            break;
+    }
+}
 
-        /* 5. Liên kết các elements */
-        if (!gst_element_link_many(GStreamer_Pipeline_Structure.video_source, filter,
-                                   queue1, conv, queue2,
-                                   GStreamer_Pipeline_Structure.video_sink, NULL))
-        {
-            g_printerr("[GStreamer_Glue] Lỗi: Không thể liên kết các elements.\n");
-            return false;
-        }
-    } /* filter, queue1, conv, queue2 hết phạm vi nhưng vẫn sống trong pipeline */
-
-    /* 6. Thiết lập Bus watch
+/*
+ */
+void GStreamer_Glue::Private_Step_Setup_Bus_And_Loop()
+{
+    /* Thiết lập Bus watch.
      * bus chỉ cần trong block này; watch_id được lưu vào struct. */
     {
         GstBusPtr bus(gst_element_get_bus(GStreamer_Pipeline_Structure.pipeline.get()));
@@ -854,10 +1026,8 @@ bool GStreamer_Glue::Private_Build_Video_Pipeline(const Pipeline_Config &arg_con
         GStreamer_Event_Handler_Structure.bus_watch_id.reset(watch_id);
     }
 
-    /* 7. Tạo Main Loop */
+    /* Tạo Main Loop */
     GStreamer_Event_Handler_Structure.main_loop.reset(g_main_loop_new(NULL, FALSE));
-
-    return true;
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -1006,16 +1176,6 @@ bool GStreamer_Glue::Start_Preview(const Pipeline_Config &arg_config)
 
 /*
  */
-bool GStreamer_Glue::Start_Preview(int arg_camera_index, VideoSourceType arg_source_type)
-{
-    Pipeline_Config config;
-    config.camera_index = arg_camera_index;
-    config.source_type  = arg_source_type;
-    return Start_Preview(config);
-}
-
-/*
- */
 void GStreamer_Glue::Set_Pipeline_Config(const Pipeline_Config &arg_config)
 {
     GStreamer_Pipeline_Structure.active_config = arg_config;
@@ -1152,49 +1312,117 @@ int main(int argc, char *argv[])
         printf("\n");
     }
 
-    /* ── TEST 1: Default config (backward-compat) ─────────────────────────── */
-    printf("==============================================\n");
-    printf("🚀 TEST 1: Start_Preview(int, VideoSourceType) — backward compat\n");
-    printf("   → Camera 0, LibCamera, NV12, 640x480, glimagesink\n");
-    printf("==============================================\n");
+    /* ── Chọn test theo argv[1] ────────────────────────────────────────────
+     * Không truyền arg → chỉ in device list rồi thoát.
+     * argv[1] = "1" → TEST 1: glimagesink (dừng bằng Ctrl+C)
+     * argv[1] = "2" → TEST 2: fakesink (dừng bằng Ctrl+C)
+     * argv[1] = "3" → TEST 3: appsink (tự thoát sau 150 frame)
+     * ───────────────────────────────────────────────────────────────────── */
+    if (argc < 2)
+    {
+        printf("==============================================\n");
+        printf("💡 Cách dùng: %s [1|2|3]\n", argv[0]);
+        printf("   1 = glimagesink  (Ctrl+C để thoát)\n");
+        printf("   2 = fakesink     (Ctrl+C để thoát)\n");
+        printf("   3 = appsink      (tự thoát sau 150 frame)\n");
+        printf("==============================================\n");
+        return 0;
+    }
 
+    /* Đăng ký signal handler */
     gstreamer_glue.Set_Interrupt_Callback({SIGINT,  GStreamer_Glue::Default_Interrupt_Handler});
     gstreamer_glue.Set_Interrupt_Callback({SIGTERM, GStreamer_Glue::Default_Interrupt_Handler});
-    gstreamer_glue.Set_Keyboard_Callback(GStreamer_Glue::Default_Keyboard_Handler);
 
-    bool result = gstreamer_glue.Start_Preview(0, VideoSourceType::LibCamera);
+    int test_mode = atoi(argv[1]);
 
-    printf("==============================================\n");
-    printf("%s TEST 1 %s.\n", result ? "✅" : "❌", result ? "thành công" : "thất bại");
-    printf("==============================================\n\n");
-
-    /* ── TEST 2: Pipeline_Config tường minh — FakeSink (headless) ──────────── */
-    printf("==============================================\n");
-    printf("🚀 TEST 2: Pipeline_Config — FakeSink (headless)\n");
-    printf("   → Camera 0, LibCamera, NV12, 640x480, fakesink\n");
-    printf("==============================================\n");
-
+    if (test_mode == 1)
     {
+        printf("==============================================\n");
+        printf("🚀 TEST 1: glimagesink — Ctrl+C để thoát\n");
+        printf("==============================================\n");
+
+        gstreamer_glue.Set_Keyboard_Callback(GStreamer_Glue::Default_Keyboard_Handler);
+        Pipeline_Config config_gl;
+        bool result = gstreamer_glue.Start_Preview(config_gl);
+
+        printf("==============================================\n");
+        printf("%s TEST 1 %s.\n", result ? "✅" : "❌", result ? "thành công" : "thất bại");
+        printf("==============================================\n");
+    }
+    else if (test_mode == 2)
+    {
+        printf("==============================================\n");
+        printf("🚀 TEST 2: fakesink — Ctrl+C để thoát\n");
+        printf("==============================================\n");
+
         Pipeline_Config config_fake;
         config_fake.camera_index = 0;
         config_fake.source_type  = VideoSourceType::LibCamera;
         config_fake.pixel_format = "NV12";
         config_fake.width        = 640;
         config_fake.height       = 480;
-        config_fake.framerate_n  = 0;   /* không ép framerate */
+        config_fake.framerate_n  = 0;
         config_fake.sink_type    = VideoSinkType::FakeSink;
 
-        /* fakesink không hiển thị — tự thoát sau 3 giây qua SIGALRM không có ở đây.
-         * Dùng Ctrl+C để thoát thủ công khi test. */
-        bool result2 = gstreamer_glue.Start_Preview(config_fake);
+        bool result = gstreamer_glue.Start_Preview(config_fake);
         printf("==============================================\n");
-        printf("%s TEST 2 %s.\n", result2 ? "✅" : "❌", result2 ? "thành công" : "thất bại");
-        printf("==============================================\n\n");
+        printf("%s TEST 2 %s.\n", result ? "✅" : "❌", result ? "thành công" : "thất bại");
+        printf("==============================================\n");
     }
+    else if (test_mode == 3)
+    {
+        printf("==============================================\n");
+        printf("🚀 TEST 3: appsink — tự thoát sau 150 frame\n");
+        printf("==============================================\n");
 
-    printf("==============================================\n");
-    printf("✅ Tất cả test đã hoàn tất.\n");
-    printf("==============================================\n");
+        int frame_count = 0;
+
+        Pipeline_Config config_app;
+        config_app.camera_index        = 0;
+        config_app.source_type         = VideoSourceType::LibCamera;
+        config_app.pixel_format        = "NV12";
+        config_app.width               = 640;
+        config_app.height              = 480;
+        config_app.framerate_n         = 0;
+        config_app.sink_type           = VideoSinkType::AppSink;
+        config_app.appsink_max_buffers = 2;
+        config_app.appsink_user_data   = &gstreamer_glue;
+
+        config_app.appsink_frame_callback =
+            [&frame_count](const uint8_t *data, int w, int h, gpointer user_data)
+            {
+                (void)data;
+                frame_count++;
+
+                if (frame_count % 10 == 0)
+                {
+                    printf("  [AppSink] Frame #%3d  %dx%d  (%d bytes RGBA)\n",
+                           frame_count, w, h, w * h * 4);
+                    fflush(stdout);
+                }
+
+                if (frame_count >= 150)
+                {
+                    GStreamer_Glue *glue = static_cast<GStreamer_Glue *>(user_data);
+                    printf("  [AppSink] Đã nhận đủ 150 frame. Dừng pipeline.\n");
+                    fflush(stdout);
+                    glue->Stop_Preview();
+                }
+            };
+
+        bool result = gstreamer_glue.Start_Preview(config_app);
+        printf("==============================================\n");
+        printf("%s TEST 3 %s. Tổng frame nhận: %d\n",
+               result ? "✅" : "❌",
+               result ? "thành công" : "thất bại",
+               frame_count);
+        printf("==============================================\n");
+    }
+    else
+    {
+        printf("❌ Lựa chọn không hợp lệ: %d (dùng 1, 2 hoặc 3)\n", test_mode);
+        return 1;
+    }
 
     return 0;
 }
