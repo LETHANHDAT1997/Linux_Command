@@ -7,6 +7,12 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <mutex>
+#include <atomic>
+#include <cstdio>   /* printf — trước đây chỉ compile được nhờ include bắc cầu
+                     * từ glib.h, không nên phụ thuộc vào điều đó */
+#include <cstdlib>  /* atoi */
+#include <cstring>  /* strlen */
 
 /**
  * @brief Loại nguồn video được sử dụng trong pipeline GStreamer.
@@ -100,12 +106,27 @@ struct Devices_Information
 /**
  * @brief Signature của callback nhận frame từ appsink.
  *
- * @param arg_data    Con trỏ tới dữ liệu pixel thô (format theo pixel_format).
+ * ⚠️ QUAN TRỌNG — LUỒNG THỰC THI: callback này được GStreamer gọi trên
+ * streaming thread nội bộ của pipeline (thread của queue/videoconvert phía
+ * trước appsink), KHÔNG PHẢI thread đã gọi Start_Preview() và CHẮC CHẮN
+ * không phải thread đang chạy LVGL. Tuyệt đối KHÔNG được gọi bất kỳ hàm
+ * lv_...() nào trực tiếp bên trong callback này (LVGL không thread-safe) —
+ * làm vậy sẽ gây lỗi ngầm dạng crash/vỡ hình ảnh ngẫu nhiên rất khó debug.
+ * Nếu cần đưa frame sang LVGL, hãy dùng Try_Get_Latest_Frame() (an toàn đa
+ * luồng, gọi định kỳ từ thread LVGL) thay vì xử lý trực tiếp ở đây.
+ *
+ * @param arg_data    Con trỏ tới dữ liệu pixel thô (định dạng cố định theo
+ *                    Pipeline_Config::appsink_pixel_format khi sink_type ==
+ *                    AppSink — KHÔNG dùng chung với pixel_format của camera).
+ * @param arg_size    Kích thước THẬT (byte) của arg_data, lấy từ GstMapInfo.
+ *                    Luôn dùng giá trị này thay vì tự suy ra từ width*height,
+ *                    vì hai giá trị này có thể không khớp nếu cấu hình sai.
  * @param arg_width   Chiều rộng frame (pixel).
  * @param arg_height  Chiều cao frame (pixel).
  * @param arg_user_data  Con trỏ người dùng truyền vào Pipeline_Config.
  */
 using Frame_Callback = std::function<void(const uint8_t *arg_data,
+                                          size_t arg_size,
                                           int arg_width, int arg_height,
                                           gpointer arg_user_data)>;
 
@@ -115,7 +136,10 @@ struct Pipeline_Config
     VideoSourceType source_type  = VideoSourceType::LibCamera;
     int             camera_index = 0;
 
-    /* ── Định dạng video ─────────────────────────────────────────────── */
+    /* ── Định dạng video (phía CAMERA / nguồn) ───────────────────────────
+     * Đây là định dạng capsfilter sẽ ép camera phải xuất ra (VD: NV12,
+     * YUY2...). KHÔNG liên quan tới định dạng appsink sẽ gửi cho callback —
+     * xem appsink_pixel_format bên dưới. */
     std::string     pixel_format = "NV12";  /* NV12, RGBA, I420... */
     int             width        = 640;
     int             height       = 480;
@@ -126,8 +150,20 @@ struct Pipeline_Config
     VideoSinkType   sink_type    = VideoSinkType::GlImageSink;
 
     /* ── AppSink (chỉ hiệu lực khi sink_type == AppSink) ─────────────── */
-    /* Callback được gọi mỗi khi có frame mới từ appsink.
-     * nullptr = không xử lý frame (chỉ drop). */
+    /* [FIX] Định dạng dữ liệu appsink sẽ TRẢ VỀ qua Frame_Callback /
+     * Try_Get_Latest_Frame() — khác với pixel_format (định dạng camera).
+     * videoconvert trong pipeline sẽ tự chuyển đổi từ pixel_format sang
+     * định dạng này. PHẢI khớp với LV_COLOR_DEPTH bên phía LVGL:
+     *   - LV_COLOR_DEPTH == 16 (RGB565)         → "RGB16"
+     *   - LV_COLOR_DEPTH == 32, lv_color32_t     → "BGRA" (thứ tự byte
+     *     {blue,green,red,alpha} của LVGL khớp đúng với "BGRA" của GStreamer)
+     * Mặc định "RGB16" vì đa số màn hình SPI/TFT nhúng dùng LVGL ở 16-bit.
+     * Nếu để trống, GStreamer_Glue sẽ tự dùng lại "RGB16". */
+    std::string     appsink_pixel_format = "RGB16";
+    /* Callback được gọi mỗi khi có frame mới từ appsink — xem cảnh báo về
+     * luồng thực thi trong Doxygen của Frame_Callback ở trên.
+     * nullptr = không dùng đường callback thô (vẫn có thể dùng
+     * Try_Get_Latest_Frame() bình thường). */
     Frame_Callback  appsink_frame_callback = nullptr;
     gpointer        appsink_user_data      = nullptr;
     /* Số frame tối đa trong queue. Drop frame cũ khi đầy (tránh lag). */
@@ -158,6 +194,13 @@ public:
      *
      * Giải phóng toàn bộ bộ nhớ đã cấp phát động, đóng các kết nối thiết bị đang
      * hoạt động (nếu có) và đưa trạng thái hệ thống về an toàn.
+     *
+     * ⚠️ AN TOÀN LUỒNG: nếu Start_Preview() đang chạy trên một thread khác
+     * (mô hình bắt buộc khi tích hợp LVGL, vì Start_Preview() blocking), PHẢI
+     * gọi Stop_Preview() rồi join() thread đó xong TRƯỚC KHI để object này ra
+     * khỏi scope. Hủy object trong khi Start_Preview() vẫn chạy là use-after-
+     * free tiềm ẩn; destructor sẽ in cảnh báo nếu phát hiện vi phạm (xem
+     * Is_Preview_Running()) nhưng không thể tự chờ thay caller.
      */
     ~GStreamer_Glue();
 
@@ -188,8 +231,41 @@ public:
      * @brief Chuyển sang camera tiếp theo trong danh sách (round-robin).
      *
      * Dừng pipeline hiện tại, cập nhật chỉ số camera, rồi khởi động lại pipeline.
+     *
+     * An toàn khi gọi từ thread khác với thread đang chạy Start_Preview()
+     * (VD: gọi từ callback nút bấm trên thread LVGL) — GStreamer tự khóa nội
+     * bộ cho gst_element_set_state()/g_object_set(). Lưu ý: nếu camera tiếp
+     * theo không hỗ trợ đúng pixel_format/width/height đã cấu hình, pipeline
+     * sẽ báo lỗi qua Bus (xem Private_Bus_Call) và toàn bộ preview sẽ dừng —
+     * hàm này không tự dò lại caps phù hợp cho từng camera khác nhau.
      */
     void Switch_Camera();
+
+    /**
+     * @brief [MỚI] Lấy bản sao của frame mới nhất, an toàn khi gọi từ thread khác.
+     *
+     * Khác với Frame_Callback (chạy trên GStreamer streaming thread),
+     * hàm này AN TOÀN để gọi định kỳ từ thread đang chạy LVGL (VD: trong một
+     * lv_timer 30–60Hz). Dữ liệu trả về có định dạng cố định theo
+     * Pipeline_Config::appsink_pixel_format (mặc định RGB565 "RGB16").
+     *
+     * @param arg_out     [out] Buffer nhận dữ liệu, tự resize nếu cần.
+     * @param arg_width   [out] Chiều rộng frame hiện có trong arg_out.
+     * @param arg_height  [out] Chiều cao frame hiện có trong arg_out.
+     * @return true nếu có frame MỚI kể từ lần gọi trước (đã copy vào arg_out);
+     *         false nếu chưa có frame nào hoặc chưa có frame mới hơn.
+     */
+    bool Try_Get_Latest_Frame(std::vector<uint8_t> &arg_out, int &arg_width, int &arg_height);
+
+    /**
+     * @brief [MỚI] Start_Preview() có đang chạy (trên thread nào đó) hay không.
+     *
+     * Dùng để kiểm tra trước khi hủy object: PHẢI đảm bảo thread đã gọi
+     * Start_Preview() đã join() xong (sau khi gọi Stop_Preview()) trước khi
+     * để GStreamer_Glue ra khỏi scope — destructor sẽ in cảnh báo nếu phát
+     * hiện vi phạm nhưng không thể tự chờ thay cho caller (có nguy cơ deadlock).
+     */
+    bool Is_Preview_Running() const { return m_is_preview_running.load(); }
 
     /**
      * @brief Thiết lập cấu hình pipeline trước khi gọi Start_Preview().
@@ -478,6 +554,44 @@ private:
         GstMainLoopPtr main_loop;
     } GStreamer_Event_Handler_Structure;
 
+    /*
+        [MỚI] Ngữ cảnh truyền vào callback new_sample của AppSink.
+        Là thành viên của từng instance (KHÔNG static) để mỗi GStreamer_Glue
+        có vùng nhớ callback riêng — an toàn khi chạy nhiều instance song song
+        (VD: 2 camera trước/sau trên dashcam, mỗi camera một thread riêng).
+        Địa chỉ &m_appsink_callback_context ổn định trong suốt vòng đời
+        object nên an toàn truyền cho gst_app_sink_set_callbacks() làm user_data.
+    */
+    struct AppSink_Callback_Context
+    {
+        GStreamer_Glue  *self   = nullptr;
+        Pipeline_Config *config = nullptr;
+    };
+    AppSink_Callback_Context m_appsink_callback_context;
+    GstAppSinkCallbacks      m_appsink_callbacks{};
+
+    /*
+        [MỚI] Buffer chứa frame mới nhất, bảo vệ bằng mutex.
+        GStreamer streaming thread ghi (trong new_sample callback);
+        thread LVGL/UI đọc ra bằng Try_Get_Latest_Frame(). Đây là đường AN
+        TOÀN để đưa frame sang LVGL — không như Frame_Callback chạy thẳng
+        trên streaming thread.
+    */
+    std::mutex            m_latest_frame_mutex;
+    std::vector<uint8_t>  m_latest_frame_data;
+    int                   m_latest_frame_width   = 0;
+    int                   m_latest_frame_height  = 0;
+    bool                  m_latest_frame_updated = false;
+
+    /*
+        [MỚI] true trong khoảng thời gian từ lúc Start_Preview() gọi
+        g_main_loop_run() tới khi hàm đó return. Dùng để destructor phát hiện
+        và cảnh báo nếu object bị hủy trong khi vòng lặp vẫn đang chạy trên
+        thread khác (nguồn gốc kinh điển của use-after-free khi tích hợp đa
+        luồng với LVGL).
+    */
+    std::atomic<bool> m_is_preview_running{false};
+
     // /* Các elements cha */
     // GstElementPtr m_pipeline;
     // GstBusPtr m_bus;
@@ -594,14 +708,15 @@ private:
  */
 GStreamer_Glue::GStreamer_Glue(const std::string arg_filter_devices)
 {
-    /* Đảm bảo GStreamer đã được khởi tạo */
+    /* Đảm bảo GStreamer đã được khởi tạo. gst_init() chỉ cần gọi một lần cho
+     * toàn bộ tiến trình — nếu đã init từ trước (VD: tạo GStreamer_Glue thứ 2
+     * cho camera sau trên dashcam 2 camera) thì đây là điều BÌNH THƯỜNG,
+     * không phải lỗi, nên không in cảnh báo gì cả.
+     * [FIX] Bản gốc in nhầm "Không thể khởi tạo!" đúng vào nhánh này (tức là
+     * lúc mọi thứ đều ổn), khiến người dùng tưởng có lỗi trong khi không có. */
     if (!gst_is_initialized())
     {
         gst_init(nullptr, nullptr);
-    }
-    else
-    {
-        g_printerr("Không thể khởi tạo!\n");
     }
 
     Private_Device_Monitor_Get_Devices(arg_filter_devices);
@@ -611,6 +726,24 @@ GStreamer_Glue::GStreamer_Glue(const std::string arg_filter_devices)
  */
 GStreamer_Glue::~GStreamer_Glue()
 {
+    /* [FIX Bug I] Cảnh báo nếu Start_Preview() vẫn đang chạy trên thread
+     * khác. Đây gần như chắc chắn là lỗi sử dụng: destructor sắp sửa hủy
+     * pipeline/GObject trong khi streaming thread của GStreamer có thể vẫn
+     * đang truy cập chúng → use-after-free. Không thể tự chờ (join) ở đây vì
+     * GStreamer_Glue không sở hữu thread đó, và việc chờ có thể deadlock
+     * (Stop_Preview() có thể được gọi lại từ chính trong main loop, ví dụ
+     * qua Private_Bus_Call/Default_Interrupt_Handler). Caller BẮT BUỘC phải
+     * gọi Stop_Preview() rồi join() thread chạy Start_Preview() trước khi
+     * để object này ra khỏi scope. */
+    if (m_is_preview_running.load())
+    {
+        g_printerr(
+            "[GStreamer_Glue] ⚠️  CẢNH BÁO NGHIÊM TRỌNG: object bị hủy trong khi\n"
+            "  Start_Preview() vẫn đang chạy trên thread khác — nguy cơ cao\n"
+            "  use-after-free/crash. Luôn gọi Stop_Preview() RỒI join() thread\n"
+            "  chạy Start_Preview() TRƯỚC KHI GStreamer_Glue ra khỏi scope.\n");
+    }
+
     /* ── Bước 1: Thoát main loop nếu đang chạy ────────────────────────────────
      * Phải làm trước mọi thứ để tránh deadlock khi pipeline đang stream. */
     if (GStreamer_Event_Handler_Structure.main_loop &&
@@ -648,8 +781,16 @@ void GStreamer_Glue::Private_Device_Monitor_Get_Devices(const std::string arg_fi
     /* Tạo bộ giám sát thiết bị (Device Monitor) */
     GstDeviceMonitorPtr local_device_monitor(gst_device_monitor_new());
 
-    /* Chỉ lọc lấy các thiết bị ghi hình (Video/Source) */
-    gst_device_monitor_add_filter(local_device_monitor.get(), arg_filter_devices.c_str(), NULL);
+    /* Chỉ lọc lấy các thiết bị theo class được truyền vào (VD "Video/Source").
+     * [FIX] gst_device_monitor_add_filter("", NULL) KHÔNG giống add_filter
+     * (NULL, NULL): chuỗi rỗng bị GLib tách thành mảng 1 phần tử rỗng và sẽ
+     * không khớp thiết bị thật nào, trong khi NULL mới đúng nghĩa "mọi
+     * class". Do arg_filter_devices mặc định là "", nếu không chuyển "" ->
+     * nullptr ở đây thì gọi GStreamer_Glue() không đối số sẽ luôn âm thầm
+     * ra danh sách thiết bị rỗng dù máy có camera thật. */
+    const gchar *local_filter_classes =
+        arg_filter_devices.empty() ? nullptr : arg_filter_devices.c_str();
+    gst_device_monitor_add_filter(local_device_monitor.get(), local_filter_classes, NULL);
 
     /* Khởi động bộ dò quét thiết bị */
     gst_device_monitor_start(local_device_monitor.get());
@@ -944,6 +1085,25 @@ void GStreamer_Glue::Private_Step_Configure_Sink(const Pipeline_Config &arg_conf
         case VideoSinkType::AppSink:
         {
             GstAppSink *appsink = GST_APP_SINK(GStreamer_Pipeline_Structure.video_sink);
+
+            /* [FIX Bug A] Ép định dạng ĐẦU RA của appsink về một giá trị cố
+             * định (mặc định "RGB16" = RGB565). Nếu không có bước này,
+             * videoconvert phía trước không có lý do gì để chuyển đổi (không
+             * ai ở phía sau yêu cầu định dạng khác) và sẽ pass-through
+             * nguyên định dạng của camera (VD: NV12 — dữ liệu YUV, LVGL
+             * không hiểu được) thẳng vào appsink. Đã kiểm chứng bằng thực
+             * nghiệm: thiếu bước này, appsink nhận nguyên NV12 (640x480 →
+             * 460.800 byte) thay vì định dạng RGB mong đợi. */
+            std::string target_format = arg_config.appsink_pixel_format.empty()
+                                             ? "RGB16"
+                                             : arg_config.appsink_pixel_format;
+            GstCapsPtr appsink_caps(gst_caps_new_simple("video/x-raw",
+                                                        "format", G_TYPE_STRING, target_format.c_str(),
+                                                        NULL));
+            g_object_set(G_OBJECT(appsink), "caps", appsink_caps.get(), NULL);
+            g_print("[GStreamer_Glue] AppSink: ép định dạng đầu ra = %s "
+                    "(phải khớp LV_COLOR_DEPTH bên LVGL)\n", target_format.c_str());
+
             g_object_set(G_OBJECT(appsink),
                          "emit-signals", FALSE,
                          "max-buffers",  (guint)arg_config.appsink_max_buffers,
@@ -951,57 +1111,85 @@ void GStreamer_Glue::Private_Step_Configure_Sink(const Pipeline_Config &arg_conf
                          "sync",         TRUE,
                          NULL);
 
+            /* [FIX Bug E] Context là thành viên của instance (không phải
+             * static function-local) — mỗi GStreamer_Glue có vùng nhớ riêng,
+             * an toàn khi chạy song song nhiều instance (VD: 2 camera trước/
+             * sau, mỗi camera một thread). */
+            m_appsink_callback_context.self   = this;
+            m_appsink_callback_context.config = &GStreamer_Pipeline_Structure.active_config;
+
+            m_appsink_callbacks = {};
+            m_appsink_callbacks.eos         = nullptr;
+            m_appsink_callbacks.new_preroll = nullptr;
+            m_appsink_callbacks.new_sample  = [](GstAppSink *sink, gpointer user_data) -> GstFlowReturn
+            {
+                auto *ctx = static_cast<AppSink_Callback_Context *>(user_data);
+
+                GstSample *sample = gst_app_sink_pull_sample(sink);
+                if (!sample) return GST_FLOW_ERROR;
+
+                GstBuffer *buffer = gst_sample_get_buffer(sample);
+                GstCaps   *caps   = gst_sample_get_caps(sample);
+
+                if (!buffer)
+                {
+                    /* Phòng thủ: về lý thuyết không xảy ra với sample hợp lệ,
+                     * nhưng tránh chắc chắn hơn là gọi gst_buffer_map(NULL). */
+                    gst_sample_unref(sample);
+                    return GST_FLOW_ERROR;
+                }
+
+                int w = 0, h = 0;
+                if (caps)
+                {
+                    const GstStructure *st = gst_caps_get_structure(caps, 0);
+                    gst_structure_get_int(st, "width",  &w);
+                    gst_structure_get_int(st, "height", &h);
+                }
+
+                GstMapInfo map;
+                if (gst_buffer_map(buffer, &map, GST_MAP_READ))
+                {
+                    /* Đường 1 — callback thô cho use case nâng cao.
+                     * ⚠️ Chạy trên GStreamer streaming thread — xem cảnh báo
+                     * trong Doxygen của Frame_Callback. Không gọi LVGL ở đây. */
+                    if (ctx->config->appsink_frame_callback)
+                    {
+                        ctx->config->appsink_frame_callback(
+                            static_cast<const uint8_t *>(map.data),
+                            map.size,
+                            w, h,
+                            ctx->config->appsink_user_data);
+                    }
+
+                    /* [FIX Bug B] Đường 2 — buffer an toàn đa luồng cho LVGL.
+                     * Luôn cập nhật bất kể có appsink_frame_callback hay
+                     * không, để Try_Get_Latest_Frame() luôn hoạt động được. */
+                    if (ctx->self)
+                    {
+                        std::lock_guard<std::mutex> lock(ctx->self->m_latest_frame_mutex);
+                        const uint8_t *bytes = static_cast<const uint8_t *>(map.data);
+                        ctx->self->m_latest_frame_data.assign(bytes, bytes + map.size);
+                        ctx->self->m_latest_frame_width   = w;
+                        ctx->self->m_latest_frame_height  = h;
+                        ctx->self->m_latest_frame_updated = true;
+                    }
+
+                    gst_buffer_unmap(buffer, &map);
+                }
+
+                gst_sample_unref(sample);
+                return GST_FLOW_OK;
+            };
+
+            gst_app_sink_set_callbacks(appsink, &m_appsink_callbacks, &m_appsink_callback_context, nullptr);
+
             if (arg_config.appsink_frame_callback != nullptr)
             {
-                Pipeline_Config *cfg_ptr = &GStreamer_Pipeline_Structure.active_config;
-
-                /* static: GStreamer giữ con trỏ đến struct này trong suốt vòng đời
-                 * pipeline → không được dùng local variable (sẽ bị dangling). */
-                static GstAppSinkCallbacks appsink_cbs;
-                appsink_cbs.eos         = nullptr;
-                appsink_cbs.new_preroll = nullptr;
-                appsink_cbs.new_sample  = [](GstAppSink *sink, gpointer user_data) -> GstFlowReturn
-                {
-                    Pipeline_Config *cfg = static_cast<Pipeline_Config *>(user_data);
-
-                    GstSample *sample = gst_app_sink_pull_sample(sink);
-                    if (!sample) return GST_FLOW_ERROR;
-
-                    GstBuffer *buffer = gst_sample_get_buffer(sample);
-                    GstCaps   *caps   = gst_sample_get_caps(sample);
-
-                    int w = 0, h = 0;
-                    if (caps)
-                    {
-                        const GstStructure *st = gst_caps_get_structure(caps, 0);
-                        gst_structure_get_int(st, "width",  &w);
-                        gst_structure_get_int(st, "height", &h);
-                    }
-
-                    GstMapInfo map;
-                    if (gst_buffer_map(buffer, &map, GST_MAP_READ))
-                    {
-                        if (cfg->appsink_frame_callback)
-                        {
-                            cfg->appsink_frame_callback(
-                                static_cast<const uint8_t *>(map.data),
-                                w, h,
-                                cfg->appsink_user_data);
-                        }
-                        gst_buffer_unmap(buffer, &map);
-                    }
-
-                    gst_sample_unref(sample);
-                    return GST_FLOW_OK;
-                };
-
-                gst_app_sink_set_callbacks(appsink, &appsink_cbs, cfg_ptr, nullptr);
-                g_print("[GStreamer_Glue] AppSink: frame callback đã được đăng ký.\n");
+                g_print("[GStreamer_Glue] AppSink: frame callback thô đã được đăng ký.\n");
             }
-            else
-            {
-                g_print("[GStreamer_Glue] AppSink: không có callback (frame sẽ bị drop).\n");
-            }
+            g_print("[GStreamer_Glue] AppSink: Try_Get_Latest_Frame() sẵn sàng dùng "
+                    "(an toàn gọi từ thread LVGL).\n");
             break;
         }
 
@@ -1165,11 +1353,19 @@ bool GStreamer_Glue::Start_Preview(const Pipeline_Config &arg_config)
 
     gst_element_set_state(GStreamer_Pipeline_Structure.pipeline.get(), GST_STATE_PLAYING);
 
+    /* [FIX Bug I] Đánh dấu đang chạy TRƯỚC khi block ở g_main_loop_run().
+     * Nếu Start_Preview() được gọi trên thread riêng (mô hình bắt buộc khi
+     * tích hợp LVGL, vì hàm này blocking), destructor có thể kiểm tra cờ
+     * này để cảnh báo nếu bị hủy trước khi thread đó join() xong. */
+    m_is_preview_running.store(true);
+
     /* Blocking cho đến khi Stop_Preview() được gọi */
     g_main_loop_run(GStreamer_Event_Handler_Structure.main_loop.get());
 
     /* Sau khi main loop kết thúc: đặt pipeline về NULL để giải phóng tài nguyên */
     gst_element_set_state(GStreamer_Pipeline_Structure.pipeline.get(), GST_STATE_NULL);
+
+    m_is_preview_running.store(false);
 
     return true;
 }
@@ -1225,6 +1421,25 @@ void GStreamer_Glue::Switch_Camera()
 
     /* 4. Khởi chạy lại pipeline với camera mới */
     gst_element_set_state(GStreamer_Pipeline_Structure.pipeline.get(), GST_STATE_PLAYING);
+}
+
+/*
+ */
+bool GStreamer_Glue::Try_Get_Latest_Frame(std::vector<uint8_t> &arg_out, int &arg_width, int &arg_height)
+{
+    std::lock_guard<std::mutex> lock(m_latest_frame_mutex);
+
+    if (!m_latest_frame_updated)
+    {
+        return false;
+    }
+
+    arg_out    = m_latest_frame_data;   /* copy — an toàn để dùng ngoài khóa */
+    arg_width  = m_latest_frame_width;
+    arg_height = m_latest_frame_height;
+    m_latest_frame_updated = false;
+
+    return true;
 }
 
 /*******************************************************************************
@@ -1380,24 +1595,29 @@ int main(int argc, char *argv[])
         Pipeline_Config config_app;
         config_app.camera_index        = 0;
         config_app.source_type         = VideoSourceType::LibCamera;
-        config_app.pixel_format        = "NV12";
+        config_app.pixel_format        = "NV12";      /* định dạng CAMERA xuất ra */
         config_app.width               = 640;
         config_app.height              = 480;
         config_app.framerate_n         = 0;
         config_app.sink_type           = VideoSinkType::AppSink;
+        config_app.appsink_pixel_format = "RGB16";     /* [FIX] định dạng appsink TRẢ VỀ (RGB565, khớp LVGL 16-bit) */
         config_app.appsink_max_buffers = 2;
         config_app.appsink_user_data   = &gstreamer_glue;
 
         config_app.appsink_frame_callback =
-            [&frame_count](const uint8_t *data, int w, int h, gpointer user_data)
+            [&frame_count](const uint8_t *data, size_t size, int w, int h, gpointer user_data)
             {
                 (void)data;
                 frame_count++;
 
                 if (frame_count % 10 == 0)
                 {
-                    printf("  [AppSink] Frame #%3d  %dx%d  (%d bytes RGBA)\n",
-                           frame_count, w, h, w * h * 4);
+                    /* [FIX] In kích thước THẬT (từ GstMapInfo::size) thay vì
+                     * giả định sai "RGBA / w*h*4" như bản gốc — bản gốc cấu
+                     * hình NV12 nhưng lại tính như thể là RGBA, lệch 2.67 lần. */
+                    printf("  [AppSink] Frame #%3d  %dx%d  (%zu bytes thực nhận, "
+                           "RGB565 => kỳ vọng %d bytes)\n",
+                           frame_count, w, h, size, w * h * 2);
                     fflush(stdout);
                 }
 

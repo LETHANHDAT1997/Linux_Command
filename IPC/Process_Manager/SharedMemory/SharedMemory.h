@@ -18,10 +18,11 @@
  *
  *          **Bố cục vùng nhớ (Memory Layout)**:
  *          @verbatim
- *          +-------------+----------+------------+------ ... ------+
- *          |  mSize (4B) | mData*   | mDataHead* |   TYPE Data[]   |
- *          +-------------+----------+------------+------ ... ------+
- *          |<----------- SharedData header ----------->|<-- data -->|
+ *          +-------------+---------------+-----------------+-----------------------+
+ *          |  mSize(4B)  |  mData*(ptr)  | mDataHead*(ptr) |  TYPE[0]...TYPE[N-1]  |
+ *          +-------------+---------------+-----------------+-----------------------+
+ *          |<---------------- SharedData header ---------->|<----- Data area ----->|
+ *          +-----------------------------------------------+-----------------------+
  *          @endverbatim
  *          `mDataHead` đóng vai trò padding để `zeroclear()` không vô tình
  *          xóa con trỏ `mData` (vì memset chỉ bắt đầu từ `mData`).
@@ -364,10 +365,11 @@ SharedMemory<TYPE>::SharedMemory(const char *npName, const int elementNum)
                                           sizeof(unsigned int) + sizeof(TYPE *));
         /*
          * Sơ đồ bố cục vùng nhớ:
-         * ======================================================================
-         * | mSize(4B) | mData*(ptr) | mDataHead*(ptr) | TYPE[0]...TYPE[N-1]  |
-         * |<-------------- SharedData header ---------->|<---- data area ----->|
-         * ======================================================================
+         * +-------------+---------------+-----------------+-----------------------+
+         * |  mSize(4B)  |  mData*(ptr)  | mDataHead*(ptr) | TYPE[0]...TYPE[N-1]   |
+         * +-------------+---------------+-----------------+-----------------------+
+         * |<---------------- SharedData header ---------->|<----- Data area ----->|
+         * +-----------------------------------------------+-----------------------+
          * mDataHead là padding: zeroclear() dùng memset bắt đầu từ mData,
          * nên mData* không bị xóa. Nếu thiếu padding, zeroclear() sẽ ghi đè
          * lên chính con trỏ mData.
