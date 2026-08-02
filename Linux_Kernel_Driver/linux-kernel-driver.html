@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kernel &amp; Driver trong Linux — Ghi chú kỹ thuật</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#10141b;
+    --surface:#1a212c;
+    --surface-2:#222b38;
+    --border:#2c3646;
+    --text:#e9e7e0;
+    --text-muted:#98a1b0;
+    --amber:#e2a75a;
+    --amber-soft:rgba(226,167,90,.14);
+    --cyan:#63c3d6;
+    --cyan-soft:rgba(99,195,214,.14);
+    --font-display:'Space Grotesk',sans-serif;
+    --font-body:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+    --font-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+    --sidebar-w:272px;
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:
+      linear-gradient(var(--border) 1px,transparent 1px) 0 0/100% 42px,
+      linear-gradient(90deg,var(--border) 1px,transparent 1px) 0 0/42px 100%,
+      var(--bg);
+    background-blend-mode:overlay,overlay,normal;
+    background-attachment:fixed;
+    color:var(--text);
+    font-family:var(--font-body);
+    line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";
+    position:fixed;inset:0;
+    background:var(--bg);
+    opacity:.94;
+    z-index:-1;
+  }
+  h1,h2,h3{font-family:var(--font-display);color:var(--text);margin:0;font-weight:600;}
+  p{margin:0 0 1em;}
+  a{color:var(--cyan);}
+  code,.mono{font-family:var(--font-mono);}
+  ::selection{background:var(--amber-soft);color:var(--text);}
+  a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:2px;}
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto;}
+    *{animation-duration:.001ms !important;transition-duration:.001ms !important;}
+  }
+
+  /* ---------- layout ---------- */
+  .layout{display:flex;max-width:1180px;margin:0 auto;}
+  .sidebar{
+    width:var(--sidebar-w);flex:0 0 var(--sidebar-w);
+    position:sticky;top:0;align-self:flex-start;
+    height:100vh;overflow-y:auto;
+    padding:40px 20px 40px 32px;
+    border-right:1px solid var(--border);
+  }
+  .doc-tag{
+    font-family:var(--font-mono);font-size:.7rem;letter-spacing:.12em;
+    color:var(--amber);border:1px solid var(--border);
+    display:inline-block;padding:4px 8px;border-radius:3px;margin-bottom:22px;
+  }
+  .toc{list-style:none;margin:0;padding:0;}
+  .toc li{margin-bottom:2px;}
+  .toc-link{
+    display:flex;gap:10px;align-items:baseline;
+    padding:8px 10px;border-radius:4px;
+    text-decoration:none;color:var(--text-muted);
+    font-size:.88rem;border-left:2px solid transparent;
+  }
+  .toc-link .tag{font-family:var(--font-mono);font-size:.72rem;color:var(--cyan);opacity:.75;}
+  .toc-link:hover{background:var(--surface);color:var(--text);}
+  .toc-link.active{color:var(--text);border-left-color:var(--amber);background:var(--surface);}
+  .nav-toggle{display:none;}
+
+  .content{flex:1;min-width:0;padding:40px 28px 100px;max-width:760px;}
+
+  /* ---------- hero / title block ---------- */
+  .title-block{
+    border:1px solid var(--border);border-radius:6px;
+    display:flex;flex-wrap:wrap;gap:0;
+    font-family:var(--font-mono);font-size:.72rem;
+    margin-bottom:28px;overflow:hidden;
+  }
+  .tb-cell{padding:8px 14px;border-right:1px solid var(--border);}
+  .tb-cell:last-child{border-right:none;}
+  .tb-label{color:var(--text-muted);letter-spacing:.1em;display:block;margin-bottom:2px;}
+  .tb-value{color:var(--amber);}
+  .hero h1{font-size:clamp(2.1rem,5.4vw,3.1rem);line-height:1.12;margin-bottom:16px;}
+  .hero h1 .accent{color:var(--amber);}
+  .hero-dek{color:var(--text-muted);font-size:1.05rem;max-width:56ch;margin-bottom:8px;}
+  .hero{margin-bottom:56px;}
+
+  /* ---------- sections ---------- */
+  .section{padding-top:52px;margin-top:8px;border-top:1px solid var(--border);}
+  .section:first-of-type{border-top:none;}
+  .section-tag{
+    font-family:var(--font-mono);color:var(--cyan);font-size:.8rem;
+    letter-spacing:.1em;margin-bottom:10px;
+  }
+  .section h2{font-size:1.55rem;margin-bottom:18px;}
+  .section h3{font-size:1.05rem;color:var(--amber);margin:22px 0 10px;font-weight:600;}
+  .section ul,.section ol{padding-left:1.3em;margin:0 0 1.1em;}
+  .section li{margin-bottom:.55em;}
+  .section strong{color:var(--text);}
+
+  /* ---------- callout ---------- */
+  .callout{
+    background:var(--surface);border:1px solid var(--border);
+    border-left:3px solid var(--amber);border-radius:0 6px 6px 0;
+    padding:16px 20px;margin:22px 0;
+  }
+  .callout .callout-label{
+    font-family:var(--font-mono);font-size:.68rem;letter-spacing:.12em;
+    color:var(--amber);display:block;margin-bottom:8px;
+  }
+  .callout p:last-child{margin-bottom:0;}
+  .callout.cyan{border-left-color:var(--cyan);}
+  .callout.cyan .callout-label{color:var(--cyan);}
+
+  /* ---------- ring diagram ---------- */
+  .ring-wrap{
+    display:flex;gap:28px;align-items:center;flex-wrap:wrap;
+    background:var(--surface);border:1px solid var(--border);border-radius:8px;
+    padding:24px;margin:22px 0;
+  }
+  .ring-svg .ring-outer{fill:var(--surface-2);stroke:var(--border);}
+  .ring-svg .ring-mid{fill:var(--bg);stroke:var(--cyan);}
+  .ring-svg .ring-inner{fill:var(--amber-soft);stroke:var(--amber);}
+  .ring-svg .ring-label-outer{fill:var(--text-muted);}
+  .ring-svg .ring-label-mid{fill:var(--cyan);}
+  .ring-svg .ring-label-inner{fill:var(--amber);}
+  .ring-legend{flex:1;min-width:200px;font-size:.9rem;}
+  .ring-legend .lg-row{display:flex;gap:10px;margin-bottom:12px;align-items:flex-start;}
+  .lg-dot{width:11px;height:11px;border-radius:50%;margin-top:5px;flex:0 0 auto;}
+  .lg-dot.user{background:var(--text-muted);}
+  .lg-dot.kernel{background:var(--cyan);}
+  .lg-dot.hw{background:var(--amber);}
+  .lg-row div span{display:block;color:var(--text-muted);font-size:.82rem;}
+
+  /* ---------- comparison grid ---------- */
+  .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 0;}
+  .compare-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;}
+  .compare-card h3{margin-top:0;font-size:1rem;}
+  .layer{
+    border:1px solid var(--border);border-radius:5px;padding:10px 12px;margin-bottom:8px;
+    font-size:.85rem;
+  }
+  .layer .layer-title{display:block;color:var(--text);margin-bottom:5px;}
+  .status{
+    display:inline-block;font-family:var(--font-mono);font-size:.65rem;
+    letter-spacing:.05em;padding:2px 7px;border-radius:3px;
+  }
+  .status.ready{background:var(--cyan-soft);color:var(--cyan);}
+  .status.write{background:var(--amber-soft);color:var(--amber);}
+  .compare-verdict{font-size:.85rem;color:var(--text-muted);margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);}
+
+  /* ---------- data table ---------- */
+  .table-wrap{overflow-x:auto;margin:20px 0;border-radius:8px;}
+  .data-table{width:100%;border-collapse:collapse;font-size:.83rem;min-width:520px;background:var(--surface);}
+  .data-table th,.data-table td{border:1px solid var(--border);padding:9px 13px;text-align:left;vertical-align:top;}
+  .data-table th{
+    background:var(--surface-2);font-family:var(--font-mono);font-size:.68rem;
+    letter-spacing:.06em;color:var(--text-muted);text-transform:uppercase;white-space:nowrap;
+  }
+  .data-table td:first-child{color:var(--text);white-space:nowrap;font-weight:500;}
+  .code-label{font-family:var(--font-mono);font-size:.72rem;color:var(--cyan);letter-spacing:.04em;display:block;margin:22px 0 8px;}
+  .code-label + .code-label{margin-top:0;}
+
+  /* ---------- bit field diagram ---------- */
+  .bitfield{margin:22px 0;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;overflow-x:auto;}
+  .bf-row{display:flex;min-width:480px;}
+  .bf-bit{
+    flex:1;border:1px solid var(--border);margin-right:-1px;
+    text-align:center;padding:10px 4px 8px;font-family:var(--font-mono);
+  }
+  .bf-bit .bf-num{display:block;font-size:.65rem;color:var(--text-muted);margin-bottom:6px;}
+  .bf-bit .bf-name{display:block;font-size:.78rem;font-weight:600;}
+  .bf-bit.rw{background:var(--amber-soft);}
+  .bf-bit.rw .bf-name{color:var(--amber);}
+  .bf-bit.addr{background:var(--cyan-soft);}
+  .bf-bit.addr .bf-name{color:var(--cyan);}
+  .bf-bit.fixed .bf-name{color:var(--text-muted);}
+  .bf-formula{
+    font-family:var(--font-mono);font-size:.85rem;color:var(--text-muted);
+    margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);
+    min-width:480px;
+  }
+  .bf-formula span{color:var(--amber);}
+
+  /* ---------- code block ---------- */
+  pre.code{
+    background:#0d1117;border:1px solid var(--border);border-radius:8px;
+    padding:20px;overflow-x:auto;font-family:var(--font-mono);font-size:.83rem;
+    line-height:1.65;margin:20px 0;
+  }
+  pre.code code{white-space:pre;}
+  .tok-pp{color:#7a91a8;}
+  .tok-kw{color:var(--cyan);}
+  .tok-type{color:var(--amber);}
+  .tok-com{color:#5c6672;font-style:italic;}
+  .tok-num{color:#9ecf8c;}
+  .tok-fn{color:#e0c48c;}
+
+  /* ---------- footer ---------- */
+  .doc-footer{
+    margin-top:60px;padding-top:24px;border-top:1px solid var(--border);
+    font-family:var(--font-mono);font-size:.72rem;color:var(--text-muted);
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;
+  }
+
+  /* ---------- responsive ---------- */
+  @media (max-width:900px){
+    .sidebar{
+      position:fixed;top:0;left:0;height:100vh;z-index:40;
+      background:var(--bg);transform:translateX(-100%);
+      transition:transform .25s ease;box-shadow:0 0 40px rgba(0,0,0,.5);
+      width:78vw;max-width:300px;
+    }
+    .sidebar.open{transform:translateX(0);}
+    .nav-toggle{
+      display:block;position:fixed;top:16px;left:16px;z-index:50;
+      background:var(--surface);border:1px solid var(--border);color:var(--text);
+      width:42px;height:42px;border-radius:6px;font-size:1.1rem;cursor:pointer;
+    }
+    .nav-backdrop{
+      display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:30;
+    }
+    .nav-backdrop.open{display:block;}
+    .content{padding:88px 20px 80px;max-width:100%;}
+    .compare-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<button class="nav-toggle" id="navToggle" aria-label="Mở mục lục">☰</button>
+<div class="nav-backdrop" id="navBackdrop"></div>
+
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="doc-tag">LK-DRV-01</div>
+    <ul class="toc">
+      <li><a class="toc-link" href="#s00"><span class="tag">0x00</span>Vì sao cần kernel</a></li>
+      <li><a class="toc-link" href="#s01"><span class="tag">0x01</span>Bên trong kernel</a></li>
+      <li><a class="toc-link" href="#s02"><span class="tag">0x02</span>Driver — mô hình hóa</a></li>
+      <li><a class="toc-link" href="#s03"><span class="tag">0x03</span>Khi nào viết driver mới</a></li>
+      <li><a class="toc-link" href="#s04"><span class="tag">0x04</span>Các bước viết driver</a></li>
+      <li><a class="toc-link" href="#s05"><span class="tag">0x05</span>Lập trình thanh ghi?</a></li>
+      <li><a class="toc-link" href="#s06"><span class="tag">0x06</span>Ví dụ: driver RC522</a></li>
+    </ul>
+  </nav>
+
+  <main class="content">
+    <header class="hero">
+      <div class="title-block">
+        <div class="tb-cell"><span class="tb-label">DOC</span><span class="tb-value">LK-DRV-01</span></div>
+        <div class="tb-cell"><span class="tb-label">REV</span><span class="tb-value">1.0</span></div>
+        <div class="tb-cell"><span class="tb-label">DATE</span><span class="tb-value">03.07.2026</span></div>
+        <div class="tb-cell"><span class="tb-label">CHỦ ĐỀ</span><span class="tb-value">Kernel / Driver Model</span></div>
+      </div>
+      <h1>Kernel &amp; Driver <span class="accent">trong Linux</span></h1>
+      <p class="hero-dek">Ghi chú kỹ thuật cá nhân — đi từ câu hỏi "kernel là gì" đến một driver SPI chạy thật, luôn đối chiếu với trực giác lập trình thanh ghi bare-metal đã quen thuộc.</p>
+    </header>
+
+    <!-- 0x00 -->
+    <section id="s00" class="section">
+      <div class="section-tag">0x00</div>
+      <h2>Vì sao cần có kernel</h2>
+      <p>Ở bare-metal (STM32), firmware là đoạn code <strong>duy nhất</strong> chạy trên chip — toàn quyền truy cập thanh ghi bất cứ lúc nào, không ai tranh giành.</p>
+      <p>Trên hệ thống Linux, hàng chục tiến trình (process) chạy đồng thời, dùng chung một CPU, một vùng RAM, một tập ngoại vi. Nếu để mỗi process tự do đụng thanh ghi phần cứng theo ý muốn — hai process cùng ghi UART, một process lỗi đè lên RAM của process khác — hệ thống sẽ sụp đổ gần như ngay lập tức.</p>
+      <p>Vì vậy cần một "trọng tài" có quyền cao nhất, đứng giữa phần cứng và toàn bộ tiến trình. Chương trình thông thường chạy ở chế độ quyền hạn thấp (<em>user mode</em>); CPU tự động chặn nó thực thi lệnh đặc quyền hoặc truy cập trực tiếp địa chỉ phần cứng — đây là giới hạn do chính <strong>CPU enforce bằng phần cứng</strong>, không phải quy ước phần mềm, tương tự MPU dùng để cô lập vùng nhớ, nhưng áp dụng cho toàn hệ thống. "Trọng tài" chạy ở chế độ quyền cao nhất (<em>kernel mode</em>) đó chính là <strong>kernel</strong>.</p>
+
+      <div class="ring-wrap">
+        <svg class="ring-svg" width="180" height="180" viewBox="0 0 200 200" role="img" aria-label="Sơ đồ 3 lớp quyền hạn: user mode, kernel mode, hardware">
+          <circle class="ring-outer" cx="100" cy="100" r="92" stroke-width="1"/>
+          <circle class="ring-mid" cx="100" cy="100" r="60" stroke-width="1.5"/>
+          <circle class="ring-inner" cx="100" cy="100" r="26" stroke-width="1.5"/>
+          <text class="ring-label-outer" x="100" y="24" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">USER MODE</text>
+          <text class="ring-label-mid" x="100" y="46" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">KERNEL MODE</text>
+          <text class="ring-label-inner" x="100" y="104" text-anchor="middle" font-family="IBM Plex Mono" font-size="9">HW</text>
+        </svg>
+        <div class="ring-legend">
+          <div class="lg-row"><span class="lg-dot user"></span><div><strong>User mode</strong><span>Ứng dụng, tiến trình — quyền thấp, không đụng phần cứng trực tiếp</span></div></div>
+          <div class="lg-row"><span class="lg-dot kernel"></span><div><strong>Kernel mode</strong><span>Kernel + driver — quyền cao nhất, được phép chạm phần cứng</span></div></div>
+          <div class="lg-row"><span class="lg-dot hw"></span><div><strong>Hardware</strong><span>Thanh ghi, bus, ngoại vi thật</span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 0x01 -->
+    <section id="s01" class="section">
+      <div class="section-tag">0x01</div>
+      <h2>Bên trong kernel có gì</h2>
+      <p>Có thể hình dung: <strong>kernel = FreeRTOS scheduler + rất nhiều thành phần khác gộp lại.</strong></p>
+      <ul>
+        <li><strong>Scheduler</strong> — tương tự FreeRTOS scheduler đã quen, nhưng phức tạp hơn vì còn phải cô lập bộ nhớ giữa các task, không chỉ chia CPU time.</li>
+        <li><strong>Memory management</strong> — mỗi process "tưởng" mình sở hữu toàn bộ RAM (virtual memory); kernel âm thầm ánh xạ vào RAM vật lý thật, đồng thời ngăn process này đụng vùng nhớ process khác.</li>
+        <li><strong>Filesystem (VFS)</strong> — lớp trừu tượng hóa truy cập file, thống nhất bất kể loại lưu trữ bên dưới.</li>
+        <li><strong>Network stack</strong> — xử lý giao thức mạng (TCP/IP...).</li>
+        <li><strong>Device driver</strong> — phần biết cách "nói chuyện" với từng loại phần cứng cụ thể.</li>
+      </ul>
+      <div class="callout cyan">
+        <span class="callout-label">SO SÁNH VỚI FREERTOS</span>
+        <p>FreeRTOS có scheduler + task nhưng chạy chung một không gian địa chỉ, một mức quyền — mọi task tin tưởng lẫn nhau. Kernel Linux thêm vào lớp cô lập bộ nhớ + phân quyền, vì phải phục vụ nhiều chương trình không tin tưởng lẫn nhau chạy cùng lúc.</p>
+      </div>
+    </section>
+
+    <!-- 0x02 -->
+    <section id="s02" class="section">
+      <div class="section-tag">0x02</div>
+      <h2>Driver xuất phát từ mô hình hóa gì</h2>
+      <p>Đây là câu hỏi lõi. Ý tưởng nền tảng của Unix: <strong>"everything is a file."</strong> Thay vì mỗi loại phần cứng có một API riêng biệt, Linux quy ước gần như mọi thiết bị đều "trông giống" một file dưới góc nhìn ứng dụng — chỉ cần <code>open</code>/<code>read</code>/<code>write</code>/<code>close</code>/<code>ioctl</code> là thao tác được với bất kỳ thiết bị nào, từ thẻ nhớ SD đến đầu đọc RFID.</p>
+      <p>Driver chính là lớp "phiên dịch" cài đặt sẵn bộ thao tác chuẩn đó (<code>struct file_operations</code>) cho <strong>một loại phần cứng cụ thể</strong>. Bên trong nó vẫn là code đọc/ghi thanh ghi giống hệt lối viết bare-metal — chỉ khác là được đóng gói theo khuôn mà kernel yêu cầu, để bất kỳ chương trình nào cũng gọi được qua một interface thống nhất, không cần biết bên dưới đang nói chuyện qua SPI, I2C hay USB.</p>
+      <h3>Mô hình bus – device – driver</h3>
+      <p>Kernel còn tổ chức phần cứng theo mô hình này: thiết bị gắn vào một <strong>bus</strong> (SPI/I2C/USB/platform bus cho IP tích hợp sẵn trong SoC), kernel dùng một định danh (<code>compatible</code> string trong Device Tree, VID/PID với USB...) để tự động ghép đúng <strong>driver</strong> với đúng <strong>device</strong> khi nó xuất hiện.</p>
+    </section>
+
+    <!-- 0x03 -->
+    <section id="s03" class="section">
+      <div class="section-tag">0x03</div>
+      <h2>Khi nào thực sự cần viết driver mới</h2>
+      <p>Câu hỏi đúng không phải "phần cứng này có cần driver không" — cái gì cũng cần driver để chạy. Câu hỏi đúng là: <strong>driver đã tồn tại sẵn chưa, và logic cần thiết có bắt buộc phải chạy trong kernel space hay không.</strong></p>
+
+      <div class="compare-grid">
+        <div class="compare-card">
+          <h3>SD Card</h3>
+          <div class="layer"><span class="layer-title">FAT32 / exFAT (filesystem)</span><span class="status ready">CÓ SẴN — fs/fat, fs/exfat</span></div>
+          <div class="layer"><span class="layer-title">MMC/SD host controller</span><span class="status ready">CÓ SẴN — vendor BSP (Sigmastar)</span></div>
+          <div class="compare-verdict">Gần như thuần cấu hình: bật driver + filesystem có sẵn qua Device Tree &amp; kernel config. Không viết code mới.</div>
+        </div>
+        <div class="compare-card">
+          <h3>RC522 (MFRC522) qua SPI</h3>
+          <div class="layer"><span class="layer-title">Protocol chip MFRC522</span><span class="status write">KHÔNG CÓ TRONG MAINLINE</span></div>
+          <div class="layer"><span class="layer-title">SPI bus controller (SoC)</span><span class="status ready">CÓ SẴN — như MMC controller</span></div>
+          <div class="compare-verdict">Phổ biến nhất: dùng <code>spidev</code> có sẵn + viết protocol (anti-collision, CRC, UID) ở userspace. Chỉ viết kernel driver thật khi cần IRQ timing chặt / arbitration đa tiến trình.</div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <span class="callout-label">NGUYÊN TẮC CHUNG</span>
+        <p>Cần driver mới khi <strong>(1)</strong> chưa có driver sẵn hỗ trợ, và <strong>(2)</strong> cần chức năng chỉ kernel-space làm được (IRQ, DMA, arbitration, mmap). Nếu chỉ đọc/ghi qua bus chuẩn, không yêu cầu real-time phức tạp, <code>spidev</code>/<code>i2c-dev</code> từ userspace thường đơn giản và đủ dùng.</p>
+      </div>
+
+      <h3>Kernel space hay user space — chọn sao?</h3>
+      <p>Khác biệt thật sự không chỉ nằm ở khái niệm mà ở ngay <strong>quy trình làm việc</strong>:</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th></th><th>Kernel space</th><th>User space</th></tr></thead>
+          <tbody>
+            <tr><td>Setup ban đầu</td><td>Cần Device Tree binding (<code>compatible</code>), viết module skeleton</td><td>Chỉ bật <code>spidev</code>/<code>i2c-dev</code> có sẵn qua Device Tree</td></tr>
+            <tr><td>Build</td><td>Cross-compile module (Kbuild, cần kernel source/headers khớp target)</td><td>Compile chương trình thường (gcc/cross-gcc)</td></tr>
+            <tr><td>Chạy</td><td><code>insmod</code>/<code>modprobe</code> nạp vào kernel — lỗi có thể treo/panic cả máy</td><td>Chạy như process bình thường — lỗi chỉ chết process đó</td></tr>
+            <tr><td>Debug</td><td><code>dmesg</code>, ftrace, <code>printk</code> — gdb thường không gắn trực tiếp được</td><td><code>gdb</code>, print, valgrind — y hệt debug app thường</td></tr>
+            <tr><td>Vòng lặp sửa/chạy</td><td>Chậm: sửa → build → rmmod → insmod, rủi ro treo máy</td><td>Nhanh: sửa → build → chạy lại, an toàn</td></tr>
+            <tr><td>Ai gọi hàm chính</td><td>Kernel tự gọi <code>probe()</code>/<code>remove()</code>, không có <code>main()</code></td><td><code>main()</code> tự chủ động điều khiển luồng chạy</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Ví dụ cụ thể với RC522 — cùng mục tiêu "đọc UID khi có thẻ quẹt qua", hai cách làm khác hẳn nhau:</p>
+      <ul>
+        <li><strong>Chỉ 1 chương trình dùng, không gấp:</strong> viết 1 file C, mở <code>/dev/spidevX.Y</code>, loop định kỳ gọi hàm anti-collision, in UID khi phát hiện thẻ. → user space, không cần biết API kernel.</li>
+        <li><strong>Cần phản hồi tức thời (dùng chân IRQ của RC522) và nhiều tiến trình cùng cần dữ liệu</strong> (màn hình hiển thị + service ghi log + service mở khóa cửa chạy song song): viết <code>spi_driver</code> thật, trong <code>probe()</code> đăng ký <code>request_irq()</code> cho chân IRQ, threaded IRQ handler đọc UID rồi report qua input subsystem hoặc char device tự tạo. → kernel space: phức tạp hơn nhưng latency thấp, nhiều process dùng an toàn.</li>
+      </ul>
+      <div class="callout cyan">
+        <span class="callout-label">NGUYÊN TẮC RÚT GỌN</span>
+        <p>Còn nghi ngờ → làm ở user space trước (nhanh, an toàn, dễ debug). Chỉ chuyển sang kernel space khi đã thật sự đụng giới hạn mà user space không vượt qua được: timing chặt, arbitration đa tiến trình, tích hợp subsystem chuẩn, hoặc DMA.</p>
+      </div>
+    </section>
+
+    <!-- 0x04 -->
+    <section id="s04" class="section">
+      <div class="section-tag">0x04</div>
+      <h2>Các bước viết driver</h2>
+      <div class="callout cyan">
+        <span class="callout-label">TIN TỐT</span>
+        <p>Phần khó nhất — hiểu cách nói chuyện với hardware qua SPI/I2C/thanh ghi — gần như đã có sẵn từ kinh nghiệm bare-metal. Phần <strong>mới</strong> cần học chỉ là cách đóng gói nó theo khuôn kernel yêu cầu.</p>
+      </div>
+      <h3>Thuật ngữ sẽ gặp</h3>
+      <p>Trước khi vào các bước — bảng tra nhanh, gặp đâu tra đó:</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Thuật ngữ</th><th>Là gì</th></tr></thead>
+          <tbody>
+            <tr><td>Kernel module</td><td>Đơn vị code nạp/gỡ được khỏi kernel <em>đang chạy</em>, không cần build lại cả kernel</td></tr>
+            <tr><td><code>.ko</code></td><td>File kết quả biên dịch của kernel module (Kernel Object)</td></tr>
+            <tr><td><code>insmod</code></td><td>Lệnh nạp thủ công 1 file <code>.ko</code> vào kernel đang chạy</td></tr>
+            <tr><td><code>modprobe</code></td><td>Như <code>insmod</code>, nhưng tự giải quyết thêm module phụ thuộc</td></tr>
+            <tr><td><code>rmmod</code></td><td>Lệnh gỡ module đang chạy ra khỏi kernel</td></tr>
+            <tr><td>Built-in</td><td>Driver link thẳng vào file kernel image, tự chạy lúc boot — không cần <code>insmod</code></td></tr>
+            <tr><td><code>probe()</code></td><td>Hàm <strong>tự viết</strong> — kernel tự gọi khi tìm thấy thiết bị khớp với driver</td></tr>
+            <tr><td><code>remove()</code></td><td>Hàm <strong>tự viết</strong> — kernel gọi khi thiết bị/module bị gỡ</td></tr>
+            <tr><td>Device Tree</td><td>File mô tả phần cứng có gì trên board, để kernel không phải đoán</td></tr>
+            <tr><td><code>compatible</code></td><td>Chuỗi định danh trong Device Tree, dùng để khớp 1 thiết bị với đúng driver</td></tr>
+            <tr><td><code>spi_driver</code></td><td>Struct "thẻ đăng ký": tên driver, bảng <code>compatible</code>, con trỏ hàm <code>probe</code>/<code>remove</code></td></tr>
+            <tr><td><code>spi_device</code></td><td>Struct đại diện 1 thiết bị SPI thật — kernel tự tạo ra từ node Device Tree</td></tr>
+            <tr><td><code>module_init()</code></td><td>Macro đánh dấu hàm nào chạy khi module được nạp</td></tr>
+            <tr><td><code>MODULE_LICENSE()</code></td><td>Khai báo giấy phép của module — quyết định được gọi hàm kernel nào</td></tr>
+            <tr><td>Kbuild</td><td>Hệ thống build của kernel, dùng để compile module khớp kernel đích</td></tr>
+            <tr><td>udev</td><td>Daemon userspace tự gọi <code>modprobe</code> khi phát hiện phần cứng mới</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Các bước, theo đúng thứ tự phụ thuộc</h3>
+      <ol>
+        <li><strong>Chọn cách kernel sẽ "phát hiện" thiết bị</strong> — gắn vào bus subsystem có sẵn (<code>spi_driver</code>/<code>i2c_driver</code>/<code>platform_driver</code>) nếu phần cứng nằm trên SPI/I2C/bus tích hợp SoC; hoặc dùng char device thuần (<code>register_chrdev</code>) nếu không thuộc bus cụ thể nào.</li>
+        <li><strong>Điền "thẻ đăng ký" cho kernel</strong> — tạo 1 biến kiểu <code>spi_driver</code> gồm: tên, bảng <code>compatible</code> (<code>of_device_id</code>), và con trỏ tới 2 hàm tự viết: <code>probe()</code>, <code>remove()</code>. Gọi <code>spi_register_driver()</code> (hoặc macro rút gọn <code>module_spi_driver()</code>) để nộp thẻ này.</li>
+        <li><strong>Viết nội dung <code>probe()</code></strong> — nơi thật sự nói chuyện với hardware: đọc/ghi thanh ghi (như bare-metal), đăng ký IRQ nếu cần. Hàm này <em>không tự chạy</em> — chỉ kernel gọi, khi tìm thấy thiết bị khớp.</li>
+        <li><strong>Khai báo thiết bị thật trong Device Tree</strong> — thêm 1 node với <code>compatible</code> trùng bước 2, để kernel tạo ra 1 <code>spi_device</code> tương ứng và kích hoạt <code>probe()</code>.</li>
+        <li><em>(Tùy chọn)</em> <strong>Expose ra <code>/dev</code> cho userspace</strong> — nếu cần chương trình ngoài đọc/ghi được, thêm <code>struct file_operations</code> + <code>cdev_add()</code> bên trong <code>probe()</code>.</li>
+        <li><strong>Build bằng Kbuild</strong> — Makefile riêng, cross-compile ra <code>.ko</code> khớp kernel đích (hoặc chọn built-in ngay trong kernel config nếu không cần nạp/gỡ linh hoạt).</li>
+        <li><strong>Đưa vào kernel đang chạy</strong> — <code>insmod</code>/<code>modprobe</code> thủ công lúc code/test; máy thật thì udev hoặc init script tự làm việc này, không ai gõ tay.</li>
+        <li><strong>Kiểm tra</strong> — <code>dmesg</code> xem log từ <code>probe()</code>, <code>/sys/bus/spi/devices/</code> xem thiết bị đã được nhận diện chưa.</li>
+      </ol>
+
+      <div class="callout">
+        <span class="callout-label">BUILT-IN HAY LOADABLE MODULE?</span>
+        <p>Kernel config quyết định driver đi vào file kernel image (built-in, tự chạy lúc boot, không cần <code>insmod</code>) hay tách thành <code>.ko</code> riêng (loadable, cần <code>insmod</code>/<code>modprobe</code> mới có mặt). Lúc phát triển driver mới gần như luôn chọn loadable — sửa/nạp lại nhanh, không phải build lại + reboot cả kernel.</p>
+      </div>
+
+      <h3>Những hàm, struct này có phải "chuẩn chung" cho mọi driver?</h3>
+      <p>Không hoàn toàn một chuẩn duy nhất — có ba lớp chồng lên nhau:</p>
+
+      <p><strong>Lớp 1 — chuẩn thật sự chung, bất kể loại bus:</strong></p>
+      <ul>
+        <li><code>struct file_operations</code> (<code>.open</code>/<code>.read</code>/<code>.write</code>/<code>.unlocked_ioctl</code>/<code>.release</code>) — hợp đồng chuẩn để expose một <code>/dev</code> node ra userspace; bus nào cũng dùng cái này nếu muốn có file <code>/dev</code>.</li>
+        <li><code>module_init()</code>/<code>module_exit()</code>, <code>MODULE_LICENSE()</code> — mọi kernel module đều cần, không phân biệt driver nói chuyện với bus gì.</li>
+        <li><code>dev_info()</code>/<code>dev_err()</code> — hàm log chung, nhận <code>struct device*</code>, dùng ở driver nào cũng được.</li>
+      </ul>
+
+      <p><strong>Lớp 2 — cùng một mô hình, khác struct cụ thể theo từng loại bus:</strong></p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Bus</th><th>Driver struct</th><th>Device struct</th><th>Đăng ký</th><th>Cách match</th></tr></thead>
+          <tbody>
+            <tr><td>SPI</td><td><code>spi_driver</code></td><td><code>spi_device</code></td><td><code>spi_register_driver()</code></td><td><code>compatible</code> (DT)</td></tr>
+            <tr><td>I2C</td><td><code>i2c_driver</code></td><td><code>i2c_client</code></td><td><code>i2c_add_driver()</code></td><td><code>compatible</code> (DT)</td></tr>
+            <tr><td>Platform</td><td><code>platform_driver</code></td><td><code>platform_device</code></td><td><code>platform_driver_register()</code></td><td><code>compatible</code> (DT)</td></tr>
+            <tr><td>USB</td><td><code>usb_driver</code></td><td><code>usb_interface</code></td><td><code>usb_register()</code></td><td><code>id_table</code> (VID/PID)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Tất cả các cặp (driver struct, probe/remove) này thật ra đều "bọc" quanh một lõi chung nằm sâu hơn trong kernel — <code>struct device_driver</code> + <code>struct device</code> + <code>struct bus_type</code> (trong <code>drivers/base/</code>). Đây mới là "chuẩn chung" thật sự, nhưng gần như không ai viết trực tiếp struct này, luôn dùng qua lớp bọc theo bus (<code>spi_driver</code>, <code>i2c_driver</code>...) cho tiện.</p>
+
+      <p><strong>Lớp 3 — đặc thù riêng từng bus, không dùng chéo được:</strong></p>
+      <ul>
+        <li><code>spi_write_then_read()</code> — chỉ SPI có</li>
+        <li><code>i2c_smbus_read_byte_data()</code> và họ hàng — chỉ I2C có</li>
+        <li><code>ioremap()</code>/<code>readl()</code>/<code>writel()</code> — chỉ dùng cho thiết bị memory-mapped (platform driver); SPI/I2C không cần vì bus đó đã có hàm transfer riêng lo việc gửi/nhận</li>
+      </ul>
+
+      <div class="callout">
+        <span class="callout-label">DỄ NHẦM</span>
+        <p>"Chọn char device" và "chọn spi_driver/i2c_driver/platform_driver" ở bước 1 <strong>không phải hai lựa chọn loại trừ nhau</strong> — đó là hai lớp khác nhau. <code>spi_driver</code>/<code>i2c_driver</code>/<code>platform_driver</code> quyết định kernel <strong>phát hiện</strong> thiết bị bằng cách nào; <code>file_operations</code> + <code>cdev</code> quyết định <strong>userspace truy cập</strong> thiết bị đó qua <code>/dev</code> ra sao. Thường dùng <strong>cả hai cùng lúc</strong>: bên trong <code>probe()</code> của <code>spi_driver</code>, gọi thêm <code>cdev_add()</code> để tạo <code>/dev/rc522</code> cho userspace đọc.</p>
+      </div>
+    </section>
+
+    <!-- 0x05 -->
+    <section id="s05" class="section">
+      <div class="section-tag">0x05</div>
+      <h2>Vậy có cần lập trình thanh ghi không?</h2>
+      <p><strong>Có — chỉ khác cách gọi, tùy loại phần cứng:</strong></p>
+      <h3>Thiết bị qua bus (SPI/I2C, như RC522)</h3>
+      <p>Không đụng thanh ghi của bộ điều khiển SPI (driver host controller có sẵn lo phần đó). Nhưng vẫn phải nói chuyện với thanh ghi <strong>nội bộ</strong> của chip (CommandReg, FIFODataReg, VersionReg...) — logic gửi địa chỉ + đọc/ghi giá trị giống hệt cách viết ở STM32, chỉ đổi API gọi (<code>HAL_SPI_TransmitReceive</code> → API kernel).</p>
+      <h3>Thiết bị memory-mapped (GPIO controller, IP tích hợp trong SoC)</h3>
+      <p>Đúng nghĩa đen là đọc/ghi thanh ghi, nhưng không được deref thẳng địa chỉ vật lý như bare-metal (<code>*(volatile uint32_t*)0x4001...</code>) vì kernel chạy trên virtual memory — phải <code>ioremap()</code> địa chỉ vật lý thành virtual address trước, rồi dùng <code>readl()</code>/<code>writel()</code> thay vì deref con trỏ thô.</p>
+    </section>
+
+    <!-- 0x06 -->
+    <section id="s06" class="section">
+      <div class="section-tag">0x06</div>
+      <h2>Ví dụ đầy đủ: driver SPI đọc VersionReg của RC522</h2>
+      <p>Byte lệnh gửi qua SPI cho RC522 theo đúng định dạng datasheet:</p>
+
+      <div class="bitfield">
+        <div class="bf-row">
+          <div class="bf-bit rw"><span class="bf-num">bit 7</span><span class="bf-name">R/W</span></div>
+          <div class="bf-bit addr"><span class="bf-num">bit 6</span><span class="bf-name">A5</span></div>
+          <div class="bf-bit addr"><span class="bf-num">bit 5</span><span class="bf-name">A4</span></div>
+          <div class="bf-bit addr"><span class="bf-num">bit 4</span><span class="bf-name">A3</span></div>
+          <div class="bf-bit addr"><span class="bf-num">bit 3</span><span class="bf-name">A2</span></div>
+          <div class="bf-bit addr"><span class="bf-num">bit 2</span><span class="bf-name">A1</span></div>
+          <div class="bf-bit addr"><span class="bf-num">bit 1</span><span class="bf-name">A0</span></div>
+          <div class="bf-bit fixed"><span class="bf-num">bit 0</span><span class="bf-name">0</span></div>
+        </div>
+        <div class="bf-formula">tx[0] = ((reg &lt;&lt; 1) &amp; <span>0x7E</span>) | <span>0x80</span>;&nbsp;&nbsp;<span style="color:var(--text-muted)">// 0x80 = bật bit R/W, 0x7E = mask 6 bit địa chỉ</span></div>
+      </div>
+
+      <pre class="code"><code><span class="tok-pp">#include</span> &lt;linux/module.h&gt;
+<span class="tok-pp">#include</span> &lt;linux/spi/spi.h&gt;
+
+<span class="tok-pp">#define</span> RC522_VERSION_REG  <span class="tok-num">0x37</span>
+
+<span class="tok-kw">static</span> <span class="tok-kw">int</span> <span class="tok-fn">rc522_read_reg</span>(<span class="tok-kw">struct</span> <span class="tok-type">spi_device</span> *spi, <span class="tok-type">u8</span> reg)
+{
+    <span class="tok-type">u8</span> tx[<span class="tok-num">1</span>], rx[<span class="tok-num">1</span>];
+
+    <span class="tok-com">// Giống hệt protocol RC522 đã viết ở STM32:</span>
+    <span class="tok-com">// bit7=1 (read), bit6:1=address, bit0=0</span>
+    tx[<span class="tok-num">0</span>] = ((reg &lt;&lt; <span class="tok-num">1</span>) &amp; <span class="tok-num">0x7E</span>) | <span class="tok-num">0x80</span>;
+
+    <span class="tok-fn">spi_write_then_read</span>(spi, tx, <span class="tok-num">1</span>, rx, <span class="tok-num">1</span>);
+    <span class="tok-kw">return</span> rx[<span class="tok-num">0</span>];
+}
+
+<span class="tok-kw">static</span> <span class="tok-kw">int</span> <span class="tok-fn">rc522_probe</span>(<span class="tok-kw">struct</span> <span class="tok-type">spi_device</span> *spi)
+{
+    <span class="tok-kw">int</span> version = <span class="tok-fn">rc522_read_reg</span>(spi, RC522_VERSION_REG);
+    <span class="tok-fn">dev_info</span>(&amp;spi-&gt;dev, <span class="tok-com">"RC522 version = 0x%02x\n"</span>, version);
+    <span class="tok-kw">return</span> <span class="tok-num">0</span>;
+}
+
+<span class="tok-kw">static</span> <span class="tok-kw">void</span> <span class="tok-fn">rc522_remove</span>(<span class="tok-kw">struct</span> <span class="tok-type">spi_device</span> *spi) { }
+
+<span class="tok-kw">static</span> <span class="tok-kw">const</span> <span class="tok-kw">struct</span> <span class="tok-type">of_device_id</span> rc522_of_match[] = {
+    { .compatible = <span class="tok-com">"nxp,mfrc522"</span> },
+    {}
+};
+
+<span class="tok-kw">static</span> <span class="tok-kw">struct</span> <span class="tok-type">spi_driver</span> rc522_driver = {
+    .driver = { .name = <span class="tok-com">"rc522"</span>, .of_match_table = rc522_of_match },
+    .probe  = rc522_probe,
+    .remove = rc522_remove,
+};
+<span class="tok-fn">module_spi_driver</span>(rc522_driver);
+<span class="tok-fn">MODULE_LICENSE</span>(<span class="tok-com">"GPL"</span>);</code></pre>
+
+      <h3>Soi kỹ sẽ thấy đúng 2 mảng</h3>
+      <ul>
+        <li><code>rc522_read_reg()</code> — phần <strong>đã biết</strong>, không có gì mới, chỉ là gửi/nhận byte qua SPI theo đúng protocol RC522.</li>
+        <li>Phần còn lại (<code>probe</code>, <code>of_device_id</code>, <code>spi_driver</code>, <code>module_spi_driver</code>) — phần <strong>mới</strong>, thuần túy khai báo để kernel biết driver này khớp thiết bị nào (qua <code>compatible</code> string) và gọi hàm nào khi thiết bị đó xuất hiện.</li>
+      </ul>
+
+      <p>Nhưng file <code>.c</code> ở trên mới chỉ là 1 trong 3 mảnh ghép. Thiếu 2 mảnh còn lại thì <code>probe()</code> sẽ <strong>không bao giờ chạy</strong>, dù đã nạp driver vào kernel.</p>
+
+      <span class="code-label">Mảnh 2 — khai báo thiết bị thật trong Device Tree của board</span>
+      <pre class="code"><code><span class="tok-com">/* Thêm vào node SPI bus trong file .dts của board */</span>
+&amp;spi0 {
+    status = <span class="tok-num">"okay"</span>;
+
+    rc522@0 {
+        <span class="tok-type">compatible</span> = <span class="tok-num">"nxp,mfrc522"</span>;
+        <span class="tok-type">reg</span> = &lt;<span class="tok-num">0</span>&gt;;                 <span class="tok-com">/* chip-select 0 trên spi0 */</span>
+        <span class="tok-type">spi-max-frequency</span> = &lt;<span class="tok-num">1000000</span>&gt;;
+    };
+};</code></pre>
+      <p><code>compatible</code> ở đây phải khớp <strong>chính xác</strong> với <code>rc522_of_match[]</code> trong file <code>.c</code>. Thiếu node này, kernel không có <code>spi_device</code> nào để đối chiếu — driver nằm im trong kernel, <code>probe()</code> không bao giờ được gọi.</p>
+
+      <span class="code-label">Mảnh 3 — Makefile để build bằng Kbuild</span>
+      <pre class="code"><code><span class="tok-com"># Build ngoài kernel tree (out-of-tree module)</span>
+obj-m += rc522.o
+
+KDIR := /lib/modules/$(shell uname -r)/build
+<span class="tok-com"># Cross-compile cho embedded: thêm ARCH=arm CROSS_COMPILE=arm-linux-gnueabihf-</span>
+
+all:
+	$(MAKE) -C $(KDIR) M=$(PWD) modules
+
+clean:
+	$(MAKE) -C $(KDIR) M=$(PWD) clean</code></pre>
+
+      <span class="code-label">Build, nạp, và kiểm tra</span>
+      <pre class="code"><code><span class="tok-com">$</span> make
+<span class="tok-com">$</span> insmod rc522.ko
+<span class="tok-com">$</span> dmesg | tail -1
+[  142.317022] rc522 spi0.0: RC522 version = 0x92</code></pre>
+
+      <p>Dòng <code>RC522 version = 0x92</code> chính là bằng chứng toàn bộ chuỗi đã chạy đúng: <code>insmod</code> nạp module → <code>module_init()</code> (bên trong <code>module_spi_driver()</code>) gọi <code>spi_register_driver()</code> → kernel đối chiếu <code>compatible</code> với node Device Tree → khớp, tạo <code>spi_device</code> → gọi <code>probe()</code> → <code>probe()</code> đọc thanh ghi qua SPI → <code>dev_info()</code> in log.</p>
+
+      <div class="callout">
+        <span class="callout-label">GHI CHÚ</span>
+        <p>Không có <code>main()</code>, không vòng lặp — driver "ngủ" chờ callback tiếp theo (<code>remove()</code> khi gỡ) sau khi <code>probe()</code> chạy xong. Muốn có <code>/dev/rc522</code> để userspace tự đọc UID được thì thêm <code>struct file_operations</code> (open/read/ioctl) + <code>cdev_add()</code> bên trong <code>probe()</code>, như mục <span class="mono">0x02</span>/<span class="mono">0x04</span> đã nói.</p>
+      </div>
+    </section>
+
+    <footer class="doc-footer">
+      <span>LK-DRV-01 · Ghi chú kỹ thuật cá nhân</span>
+      <span>Tổng hợp 03.07.2026</span>
+    </footer>
+  </main>
+</div>
+
+<script>
+  const sidebar = document.getElementById('sidebar');
+  const toggle = document.getElementById('navToggle');
+  const backdrop = document.getElementById('navBackdrop');
+  function closeNav(){ sidebar.classList.remove('open'); backdrop.classList.remove('open'); }
+  toggle.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    backdrop.classList.toggle('open');
+  });
+  backdrop.addEventListener('click', closeNav);
+  sidebar.querySelectorAll('.toc-link').forEach(a => a.addEventListener('click', closeNav));
+
+  const links = Array.from(document.querySelectorAll('.toc-link'));
+  const sections = links.map(a => document.querySelector(a.getAttribute('href')));
+  const spy = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const idx = sections.indexOf(entry.target);
+      if (idx === -1) return;
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        links[idx].classList.add('active');
+      }
+    });
+  }, { rootMargin: '-15% 0px -75% 0px' });
+  sections.forEach(s => s && spy.observe(s));
+</script>
+</body>
+</html>

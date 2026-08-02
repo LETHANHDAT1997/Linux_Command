@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Đồng Bộ Hoá Giữa Các Task — FreeRTOS Reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0e13;
+    --bg-panel:#10151d;
+    --bg-code:#0d1117;
+    --bg-inline:#161d27;
+    --border:rgba(255,255,255,.08);
+    --border-strong:rgba(255,255,255,.16);
+    --text:#e8ecf1;
+    --text-soft:#93a0af;
+    --text-dim:#5a6472;
+    --amber:#e8a33d;
+    --amber-dim:rgba(232,163,61,.14);
+    --cyan:#52c7d4;
+    --cyan-dim:rgba(82,199,212,.14);
+    --violet:#a78bd1;
+    --violet-dim:rgba(167,139,209,.14);
+    --green:#7fb069;
+    --green-dim:rgba(127,176,105,.14);
+    --danger:#e5637a;
+    --danger-dim:rgba(229,99,122,.12);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:'IBM Plex Sans',system-ui,sans-serif;
+    font-size:16px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif;margin:0;color:var(--text);}
+  p{margin:0 0 12px;}
+  a{color:inherit;text-decoration:none;}
+  code,pre{font-family:'IBM Plex Mono',monospace;}
+  ::selection{background:var(--cyan-dim);color:var(--text);}
+  a:focus-visible,button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:3px;}
+
+  .layout{display:flex;min-height:100vh;max-width:1280px;margin:0 auto;}
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    width:272px;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;
+    background:var(--bg-panel);border-right:1px solid var(--border);
+    padding:28px 20px 40px;scrollbar-width:thin;scrollbar-color:var(--border-strong) transparent;
+  }
+  .sidebar::-webkit-scrollbar{width:6px;}
+  .sidebar::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:3px;}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:28px;padding:0 4px;}
+  .brand-mark{width:26px;height:26px;flex-shrink:0;}
+  .brand-text{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.92rem;letter-spacing:.02em;line-height:1.15;}
+  .brand-sub{display:block;font-family:'IBM Plex Mono',monospace;font-weight:400;font-size:.66rem;color:var(--text-dim);letter-spacing:.04em;margin-top:1px;}
+  .group-label{
+    display:flex;align-items:center;gap:7px;
+    font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--text-dim);margin:20px 4px 8px;
+  }
+  .group-label:first-of-type{margin-top:4px;}
+  .toc-link{
+    display:flex;align-items:center;gap:9px;
+    padding:7px 10px;margin:1px 0;border-radius:6px;
+    font-size:.85rem;color:var(--text-soft);
+    border-left:2px solid transparent;transition:background .15s,color .15s;
+  }
+  .toc-link:hover{background:rgba(255,255,255,.04);color:var(--text);}
+  .toc-link.active{background:rgba(255,255,255,.05);color:var(--text);border-left-color:var(--cyan);}
+  .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+  .dot-amber{background:var(--amber);} .dot-cyan{background:var(--cyan);}
+  .dot-violet{background:var(--violet);} .dot-green{background:var(--green);}
+
+  /* ---------- Main ---------- */
+  .main{flex:1;min-width:0;padding:60px 56px 100px;max-width:840px;}
+
+  /* ---------- Hero ---------- */
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.12em;
+    color:var(--cyan);text-transform:uppercase;margin-bottom:14px;
+  }
+  .hero h1{font-size:2.35rem;font-weight:700;letter-spacing:-.01em;margin-bottom:18px;}
+  .hero-lead{font-size:1.02rem;color:var(--text-soft);max-width:660px;margin-bottom:36px;}
+  .hero-lead strong{color:var(--text);font-weight:600;}
+
+  .diagram-wrap{
+    background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;
+    padding:24px 20px 16px;margin-bottom:12px;position:relative;overflow:hidden;
+  }
+  .diagram-wrap::before{
+    content:"";position:absolute;top:-60px;left:50%;transform:translateX(-50%);
+    width:420px;height:180px;
+    background:radial-gradient(ellipse at center, var(--cyan-dim), transparent 70%);
+    pointer-events:none;
+  }
+  .diagram-wrap svg{position:relative;width:100%;height:auto;display:block;}
+  .sync-pulse{animation:pulse 2.2s ease-in-out infinite;transform-origin:410px 116px;}
+  @keyframes pulse{
+    0%,100%{opacity:1;} 50%{opacity:.35;}
+  }
+  .pulse-ring{animation:ring 2.2s ease-in-out infinite;transform-origin:410px 116px;}
+  @keyframes ring{
+    0%{opacity:.5;transform:scale(1);} 70%{opacity:0;transform:scale(2.4);} 100%{opacity:0;transform:scale(2.4);}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .sync-pulse,.pulse-ring{animation:none;}
+  }
+  .diagram-caption{font-size:.82rem;color:var(--text-dim);padding:4px 4px 4px;font-family:'IBM Plex Mono',monospace;line-height:1.55;}
+
+  .legend{display:flex;flex-wrap:wrap;gap:18px;margin:22px 0 48px;}
+  .legend-item{display:flex;align-items:center;gap:7px;font-size:.82rem;color:var(--text-soft);}
+  .legend-item .dot{width:8px;height:8px;}
+
+  /* ---------- Overview cards ---------- */
+  .overview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:56px;}
+  .ov-card{background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;padding:18px 18px 16px;}
+  .ov-card .ov-title{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:.94rem;margin-bottom:8px;}
+  .ov-card p{font-size:.83rem;color:var(--text-soft);margin-bottom:10px;line-height:1.55;}
+  .ov-card .ov-mech{font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--text-dim);}
+  .ov-card .ov-mech b{color:inherit;font-weight:500;}
+
+  h2#overview-title{font-size:1.15rem;margin-bottom:16px;}
+
+  /* ---------- Primitive sections ---------- */
+  .primitive{
+    background:var(--bg-panel);border:1px solid var(--border);border-left:3px solid var(--border-strong);
+    border-radius:10px;padding:30px 32px 28px;margin-bottom:26px;scroll-margin-top:24px;
+  }
+  .primitive.cat-mutex{border-left-color:var(--amber);}
+  .primitive.cat-signal{border-left-color:var(--cyan);}
+  .primitive.cat-data{border-left-color:var(--violet);}
+  .primitive.cat-other{border-left-color:var(--green);}
+
+  .badge{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:.68rem;
+    letter-spacing:.07em;text-transform:uppercase;padding:3px 9px;border-radius:5px;margin-bottom:14px;
+  }
+  .cat-mutex .badge{color:var(--amber);background:var(--amber-dim);}
+  .cat-signal .badge{color:var(--cyan);background:var(--cyan-dim);}
+  .cat-data .badge{color:var(--violet);background:var(--violet-dim);}
+  .cat-other .badge{color:var(--green);background:var(--green-dim);}
+
+  .primitive h2{font-size:1.4rem;margin-bottom:12px;}
+  .primitive h2 .h2-sub{font-size:.95rem;font-weight:500;color:var(--text-dim);margin-left:4px;}
+  .definition{font-size:.94rem;color:var(--text-soft);margin-bottom:20px;max-width:680px;}
+  .definition code{background:var(--bg-inline);padding:1px 6px;border-radius:4px;font-size:.85em;color:var(--cyan);}
+
+  .eyebrow-sub{
+    font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--text-dim);margin:20px 0 8px;
+  }
+  .use-list{margin:0 0 8px;padding-left:18px;}
+  .use-list li{font-size:.88rem;color:var(--text-soft);margin-bottom:5px;line-height:1.55;}
+  .use-list li::marker{color:var(--text-dim);}
+
+  .code-block{margin:14px 0 16px;border-radius:9px;overflow:hidden;border:1px solid var(--border);}
+  .code-label{
+    background:#0b0f15;padding:8px 14px;font-family:'IBM Plex Mono',monospace;
+    font-size:.72rem;color:var(--text-dim);border-bottom:1px solid var(--border);
+  }
+  pre{margin:0;background:var(--bg-code);padding:16px 18px;overflow-x:auto;font-size:.82rem;line-height:1.65;}
+  code.language-c{color:var(--text);}
+
+  .note{border-radius:8px;padding:12px 16px;font-size:.85rem;line-height:1.6;border-left:3px solid var(--border-strong);background:rgba(255,255,255,.02);}
+  .note strong{font-weight:600;}
+  .note-warn{border-left-color:var(--danger);}
+  .note-warn strong{color:var(--danger);}
+  .note-tip{border-left-color:var(--cyan);}
+  .note-tip strong{color:var(--cyan);}
+
+  /* ---------- Tables ---------- */
+  .ref-table{width:100%;border-collapse:collapse;font-size:.85rem;margin:16px 0 8px;}
+  .ref-table th{
+    text-align:left;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:.7rem;
+    letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);
+    padding:10px 14px;border-bottom:1px solid var(--border-strong);
+  }
+  .ref-table td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);vertical-align:top;}
+  .ref-table tr:last-child td{border-bottom:none;}
+  .ref-table td.mech{color:var(--text);font-weight:500;white-space:nowrap;}
+  .ref-table tr:hover td{background:rgba(255,255,255,.02);}
+
+  /* ---------- Pitfalls ---------- */
+  .pitfall{
+    background:var(--bg-panel);border:1px solid var(--border);border-left:3px solid var(--danger);
+    border-radius:9px;padding:16px 20px;margin-bottom:12px;
+  }
+  .pitfall h3{font-size:.95rem;margin-bottom:6px;color:var(--text);}
+  .pitfall p{font-size:.86rem;color:var(--text-soft);margin-bottom:0;line-height:1.6;}
+  .pitfall p b{color:var(--text);font-weight:600;}
+
+  .section-title{font-size:1.5rem;margin-bottom:6px;}
+  .section-desc{font-size:.9rem;color:var(--text-dim);margin-bottom:22px;max-width:640px;}
+
+  footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--border);font-size:.78rem;color:var(--text-dim);}
+
+  /* ---------- Responsive ---------- */
+  @media (max-width:860px){
+    .layout{flex-direction:column;}
+    .sidebar{
+      width:100%;height:auto;position:sticky;top:0;z-index:20;
+      display:flex;align-items:center;gap:2px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;
+      padding:10px 14px;border-right:none;border-bottom:1px solid var(--border-strong);
+    }
+    .sidebar .brand,.sidebar .group-label{display:none;}
+    .sidebar nav{display:flex;gap:2px;}
+    .toc-link{white-space:nowrap;border-left:none;border-bottom:2px solid transparent;border-radius:6px 6px 0 0;}
+    .toc-link.active{border-left:none;border-bottom-color:var(--cyan);}
+    .main{padding:36px 20px 64px;}
+    .hero h1{font-size:1.7rem;}
+    .overview-grid{grid-template-columns:1fr;}
+    .primitive{padding:22px 18px 20px;}
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 26 26" fill="none">
+        <path d="M2 13h5l2-7 4 14 3-10 2 3h6" stroke="#e8a33d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand-text">RTOS Sync<span class="brand-sub">FreeRTOS reference</span></span>
+    </div>
+    <nav class="toc">
+      <div class="group-label">Tổng quan</div>
+      <a href="#overview" class="toc-link">3 nhóm nhu cầu đồng bộ</a>
+
+      <div class="group-label"><span class="dot dot-amber"></span>Loại trừ tương hỗ</div>
+      <a href="#mutex" class="toc-link"><span class="dot dot-amber"></span>Mutex &amp; Recursive Mutex</a>
+
+      <div class="group-label"><span class="dot dot-cyan"></span>Báo hiệu</div>
+      <a href="#binary-sem" class="toc-link"><span class="dot dot-cyan"></span>Binary Semaphore</a>
+      <a href="#counting-sem" class="toc-link"><span class="dot dot-cyan"></span>Counting Semaphore</a>
+      <a href="#event-group" class="toc-link"><span class="dot dot-cyan"></span>Event Group</a>
+      <a href="#task-notification" class="toc-link"><span class="dot dot-cyan"></span>Task Notification</a>
+
+      <div class="group-label"><span class="dot dot-violet"></span>Truyền dữ liệu</div>
+      <a href="#queue" class="toc-link"><span class="dot dot-violet"></span>Queue</a>
+
+      <div class="group-label"><span class="dot dot-green"></span>Kỹ thuật khác</div>
+      <a href="#critical-section" class="toc-link"><span class="dot dot-green"></span>Critical Section</a>
+      <a href="#gatekeeper" class="toc-link"><span class="dot dot-green"></span>Gatekeeper Task</a>
+
+      <div class="group-label">Tham khảo nhanh</div>
+      <a href="#decision-table" class="toc-link">Bảng quyết định</a>
+      <a href="#pitfalls" class="toc-link">Lỗi thường gặp</a>
+      <a href="#posix" class="toc-link">Đối chiếu POSIX</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+
+    <div class="eyebrow">FreeRTOS · Task Synchronization</div>
+    <div class="hero">
+      <h1>Đồng Bộ Hoá Giữa Các Task</h1>
+      <p class="hero-lead">
+        Khi nhiều task chạy song song, chúng cần phối hợp theo ba nhu cầu cơ bản:
+        <strong>loại trừ tương hỗ</strong> (ai được vào tài nguyên chung trước),
+        <strong>báo hiệu sự kiện</strong> (việc gì vừa xảy ra), và
+        <strong>truyền dữ liệu</strong> (chuyển cái gì từ task này sang task khác).
+        Chọn sai cơ chế cho từng nhu cầu là nguồn gốc phổ biến nhất của priority inversion, deadlock
+        và race condition trong firmware thực tế.
+      </p>
+    </div>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 640 180" xmlns="http://www.w3.org/2000/svg">
+        <line x1="410" y1="8" x2="410" y2="172" stroke="var(--border-strong)" stroke-width="1" stroke-dasharray="3,4"/>
+        <text x="16" y="20" font-family="IBM Plex Mono" font-size="10" letter-spacing="1" fill="#e8a33d">TASK A</text>
+        <path d="M16,38 L256,38 L256,74 L416,74 L416,38 L624,38" fill="none" stroke="#e8a33d" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        <text x="432" y="30" font-family="IBM Plex Mono" font-size="9.5" fill="#5a6472">Take() trả về → resume</text>
+
+        <text x="16" y="98" font-family="IBM Plex Mono" font-size="10" letter-spacing="1" fill="#52c7d4">ISR / TASK B</text>
+        <path d="M16,152 L398,152 L398,116 L422,116 L422,152 L624,152" fill="none" stroke="#52c7d4" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        <text x="432" y="108" font-family="IBM Plex Mono" font-size="9.5" fill="#5a6472">Give() / Notify()</text>
+
+        <circle class="pulse-ring" cx="410" cy="116" r="5" fill="none" stroke="#52c7d4" stroke-width="1.5"/>
+        <circle class="sync-pulse" cx="410" cy="116" r="3.5" fill="#52c7d4"/>
+      </svg>
+      <div class="diagram-caption">Task A block tại xSemaphoreTake() / ulTaskNotifyTake() — ISR hoặc task khác Give()/Notify() để đánh thức, gần như tức thời.</div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="dot dot-amber"></span>Loại trừ tương hỗ</div>
+      <div class="legend-item"><span class="dot dot-cyan"></span>Báo hiệu</div>
+      <div class="legend-item"><span class="dot dot-violet"></span>Truyền dữ liệu</div>
+      <div class="legend-item"><span class="dot dot-green"></span>Kỹ thuật khác</div>
+    </div>
+
+    <section id="overview">
+      <h2 id="overview-title">Ba nhóm nhu cầu đồng bộ</h2>
+      <div class="overview-grid">
+        <div class="ov-card">
+          <div class="ov-title" style="color:var(--amber)">Loại trừ tương hỗ</div>
+          <p>Nhiều task cùng cần đọc/ghi một tài nguyên chung (biến, buffer, ngoại vi). Chỉ một task được vào tại một thời điểm.</p>
+          <div class="ov-mech">Cơ chế: <b>Mutex</b></div>
+        </div>
+        <div class="ov-card">
+          <div class="ov-title" style="color:var(--cyan)">Báo hiệu</div>
+          <p>Một task/ISR cần báo cho task khác biết "có việc vừa xảy ra" — không nhất thiết kèm dữ liệu cụ thể.</p>
+          <div class="ov-mech">Cơ chế: <b>Semaphore, Event Group, Task Notification</b></div>
+        </div>
+        <div class="ov-card">
+          <div class="ov-title" style="color:var(--violet)">Truyền dữ liệu</div>
+          <p>Cần chuyển thật sự một giá trị hoặc gói dữ liệu từ task này sang task khác một cách an toàn.</p>
+          <div class="ov-mech">Cơ chế: <b>Queue</b></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= MUTEX ================= -->
+    <section id="mutex" class="primitive cat-mutex">
+      <span class="badge">Loại trừ tương hỗ</span>
+      <h2>Mutex <span class="h2-sub">&amp; Recursive Mutex</span></h2>
+      <p class="definition">Mutex là một semaphore nhị phân đặc biệt có khái niệm <code>ownership</code>: task nào <code>Take()</code> thì chỉ task đó được <code>Give()</code> lại, và FreeRTOS tự áp dụng <b>priority inheritance</b> cho task đang giữ mutex.</p>
+
+      <div class="eyebrow-sub">Dùng khi</div>
+      <ul class="use-list">
+        <li>Bảo vệ một tài nguyên hoặc cấu trúc dữ liệu dùng chung giữa nhiều task (biến toàn cục, thanh ghi ngoại vi, file...).</li>
+        <li>Cần đảm bảo tính nguyên tử cho một chuỗi thao tác đọc-sửa-ghi trên tài nguyên đó.</li>
+      </ul>
+
+      <div class="code-block">
+        <div class="code-label">shared_resource.c</div>
+        <pre><code class="language-c">SemaphoreHandle_t xMutex;
+
+void vSetupMutex(void) {
+    xMutex = xSemaphoreCreateMutex();
+}
+
+void vSharedResourceTask(void *pvParameters) {
+    for (;;) {
+        if (xSemaphoreTake(xMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+            /* Truy cập tài nguyên dùng chung */
+            xSemaphoreGive(xMutex);
+        }
+    }
+}
+
+/* Recursive mutex: dùng khi cùng 1 task cần Take() lồng nhau
+   (vd hàm A gọi hàm B, cả hai cùng cần lock) */
+SemaphoreHandle_t xRMutex = xSemaphoreCreateRecursiveMutex();
+xSemaphoreTakeRecursive(xRMutex, portMAX_DELAY);
+xSemaphoreGiveRecursive(xRMutex);</code></pre>
+      </div>
+
+      <div class="note note-warn"><strong>Lưu ý —</strong> Không dùng mutex trong ISR (khái niệm "ownership" không có ý nghĩa trong ngữ cảnh interrupt). Priority inheritance chỉ giải quyết priority inversion ở dạng "bounded" — vẫn nên giữ đoạn code trong mutex càng ngắn càng tốt.</div>
+    </section>
+
+    <!-- ================= BINARY SEMAPHORE ================= -->
+    <section id="binary-sem" class="primitive cat-signal">
+      <span class="badge">Báo hiệu</span>
+      <h2>Binary Semaphore</h2>
+      <p class="definition">Cờ hiệu nhị phân <b>không có khái niệm ownership</b> — bất kỳ task/ISR nào cũng có thể <code>Give()</code>, bất kỳ task nào cũng có thể <code>Take()</code>.</p>
+
+      <div class="eyebrow-sub">Dùng khi</div>
+      <ul class="use-list">
+        <li>Báo hiệu một sự kiện one-shot, đặc biệt là từ ISR sang task (vd: DMA nhận xong một frame qua SPI).</li>
+        <li>Đồng bộ hai task theo kiểu rendezvous đơn giản, không cần truyền dữ liệu kèm theo.</li>
+      </ul>
+
+      <div class="code-block">
+        <div class="code-label">spi_isr.c</div>
+        <pre><code class="language-c">SemaphoreHandle_t xBinSem;
+
+void vSetup(void) {
+    xBinSem = xSemaphoreCreateBinary();
+}
+
+/* Chạy trong ISR context khi SPI DMA nhận xong dữ liệu từ RC522 */
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    xSemaphoreGiveFromISR(xBinSem, &amp;xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
+
+void vProcessTask(void *pvParameters) {
+    for (;;) {
+        if (xSemaphoreTake(xBinSem, portMAX_DELAY) == pdTRUE) {
+            /* Xử lý tag RFID vừa đọc xong */
+        }
+    }
+}</code></pre>
+      </div>
+
+      <div class="note note-warn"><strong>Lưu ý —</strong> Đừng dùng binary semaphore để bảo vệ tài nguyên chia sẻ (mutual exclusion) — vì không có priority inheritance nên dễ dính priority inversion không kiểm soát được. Nếu chỉ báo hiệu 1-1 giữa ISR và một task cụ thể, Task Notification thường nhanh hơn và tốn ít RAM hơn.</div>
+    </section>
+
+    <!-- ================= COUNTING SEMAPHORE ================= -->
+    <section id="counting-sem" class="primitive cat-signal">
+      <span class="badge">Báo hiệu</span>
+      <h2>Counting Semaphore</h2>
+      <p class="definition">Semaphore giữ một bộ đếm giới hạn trong <code>[0, uxMaxCount]</code> — <code>Give()</code> tăng đếm, <code>Take()</code> giảm đếm và block nếu đếm bằng 0.</p>
+
+      <div class="eyebrow-sub">Dùng khi</div>
+      <ul class="use-list">
+        <li>Quản lý một pool tài nguyên có N phần tử (N buffer DMA, N kết nối, N slot trống trong mảng...).</li>
+        <li>Đếm số sự kiện đã xảy ra mà task xử lý có thể chưa kịp tiêu thụ hết.</li>
+      </ul>
+
+      <div class="code-block">
+        <div class="code-label">buffer_pool.c</div>
+        <pre><code class="language-c">SemaphoreHandle_t xPoolSem;
+#define NUM_BUFFERS 4
+
+void vSetup(void) {
+    xPoolSem = xSemaphoreCreateCounting(NUM_BUFFERS, NUM_BUFFERS);
+}
+
+void vAcquireBuffer(void) {
+    xSemaphoreTake(xPoolSem, portMAX_DELAY);  /* giảm đếm, chờ nếu hết buffer */
+    /* lấy 1 buffer từ pool */
+}
+
+void vReleaseBuffer(void) {
+    /* trả buffer về pool */
+    xSemaphoreGive(xPoolSem);  /* tăng đếm */
+}</code></pre>
+      </div>
+
+      <div class="note note-tip"><strong>Gợi ý —</strong> Counting semaphore chỉ đếm "số lượng khả dụng", không mang dữ liệu. Nếu task cần biết cụ thể buffer/gói tin nào đã sẵn sàng, dùng Queue thay vì chỉ đếm.</div>
+    </section>
+
+    <!-- ================= QUEUE ================= -->
+    <section id="queue" class="primitive cat-data">
+      <span class="badge">Truyền dữ liệu</span>
+      <h2>Queue</h2>
+      <p class="definition">Hàng đợi FIFO <b>copy dữ liệu</b> (theo giá trị, không phải con trỏ) an toàn giữa các task/ISR có ngữ cảnh thực thi khác nhau.</p>
+
+      <div class="eyebrow-sub">Dùng khi</div>
+      <ul class="use-list">
+        <li>Cần truyền dữ liệu thật sự, không chỉ báo hiệu — mô hình producer/consumer kinh điển.</li>
+        <li>Nhiều producer cùng ghi vào một consumer duy nhất, hoặc ngược lại.</li>
+      </ul>
+
+      <div class="code-block">
+        <div class="code-label">rfid_pipeline.c</div>
+        <pre><code class="language-c">QueueHandle_t xDataQueue;
+
+typedef struct {
+    uint8_t  uid[4];
+    uint32_t timestamp;
+} RfidTag_t;
+
+void vSetup(void) {
+    xDataQueue = xQueueCreate(8, sizeof(RfidTag_t));
+}
+
+/* Task đọc SPI, gửi dữ liệu vào queue */
+void vReaderTask(void *pvParameters) {
+    RfidTag_t tag;
+    for (;;) {
+        /* ... đọc tag từ RC522 qua SPI ... */
+        xQueueSend(xDataQueue, &amp;tag, pdMS_TO_TICKS(50));
+    }
+}
+
+/* Task xử lý, nhận dữ liệu từ queue */
+void vProcessorTask(void *pvParameters) {
+    RfidTag_t tag;
+    for (;;) {
+        if (xQueueReceive(xDataQueue, &amp;tag, portMAX_DELAY) == pdTRUE) {
+            /* xử lý tag */
+        }
+    }
+}</code></pre>
+      </div>
+
+      <div class="note note-tip"><strong>Gợi ý —</strong> Dùng <code>xQueueSendFromISR</code> / <code>xQueueReceiveFromISR</code> trong ISR (nhớ <code>portYIELD_FROM_ISR</code> sau đó). Queue độ dài 1 kết hợp <code>xQueueOverwrite()</code> tạo thành một "mailbox" giữ giá trị mới nhất — hữu ích cho dữ liệu kiểu trạng thái (vd nhiệt độ mới nhất) thay vì phải xử lý từng giá trị cũ.</div>
+    </section>
+
+    <!-- ================= EVENT GROUP ================= -->
+    <section id="event-group" class="primitive cat-signal">
+      <span class="badge">Báo hiệu</span>
+      <h2>Event Group</h2>
+      <p class="definition">Một nhóm tối đa 24 bit dùng làm cờ hiệu, cho phép một hoặc nhiều task chờ tổ hợp <b>AND/OR</b> của nhiều điều kiện từ nhiều nguồn khác nhau.</p>
+
+      <div class="eyebrow-sub">Dùng khi</div>
+      <ul class="use-list">
+        <li>Một task cần chờ nhiều điều kiện cùng lúc trước khi tiếp tục (vd: chờ cả Wi-Fi connected và sensor calibrated).</li>
+        <li>Nhiều task khác nhau cùng cần biết về cùng một sự kiện (broadcast), điều mà Task Notification không làm được.</li>
+      </ul>
+
+      <div class="code-block">
+        <div class="code-label">sync_flags.c</div>
+        <pre><code class="language-c">EventGroupHandle_t xEventGroup;
+#define BIT_WIFI_CONNECTED   (1 &lt;&lt; 0)
+#define BIT_SENSOR_READY     (1 &lt;&lt; 1)
+
+void vSetup(void) {
+    xEventGroup = xEventGroupCreate();
+}
+
+void vWifiTask(void *pvParameters) {
+    /* ... kết nối wifi xong ... */
+    xEventGroupSetBits(xEventGroup, BIT_WIFI_CONNECTED);
+}
+
+void vMainTask(void *pvParameters) {
+    /* Chờ CẢ HAI điều kiện (AND) trước khi tiếp tục */
+    EventBits_t bits = xEventGroupWaitBits(
+        xEventGroup,
+        BIT_WIFI_CONNECTED | BIT_SENSOR_READY,
+        pdTRUE,   /* xoá bit sau khi nhận */
+        pdTRUE,   /* true = AND (chờ tất cả), false = OR (chờ 1 trong các bit) */
+        portMAX_DELAY);
+}</code></pre>
+      </div>
+
+      <div class="note note-warn"><strong>Lưu ý —</strong> <code>xEventGroupSetBitsFromISR</code> không set bit trực tiếp — nó nhờ Timer Service (daemon) task xử lý nên có độ trễ nhỏ. Nếu cần tốc độ tối đa từ ISR cho một target cụ thể, Task Notification (chế độ <code>eSetBits</code>) nhẹ hơn.</div>
+    </section>
+
+    <!-- ================= TASK NOTIFICATION ================= -->
+    <section id="task-notification" class="primitive cat-signal">
+      <span class="badge">Báo hiệu</span>
+      <h2>Task Notification</h2>
+      <p class="definition">Mỗi task có sẵn một giá trị 32-bit tích hợp ngay trong TCB — <b>không cần tạo object riêng</b> như semaphore hay queue, nên nhanh hơn và tốn ít RAM hơn đáng kể.</p>
+
+      <div class="eyebrow-sub">Dùng khi</div>
+      <ul class="use-list">
+        <li>Báo hiệu 1-1 (một nguồn → một task cụ thể) và cần tốc độ/hiệu năng tối đa.</li>
+        <li>Có thể thay thế binary semaphore, counting semaphore (<code>xClearCountOnExit = pdFALSE</code>), event group dạng 32-bit (<code>eSetBits</code>), hoặc queue độ dài 1 (<code>eSetValueWithOverwrite</code>).</li>
+      </ul>
+
+      <div class="code-block">
+        <div class="code-label">notify_task.c</div>
+        <pre><code class="language-c">TaskHandle_t xProcessTaskHandle;
+
+/* ISR: gửi thông báo nhẹ, không cần tạo object riêng */
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    vTaskNotifyGiveFromISR(xProcessTaskHandle, &amp;xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
+
+void vProcessTask(void *pvParameters) {
+    xProcessTaskHandle = xTaskGetCurrentTaskHandle();
+    for (;;) {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  /* giống binary semaphore, nhanh hơn */
+        /* xử lý */
+    }
+}</code></pre>
+      </div>
+
+      <div class="note note-warn"><strong>Lưu ý —</strong> Giới hạn lớn nhất: chỉ nhắm tới đúng một task (theo <code>TaskHandle_t</code>), không dùng được khi nhiều task cùng cần chờ chung một sự kiện — lúc đó quay lại Event Group hoặc semaphore.</div>
+    </section>
+
+    <!-- ================= CRITICAL SECTION ================= -->
+    <section id="critical-section" class="primitive cat-other">
+      <span class="badge">Kỹ thuật khác</span>
+      <h2>Critical Section <span class="h2-sub">&amp; Suspend Scheduler</span></h2>
+      <p class="definition"><code>taskENTER_CRITICAL()</code> / <code>taskEXIT_CRITICAL()</code> tắt ngắt để đảm bảo một đoạn code chạy nguyên tử, không bị chen ngang bởi ISR hay context switch.</p>
+
+      <div class="eyebrow-sub">Dùng khi</div>
+      <ul class="use-list">
+        <li>Thao tác cực ngắn trên một biến/cấu trúc đơn giản, kể cả khi cần an toàn với chính ISR.</li>
+        <li>Chi phí tạo và quản lý một mutex riêng cho thao tác đó là không đáng.</li>
+      </ul>
+
+      <div class="code-block">
+        <div class="code-label">atomic_counter.c</div>
+        <pre><code class="language-c">uint32_t sharedCounter;
+
+void vIncrementCounter(void) {
+    taskENTER_CRITICAL();
+    sharedCounter++;   /* thao tác cực ngắn, an toàn với cả ISR */
+    taskEXIT_CRITICAL();
+}</code></pre>
+      </div>
+
+      <div class="note note-warn"><strong>Lưu ý —</strong> Không bao giờ gọi API có thể block (<code>vTaskDelay</code>, <code>xSemaphoreTake</code> với timeout &gt; 0...) bên trong critical section. Giữ càng ngắn càng tốt — mỗi micro giây trong đó cộng thêm vào interrupt latency của toàn hệ thống. Cần thao tác dài hơn nhưng không chặn ISR? Dùng <code>vTaskSuspendAll()</code> / <code>xTaskResumeAll()</code> — tạm dừng scheduler (không context-switch) nhưng ISR vẫn chạy bình thường.</div>
+    </section>
+
+    <!-- ================= GATEKEEPER ================= -->
+    <section id="gatekeeper" class="primitive cat-other">
+      <span class="badge">Kỹ thuật khác</span>
+      <h2>Gatekeeper Task</h2>
+      <p class="definition">Thay vì nhiều task tranh nhau một mutex để truy cập tài nguyên, gom mọi yêu cầu qua một Queue — chỉ một task duy nhất ("gatekeeper") thực sự chạm vào tài nguyên đó.</p>
+
+      <div class="eyebrow-sub">Dùng khi</div>
+      <ul class="use-list">
+        <li>Serialize quyền truy cập một tài nguyên (UART, flash, EEPROM...) mà không muốn quản lý mutex/priority inversion trực tiếp.</li>
+        <li>Điển hình nhất: gom log từ nhiều task về một điểm ghi UART duy nhất.</li>
+      </ul>
+
+      <div class="code-block">
+        <div class="code-label">log_gatekeeper.c</div>
+        <pre><code class="language-c">#define LOG_MSG_LEN 96
+typedef struct { char text[LOG_MSG_LEN]; } LogMsg_t;
+
+QueueHandle_t xLogQueue;  /* item = LogMsg_t */
+
+/* Task duy nhất được quyền dùng UART log */
+void vLogGatekeeperTask(void *pvParameters) {
+    LogMsg_t msg;
+    for (;;) {
+        if (xQueueReceive(xLogQueue, &amp;msg, portMAX_DELAY) == pdTRUE) {
+            HAL_UART_Transmit(&amp;huart1, (uint8_t *)msg.text, strlen(msg.text), 100);
+        }
+    }
+}
+
+/* Các task khác chỉ gửi message vào queue, không đụng UART trực tiếp */
+void vLog(const char *fmt) {
+    LogMsg_t msg;
+    strncpy(msg.text, fmt, LOG_MSG_LEN - 1);
+    msg.text[LOG_MSG_LEN - 1] = '\0';
+    xQueueSend(xLogQueue, &amp;msg, 0);
+}</code></pre>
+      </div>
+
+      <div class="note note-tip"><strong>Gợi ý —</strong> Đánh đổi là thêm một task + một queue (tốn RAM hơn một mutex đơn thuần), nhưng đổi lại thiết kế rất rõ ràng, dễ audit, và loại bỏ hoàn toàn priority inversion vì không có "lock" nào cả.</div>
+    </section>
+
+    <!-- ================= DECISION TABLE ================= -->
+    <section id="decision-table">
+      <h2 class="section-title">Bảng quyết định nhanh</h2>
+      <p class="section-desc">Tra nhanh theo nhu cầu thực tế khi thiết kế task.</p>
+      <table class="ref-table">
+        <thead><tr><th>Nhu cầu</th><th>Cơ chế</th><th>Vì sao</th></tr></thead>
+        <tbody>
+          <tr><td>Bảo vệ tài nguyên/dữ liệu dùng chung</td><td class="mech"><span class="dot dot-amber" style="display:inline-block;margin-right:6px"></span>Mutex</td><td>Có priority inheritance, tránh priority inversion không kiểm soát</td></tr>
+          <tr><td>ISR báo hiệu 1 sự kiện cho 1 task cụ thể</td><td class="mech"><span class="dot dot-cyan" style="display:inline-block;margin-right:6px"></span>Task Notification</td><td>Nhanh nhất, không cần tạo object riêng</td></tr>
+          <tr><td>Quản lý pool tài nguyên (N slot)</td><td class="mech"><span class="dot dot-cyan" style="display:inline-block;margin-right:6px"></span>Counting Semaphore</td><td>Đếm số lượng khả dụng tự nhiên</td></tr>
+          <tr><td>Truyền dữ liệu thật sự giữa các task</td><td class="mech"><span class="dot dot-violet" style="display:inline-block;margin-right:6px"></span>Queue</td><td>Copy dữ liệu an toàn giữa các ngữ cảnh khác nhau</td></tr>
+          <tr><td>1 task chờ nhiều điều kiện từ nhiều nguồn</td><td class="mech"><span class="dot dot-cyan" style="display:inline-block;margin-right:6px"></span>Event Group</td><td>Hỗ trợ AND/OR trên nhiều bit, broadcast được</td></tr>
+          <tr><td>Serialize truy cập tài nguyên (UART, flash...)</td><td class="mech"><span class="dot dot-green" style="display:inline-block;margin-right:6px"></span>Gatekeeper Task</td><td>Chỉ 1 task chạm tài nguyên → không cần lock</td></tr>
+          <tr><td>Thao tác cực ngắn trên biến đơn giản</td><td class="mech"><span class="dot dot-green" style="display:inline-block;margin-right:6px"></span>Critical Section</td><td>Overhead thấp nhất, nhưng phải thực sự ngắn</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ================= PITFALLS ================= -->
+    <section id="pitfalls">
+      <h2 class="section-title">Lỗi thường gặp</h2>
+      <p class="section-desc">Phần lớn bug đồng bộ trong RTOS đến từ 5 nguyên nhân này.</p>
+
+      <div class="pitfall">
+        <h3>Priority Inversion</h3>
+        <p>Dùng binary semaphore như một lock cho tài nguyên chia sẻ giữa các task khác priority. Task priority thấp giữ semaphore có thể bị task priority trung bình chen ngang, khiến task priority cao phải chờ vô thời hạn. <b>Fix:</b> dùng Mutex (có priority inheritance) khi cần mutual exclusion.</p>
+      </div>
+      <div class="pitfall">
+        <h3>Deadlock</h3>
+        <p>Hai task cùng cần giữ hai mutex nhưng lock theo thứ tự ngược nhau. <b>Fix:</b> luôn lock theo một thứ tự cố định, xuyên suốt toàn bộ codebase.</p>
+      </div>
+      <div class="pitfall">
+        <h3>Quên dùng biến thể <code>FromISR</code></h3>
+        <p>Gọi <code>xQueueSend</code> thay vì <code>xQueueSendFromISR</code> bên trong interrupt handler → assert hoặc hành vi không xác định. <b>Fix:</b> luôn dùng API có hậu tố <code>FromISR</code> trong ISR, và gọi <code>portYIELD_FROM_ISR()</code> ngay sau đó nếu cần.</p>
+      </div>
+      <div class="pitfall">
+        <h3>Giữ Critical Section quá lâu</h3>
+        <p>Tăng interrupt latency của toàn hệ thống, có thể khiến các ràng buộc thời gian thực khác bị miss deadline. <b>Fix:</b> giữ critical section ở mức vài dòng lệnh, không hơn.</p>
+      </div>
+      <div class="pitfall">
+        <h3>Dùng Mutex trong ISR</h3>
+        <p>Mutex có khái niệm "ownership" gắn với một task cụ thể, nên không có ý nghĩa (và không được hỗ trợ) trong ngữ cảnh ISR. <b>Fix:</b> dùng binary semaphore hoặc task notification để báo hiệu từ ISR.</p>
+      </div>
+    </section>
+
+    <!-- ================= POSIX COMPARISON ================= -->
+    <section id="posix">
+      <h2 class="section-title">Đối chiếu với POSIX</h2>
+      <p class="section-desc">Nếu đã quen IPC trên Linux, đây là bảng liên tưởng khái niệm tương đương.</p>
+      <table class="ref-table">
+        <thead><tr><th>FreeRTOS</th><th>POSIX / Linux tương đương</th></tr></thead>
+        <tbody>
+          <tr><td class="mech">Mutex</td><td><code style="background:var(--bg-inline);padding:2px 7px;border-radius:4px;color:var(--cyan)">pthread_mutex_t</code></td></tr>
+          <tr><td class="mech">Counting Semaphore</td><td><code style="background:var(--bg-inline);padding:2px 7px;border-radius:4px;color:var(--cyan)">sem_t</code> (POSIX semaphore)</td></tr>
+          <tr><td class="mech">Queue</td><td>POSIX message queue (<code style="background:var(--bg-inline);padding:2px 7px;border-radius:4px;color:var(--cyan)">mq_</code>) hoặc pipe</td></tr>
+          <tr><td class="mech">Event Group</td><td>Tương tự tập hợp nhiều condition variable theo bit-mask</td></tr>
+          <tr><td class="mech">Task Notification</td><td>Không có tương đương trực tiếp — đặc thù FreeRTOS, nhẹ hơn tất cả</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>Reference nội bộ dựa trên FreeRTOS Kernel API — kiểm tra lại version cụ thể trong dự án trước khi dùng, một số API (vd multi-index task notification) yêu cầu FreeRTOS V10.4 trở lên.</footer>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+  if (window.hljs) {
+    try { hljs.highlightAll(); } catch (e) {}
+  }
+
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc-link'));
+    var sections = links
+      .map(function (l) { return document.querySelector(l.getAttribute('href')); })
+      .filter(Boolean);
+
+    if (!sections.length || !('IntersectionObserver' in window)) return;
+
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        var link = links[sections.indexOf(entry.target)];
+        if (!link) return;
+        if (entry.isIntersecting) {
+          links.forEach(function (l) { l.classList.remove('active'); });
+          link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-15% 0px -75% 0px', threshold: 0 });
+
+    sections.forEach(function (s) { observer.observe(s); });
+  })();
+</script>
+</body>
+</html>

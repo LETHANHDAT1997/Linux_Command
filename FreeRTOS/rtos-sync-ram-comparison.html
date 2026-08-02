@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>So Sánh RAM Giữa Các Cơ Chế Đồng Bộ — RTOS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0e13; --bg-panel:#10151d; --bg-code:#0d1117; --bg-inline:#161d27;
+    --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.16);
+    --text:#e8ecf1; --text-soft:#93a0af; --text-dim:#5a6472;
+    --amber:#e8a33d; --amber-dim:rgba(232,163,61,.14);
+    --cyan:#52c7d4; --cyan-dim:rgba(82,199,212,.14);
+    --violet:#a78bd1; --violet-dim:rgba(167,139,209,.14);
+    --green:#7fb069; --green-dim:rgba(127,176,105,.14);
+    --gray:#7c8794; --gray-dim:rgba(124,135,148,.14);
+    --danger:#e5637a;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif;margin:0;color:var(--text);}
+  p{margin:0 0 12px;}
+  a{color:inherit;text-decoration:none;}
+  code,pre{font-family:'IBM Plex Mono',monospace;}
+  ::selection{background:var(--cyan-dim);color:var(--text);}
+  a:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:3px;}
+
+  .layout{display:flex;min-height:100vh;max-width:1280px;margin:0 auto;}
+
+  .sidebar{width:272px;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg-panel);border-right:1px solid var(--border);padding:28px 20px 40px;scrollbar-width:thin;scrollbar-color:var(--border-strong) transparent;}
+  .sidebar::-webkit-scrollbar{width:6px;}
+  .sidebar::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:3px;}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:28px;padding:0 4px;}
+  .brand-mark{width:26px;height:26px;flex-shrink:0;}
+  .brand-text{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.92rem;letter-spacing:.02em;line-height:1.15;}
+  .brand-sub{display:block;font-family:'IBM Plex Mono',monospace;font-weight:400;font-size:.66rem;color:var(--text-dim);letter-spacing:.04em;margin-top:1px;}
+  .group-label{font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin:20px 4px 8px;}
+  .group-label:first-of-type{margin-top:4px;}
+  .toc-link{display:flex;align-items:center;gap:9px;padding:7px 10px;margin:1px 0;border-radius:6px;font-size:.85rem;color:var(--text-soft);border-left:2px solid transparent;transition:background .15s,color .15s;}
+  .toc-link:hover{background:rgba(255,255,255,.04);color:var(--text);}
+  .toc-link.active{background:rgba(255,255,255,.05);color:var(--text);border-left-color:var(--cyan);}
+
+  .main{flex:1;min-width:0;padding:60px 56px 100px;max-width:840px;}
+
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.12em;color:var(--cyan);text-transform:uppercase;margin-bottom:14px;}
+  .hero h1{font-size:2.15rem;font-weight:700;letter-spacing:-.01em;margin-bottom:18px;}
+  .hero-lead{font-size:1.02rem;color:var(--text-soft);max-width:660px;margin-bottom:32px;}
+  .hero-lead strong{color:var(--text);font-weight:600;}
+
+  .insight{background:var(--cyan-dim);border:1px solid rgba(82,199,212,.3);border-radius:10px;padding:18px 22px;margin-bottom:44px;}
+  .insight-label{font-family:'IBM Plex Mono',monospace;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px;}
+  .insight p{font-size:.92rem;color:var(--text);line-height:1.65;margin:0;}
+  .insight code{background:rgba(0,0,0,.25);padding:1px 6px;border-radius:4px;color:var(--cyan);}
+
+  .section-title{font-size:1.5rem;margin-bottom:6px;}
+  .section-desc{font-size:.9rem;color:var(--text-dim);margin-bottom:24px;max-width:640px;}
+  section{margin-bottom:56px;scroll-margin-top:24px;}
+
+  /* ---- bar chart ---- */
+  .chart-panel{background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:26px 26px 22px;}
+  .chart-row{display:flex;align-items:center;gap:14px;padding:9px 0;}
+  .chart-label{width:230px;flex-shrink:0;font-size:.83rem;color:var(--text-soft);}
+  .chart-label b{color:var(--text);font-weight:600;}
+  .chart-track{flex:1;height:20px;background:rgba(255,255,255,.03);border-radius:5px;position:relative;}
+  .chart-bar{height:100%;border-radius:5px;min-width:10px;}
+  .chart-value{width:150px;flex-shrink:0;font-family:'IBM Plex Mono',monospace;font-size:.75rem;color:var(--text-dim);text-align:right;}
+  .chart-divider{border:none;border-top:1px dashed var(--border);margin:10px 0;}
+  .chart-note{font-size:.8rem;color:var(--text-dim);margin-top:16px;padding-top:14px;border-top:1px solid var(--border);line-height:1.6;}
+
+  /* ---- tables ---- */
+  .ref-table{width:100%;border-collapse:collapse;font-size:.85rem;margin:0;}
+  .ref-table th{text-align:left;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);padding:10px 14px;border-bottom:1px solid var(--border-strong);}
+  .ref-table td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text-soft);vertical-align:top;}
+  .ref-table tr:last-child td{border-bottom:none;}
+  .ref-table td.mech{color:var(--text);font-weight:500;white-space:nowrap;}
+  .ref-table td.ram{font-family:'IBM Plex Mono',monospace;color:var(--text);white-space:nowrap;}
+  .ref-table tr:hover td{background:rgba(255,255,255,.02);}
+
+  .note{border-radius:8px;padding:14px 18px;font-size:.85rem;line-height:1.6;border-left:3px solid var(--border-strong);background:rgba(255,255,255,.02);margin-top:18px;}
+  .note strong{font-weight:600;}
+  .note-tip{border-left-color:var(--cyan);}
+  .note-tip strong{color:var(--cyan);}
+  .note-warn{border-left-color:var(--danger);}
+  .note-warn strong{color:var(--danger);}
+
+  .code-block{margin:16px 0 0;border-radius:9px;overflow:hidden;border:1px solid var(--border);}
+  .code-label{background:#0b0f15;padding:8px 14px;font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--text-dim);border-bottom:1px solid var(--border);}
+  pre{margin:0;background:var(--bg-code);padding:16px 18px;overflow-x:auto;font-size:.82rem;line-height:1.65;}
+  code.language-c{color:var(--text);}
+
+  .priority-list{list-style:none;padding:0;margin:0;}
+  .priority-list li{display:flex;gap:14px;padding:13px 0;border-bottom:1px solid var(--border);font-size:.88rem;color:var(--text-soft);line-height:1.6;}
+  .priority-list li:last-child{border-bottom:none;}
+  .priority-list .p-num{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:var(--green-dim);color:var(--green);font-family:'IBM Plex Mono',monospace;font-size:.72rem;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+  .priority-list b{color:var(--text);font-weight:600;}
+
+  footer{margin-top:20px;padding-top:20px;border-top:1px solid var(--border);font-size:.78rem;color:var(--text-dim);}
+
+  @media (max-width:860px){
+    .layout{flex-direction:column;}
+    .sidebar{width:100%;height:auto;position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:2px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;padding:10px 14px;border-right:none;border-bottom:1px solid var(--border-strong);}
+    .sidebar .brand,.sidebar .group-label{display:none;}
+    .sidebar nav{display:flex;gap:2px;}
+    .toc-link{white-space:nowrap;border-left:none;border-bottom:2px solid transparent;border-radius:6px 6px 0 0;}
+    .toc-link.active{border-left:none;border-bottom-color:var(--cyan);}
+    .main{padding:36px 20px 64px;}
+    .hero h1{font-size:1.55rem;}
+    .chart-label{width:120px;font-size:.76rem;}
+    .chart-value{width:90px;font-size:.68rem;}
+    .chart-panel{padding:18px 14px;}
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 26 26" fill="none">
+        <path d="M2 13h5l2-7 4 14 3-10 2 3h6" stroke="#e8a33d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand-text">RTOS Sync<span class="brand-sub">So sánh RAM</span></span>
+    </div>
+    <nav class="toc">
+      <div class="group-label">Tổng quan</div>
+      <a href="#key-insight" class="toc-link">Sự thật cốt lõi</a>
+      <a href="#chart" class="toc-link">So sánh trực quan</a>
+
+      <div class="group-label">Chi tiết</div>
+      <a href="#table" class="toc-link">Bảng chi tiết</a>
+      <a href="#measure" class="toc-link">Đo chính xác trên project</a>
+      <a href="#stream-buffer" class="toc-link">Bonus: Stream Buffer</a>
+
+      <div class="group-label">Áp dụng</div>
+      <a href="#ram-priority" class="toc-link">Khi RAM là ưu tiên</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+
+    <div class="eyebrow">RTOS Sync · RAM Comparison</div>
+    <div class="hero">
+      <h1>So Sánh RAM Giữa Các Cơ Chế Đồng Bộ</h1>
+      <p class="hero-lead">
+        Trên STM32 bare-metal, SRAM thường là tài nguyên khan hiếm hơn cả CPU. Chọn cơ chế đồng bộ
+        không chỉ là chuyện đúng ngữ nghĩa — nó còn là ngân sách RAM. Dưới đây là so sánh dựa trên
+        cấu trúc thật của FreeRTOS kernel, kèm cách tự đo chính xác trên đúng target của bạn.
+      </p>
+    </div>
+
+    <div class="insight" id="key-insight">
+      <div class="insight-label">Sự thật ít ai để ý</div>
+      <p>Trong FreeRTOS, <code>Mutex</code>, <code>Binary Semaphore</code>, <code>Counting Semaphore</code> và <code>Queue</code> đều được cài đặt trên <b>cùng một cấu trúc nền</b> (<code>Queue_t</code>) — <code>StaticSemaphore_t</code> thực chất chỉ là một alias của <code>StaticQueue_t</code> trong source của FreeRTOS. Nói cách khác: semaphore và mutex, về bản chất, là một Queue với item size&nbsp;=&nbsp;0. Đây là lý do RAM của bốn cơ chế này gần như giống hệt nhau.</p>
+    </div>
+
+    <!-- ================= CHART ================= -->
+    <section id="chart">
+      <h2 class="section-title">So sánh trực quan</h2>
+      <p class="section-desc">Thanh càng dài, RAM càng lớn. Lưu ý thang đo — các cơ chế đồng bộ nhỏ hơn một task trọn vẹn rất nhiều.</p>
+
+      <div class="chart-panel">
+        <div class="chart-row">
+          <div class="chart-label"><b>Task Notification</b></div>
+          <div class="chart-track"></div>
+          <div class="chart-value">~0 B (có sẵn trong TCB)</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">Event Group</div>
+          <div class="chart-track"><div class="chart-bar" style="width:3%;background:var(--cyan)"></div></div>
+          <div class="chart-value">~24 B</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">Mutex</div>
+          <div class="chart-track"><div class="chart-bar" style="width:6.2%;background:var(--amber)"></div></div>
+          <div class="chart-value">~80 B</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">Binary Semaphore</div>
+          <div class="chart-track"><div class="chart-bar" style="width:6.2%;background:var(--cyan)"></div></div>
+          <div class="chart-value">~80 B</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">Counting Semaphore</div>
+          <div class="chart-track"><div class="chart-bar" style="width:6.2%;background:var(--cyan)"></div></div>
+          <div class="chart-value">~80 B</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">Queue <span style="color:var(--text-dim)">(depth 8, item 8B)</span></div>
+          <div class="chart-track"><div class="chart-bar" style="width:11%;background:var(--violet)"></div></div>
+          <div class="chart-value">~144 B</div>
+        </div>
+        <hr class="chart-divider">
+        <div class="chart-row">
+          <div class="chart-label">1 Task nhỏ <span style="color:var(--text-dim)">(TCB + stack)</span></div>
+          <div class="chart-track"><div class="chart-bar" style="width:85%;background:var(--gray)"></div></div>
+          <div class="chart-value">~1.1 KB</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">Gatekeeper Task <span style="color:var(--text-dim)">(pattern)</span></div>
+          <div class="chart-track"><div class="chart-bar" style="width:100%;background:var(--green)"></div></div>
+          <div class="chart-value">~1.2–1.5 KB</div>
+        </div>
+
+        <div class="chart-note">Số liệu minh hoạ cho cấu hình 32-bit phổ biến (GCC, <code>configUSE_TRACE_FACILITY=0</code>, không dùng queue sets) — con số thực tế phụ thuộc toolchain, alignment và <code>FreeRTOSConfig.h</code> của bạn. Xem mục "Đo chính xác trên project" bên dưới để lấy số thật.</div>
+      </div>
+    </section>
+
+    <!-- ================= TABLE ================= -->
+    <section id="table">
+      <h2 class="section-title">Bảng chi tiết</h2>
+      <p class="section-desc">Vì sao mỗi cơ chế tốn từng đó RAM, và nó scale theo gì.</p>
+      <table class="ref-table">
+        <thead><tr><th>Cơ chế</th><th>RAM ước tính</th><th>Scale theo</th><th>Ghi chú</th></tr></thead>
+        <tbody>
+          <tr><td class="mech">Task Notification</td><td class="ram">~0 B</td><td>Không scale — cố định</td><td>Không tạo object mới, dùng field có sẵn trong TCB (bật mặc định)</td></tr>
+          <tr><td class="mech">Event Group</td><td class="ram">~24 B</td><td>Không scale theo số task chờ</td><td>Chỉ 1 bit-field + 1 wait-list, không có cơ chế đọc/ghi như Queue</td></tr>
+          <tr><td class="mech">Mutex</td><td class="ram">~80 B</td><td>Cố định</td><td>Cùng struct nền với Queue, item size = 0, có priority inheritance</td></tr>
+          <tr><td class="mech">Binary Semaphore</td><td class="ram">~80 B</td><td>Cố định</td><td>Cùng struct nền với Mutex — nhưng KHÔNG có priority inheritance</td></tr>
+          <tr><td class="mech">Counting Semaphore</td><td class="ram">~80 B</td><td>Cố định</td><td>Giá trị đếm dùng lại field có sẵn của Queue_t, không cần thêm bộ nhớ</td></tr>
+          <tr><td class="mech">Queue</td><td class="ram">~80 B + N×item</td><td>Tuyến tính theo depth × item size</td><td>Cơ chế duy nhất mà RAM phụ thuộc trực tiếp vào cấu hình bạn chọn</td></tr>
+          <tr><td class="mech">Task (chỉ TCB)</td><td class="ram">~90 B</td><td>Gần như cố định</td><td>Không phụ thuộc cơ chế đồng bộ nào đang dùng</td></tr>
+          <tr><td class="mech">Stack của Task</td><td class="ram">Tuỳ bạn cấu hình</td><td>Tuỳ khối lượng công việc</td><td>Luôn là phần lớn nhất trong ngân sách RAM — không phải cơ chế đồng bộ</td></tr>
+          <tr><td class="mech">Gatekeeper Task</td><td class="ram">= Task + Queue</td><td>Cộng dồn theo thành phần</td><td>Không phải 1 object mới — là tổng chi phí của các mảnh ghép</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note note-tip"><strong>Gợi ý —</strong> Dùng các hàm <code>*CreateStatic()</code> (<code>xQueueCreateStatic</code>, <code>xSemaphoreCreateBinaryStatic</code>, <code>xTaskCreateStatic</code>...) thay vì bản dynamic để tránh thêm ~8B overhead mỗi lần cấp phát của heap_4 và loại bỏ rủi ro phân mảnh heap — đánh đổi là bạn phải tự cấp phát buffer tại compile-time.</div>
+    </section>
+
+    <!-- ================= MEASURE ================= -->
+    <section id="measure">
+      <h2 class="section-title">Đo chính xác trên project của bạn</h2>
+      <p class="section-desc">Mọi con số ở trên chỉ là ước tính — cách đáng tin cậy duy nhất là đo trên đúng target + đúng FreeRTOSConfig.h.</p>
+
+      <div class="code-block">
+        <div class="code-label">measure_ram.c</div>
+        <pre><code class="language-c">/* In ra (hoặc breakpoint rồi xem giá trị) — cho số byte CHÍNH XÁC
+   trên đúng target và đúng FreeRTOSConfig.h của bạn, vì
+   StaticTask_t/StaticQueue_t/StaticEventGroup_t được kernel đảm bảo
+   trùng kích thước với struct nội bộ thật (kiểm tra bằng configASSERT). */
+printf("StaticTask_t:       %u bytes\n", (unsigned)sizeof(StaticTask_t));
+printf("StaticQueue_t:      %u bytes\n", (unsigned)sizeof(StaticQueue_t));
+printf("StaticEventGroup_t: %u bytes\n", (unsigned)sizeof(StaticEventGroup_t));
+
+/* Stack thực sự đã dùng, không phải đoán - gọi sau khi task chạy một lúc */
+UBaseType_t uxHighWaterMark = uxTaskGetStackHighWaterMark(NULL);</code></pre>
+      </div>
+
+      <ul class="priority-list" style="margin-top:16px">
+        <li><div class="p-num">1</div><div><b>sizeof(StaticX_t)</b> — nhanh nhất, không cần chạy target thật nếu chỉ cần build được (số liệu tính ở compile-time theo đúng FreeRTOSConfig.h của bạn).</div></li>
+        <li><div class="p-num">2</div><div><b>uxTaskGetStackHighWaterMark(NULL)</b> — đo mức stack cao nhất từng dùng thực tế, thay vì đoán theo configMINIMAL_STACK_SIZE.</div></li>
+        <li><div class="p-num">3</div><div><b>vPortGetHeapStats() / xPortGetFreeHeapSize()</b> — theo dõi heap tổng nếu dùng heap_4/heap_5 (allocation dynamic).</div></li>
+        <li><div class="p-num">4</div><div><b>Linker map file (.map)</b> — xem trực tiếp kích thước từng static object trong <code>.bss</code>/<code>.data</code>.</div></li>
+      </ul>
+    </section>
+
+    <!-- ================= STREAM BUFFER BONUS ================= -->
+    <section id="stream-buffer">
+      <h2 class="section-title">Bonus: Stream Buffer / Message Buffer</h2>
+      <p class="section-desc">Không nằm trong 3 nhóm chính đã bàn trước đây, nhưng đáng cân nhắc nếu RAM là ưu tiên.</p>
+      <p style="font-size:.9rem;color:var(--text-soft);max-width:680px">Nếu bạn cần truyền một dòng byte liên tục (không phải từng gói dữ liệu rời rạc) — ví dụ dữ liệu audio hoặc log thô — <code style="background:var(--bg-inline);padding:1px 6px;border-radius:4px;color:var(--cyan)">Stream Buffer</code> (hoặc <code style="background:var(--bg-inline);padding:1px 6px;border-radius:4px;color:var(--cyan)">Message Buffer</code> cho dữ liệu có khung) thường tiết kiệm RAM hơn Queue, vì dùng một buffer vòng (ring buffer) duy nhất thay vì cơ chế quản lý từng item rời rạc của Queue.</p>
+    </section>
+
+    <!-- ================= RAM PRIORITY ================= -->
+    <section id="ram-priority">
+      <h2 class="section-title">Khi RAM là ưu tiên hàng đầu</h2>
+      <p class="section-desc">Nối lại với bước 3 (ràng buộc) trong khung phân tích — thứ tự ưu tiên khi SRAM eo hẹp.</p>
+      <ul class="priority-list">
+        <li><div class="p-num">1</div><div>Ưu tiên <b>Task Notification</b> cho mọi báo hiệu 1:1 — gần như không tốn thêm RAM.</div></li>
+        <li><div class="p-num">2</div><div><b>Event Group</b> cho nhiều điều kiện/broadcast — vẫn rẻ hơn nhiều so với việc tạo thêm task riêng để gộp trạng thái.</div></li>
+        <li><div class="p-num">3</div><div>Cân nhắc kỹ trước khi dùng pattern <b>Gatekeeper</b> nếu RAM cực kỳ hạn chế — chi phí thêm nguyên một task (TCB + stack) thường lớn hơn nhiều so với phần tiết kiệm được từ việc tránh priority inversion.</div></li>
+        <li><div class="p-num">4</div><div>Với <b>Queue</b>, kiểm soát chặt <code>depth × item size</code> — đây là chỗ RAM "âm thầm" phình to nhất trong cả hệ thống.</div></li>
+      </ul>
+    </section>
+
+    <footer>Companion cho reference "Đồng Bộ Hoá Giữa Các Task" và khung "Phân Tích &amp; Trình Bày Giải Pháp" — cấu trúc struct xác nhận qua FreeRTOS kernel source (FreeRTOS.h, queue.c, tasks.c); số byte cụ thể luôn nên xác nhận lại bằng sizeof() trên target thật.</footer>
+
+  </main>
+</div>
+
+<script>
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc-link'));
+    var sections = links
+      .map(function (l) { return document.querySelector(l.getAttribute('href')); })
+      .filter(Boolean);
+
+    if (!sections.length || !('IntersectionObserver' in window)) return;
+
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        var link = links[sections.indexOf(entry.target)];
+        if (!link) return;
+        if (entry.isIntersecting) {
+          links.forEach(function (l) { l.classList.remove('active'); });
+          link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-15% 0px -75% 0px', threshold: 0 });
+
+    sections.forEach(function (s) { observer.observe(s); });
+  })();
+</script>
+</body>
+</html>

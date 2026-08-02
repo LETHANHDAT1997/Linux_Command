@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yocto Project — Tài liệu tổng hợp Build Embedded Linux</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/tokyo-night-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/ini.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/makefile.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/diff.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cpp.min.js"></script>
+<style>
+:root{
+  --bg:#0a0d12;
+  --bg-elevated:#0e1218;
+  --surface:#141a23;
+  --surface-2:#1a212c;
+  --border:#232b38;
+  --border-soft:rgba(255,255,255,.07);
+  --text:#dde3ea;
+  --text-dim:#8b96a5;
+  --text-faint:#5a6472;
+  --accent:#e2984c;
+  --accent-hi:#f0b06e;
+  --accent-soft:rgba(226,152,76,.13);
+  --accent2:#5fb88f;
+  --accent2-soft:rgba(95,184,143,.13);
+  --link:#7ec4d6;
+  --danger:#e0685f;
+  --danger-soft:rgba(224,104,95,.1);
+  --warning:#e0b34f;
+  --warning-soft:rgba(224,179,79,.1);
+  --code-bg:#0d1117;
+  --radius:10px;
+  --font-display:'JetBrains Mono',monospace;
+  --font-body:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --font-code:'JetBrains Mono',monospace;
+  --sidebar-w:302px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-body);
+  font-size:16px;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+body::before{
+  content:"";
+  position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(226,152,76,.07), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 100% 0%, rgba(95,184,143,.05), transparent 55%);
+  pointer-events:none;
+  z-index:0;
+}
+a{color:var(--link);text-decoration:none}
+a:hover{text-decoration:underline}
+.page{display:flex;max-width:1400px;margin:0 auto;position:relative;z-index:1}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  width:var(--sidebar-w);
+  flex-shrink:0;
+  height:100vh;
+  position:sticky;
+  top:0;
+  overflow-y:auto;
+  border-right:1px solid var(--border-soft);
+  padding:28px 0 40px;
+  scrollbar-width:thin;
+  scrollbar-color:var(--border) transparent;
+}
+.sidebar::-webkit-scrollbar{width:6px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.sb-brand{
+  padding:0 24px 20px;
+  border-bottom:1px solid var(--border-soft);
+  margin-bottom:16px;
+}
+.sb-brand .doc-code{
+  font-family:var(--font-display);
+  font-size:11px;
+  letter-spacing:.12em;
+  color:var(--accent);
+  font-weight:700;
+  display:inline-block;
+  padding:3px 8px;
+  border:1px solid rgba(226,152,76,.35);
+  border-radius:5px;
+  background:var(--accent-soft);
+  margin-bottom:10px;
+}
+.sb-brand h1{
+  font-family:var(--font-display);
+  font-size:17px;
+  font-weight:700;
+  line-height:1.4;
+  color:var(--text);
+}
+.sb-brand p{
+  font-size:12.5px;
+  color:var(--text-faint);
+  margin-top:6px;
+}
+.sb-group{margin-bottom:4px}
+.sb-group-title{
+  font-family:var(--font-display);
+  font-size:10.5px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--text-faint);
+  padding:14px 24px 6px;
+}
+.sidebar ul{list-style:none}
+.sidebar a.nav-link{
+  display:flex;
+  gap:10px;
+  align-items:baseline;
+  padding:7px 24px;
+  font-size:13.5px;
+  color:var(--text-dim);
+  border-left:2px solid transparent;
+  transition:all .15s ease;
+}
+.sidebar a.nav-link:hover{color:var(--text);background:rgba(255,255,255,.02);text-decoration:none}
+.sidebar a.nav-link.active{
+  color:var(--accent-hi);
+  border-left-color:var(--accent);
+  background:var(--accent-soft);
+}
+.sidebar a.nav-link .num{
+  font-family:var(--font-display);
+  font-size:11px;
+  color:var(--text-faint);
+  min-width:18px;
+}
+.sidebar a.nav-link.active .num{color:var(--accent)}
+
+/* ---------- Main content ---------- */
+.content{flex:1;min-width:0;padding:0 0 120px}
+.hero{
+  padding:64px 56px 44px;
+  border-bottom:1px solid var(--border-soft);
+  position:relative;
+  overflow:hidden;
+}
+.hero-badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+.badge{
+  font-family:var(--font-display);
+  font-size:11.5px;
+  font-weight:600;
+  padding:5px 10px;
+  border-radius:6px;
+  border:1px solid var(--border);
+  color:var(--text-dim);
+  letter-spacing:.03em;
+}
+.badge.accent{background:var(--accent-soft);border-color:rgba(226,152,76,.35);color:var(--accent-hi)}
+.badge.green{background:var(--accent2-soft);border-color:rgba(95,184,143,.35);color:var(--accent2)}
+.hero h1{
+  font-family:var(--font-display);
+  font-size:2.55rem;
+  font-weight:800;
+  line-height:1.15;
+  letter-spacing:-.01em;
+  margin-bottom:16px;
+  background:linear-gradient(135deg,#f2f5f8 0%,#c7cfda 100%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+.hero .lede{
+  font-size:1.08rem;
+  color:var(--text-dim);
+  max-width:660px;
+  line-height:1.7;
+}
+.hero .lede strong{color:var(--text);font-weight:600}
+
+section.doc-section{padding:52px 56px;border-bottom:1px solid var(--border-soft)}
+section.doc-section:target{animation:flash .9s ease}
+@keyframes flash{0%{background:rgba(226,152,76,.06)}100%{background:transparent}}
+
+.sec-eyebrow{
+  font-family:var(--font-display);
+  font-size:12px;
+  font-weight:700;
+  color:var(--accent);
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  margin-bottom:10px;
+}
+h2.sec-title{
+  font-family:var(--font-display);
+  font-size:1.65rem;
+  font-weight:700;
+  color:var(--text);
+  margin-bottom:8px;
+  scroll-margin-top:24px;
+}
+.sec-intro{color:var(--text-dim);font-size:.99rem;max-width:720px;margin-bottom:30px;line-height:1.7}
+
+h3{
+  font-family:var(--font-display);
+  font-size:1.12rem;
+  font-weight:700;
+  color:var(--text);
+  margin:34px 0 14px;
+  padding-top:2px;
+  scroll-margin-top:24px;
+}
+h3 .h-tag{
+  display:inline-block;
+  font-size:11px;
+  color:var(--accent);
+  border:1px solid rgba(226,152,76,.3);
+  background:var(--accent-soft);
+  padding:2px 7px;
+  border-radius:5px;
+  margin-right:9px;
+  vertical-align:middle;
+  font-weight:600;
+}
+h4{font-size:.98rem;font-weight:700;color:var(--text);margin:22px 0 10px}
+p{color:var(--text-dim);margin-bottom:14px;max-width:760px}
+p code, li code{
+  font-family:var(--font-code);
+  font-size:.85em;
+  background:var(--surface-2);
+  color:var(--accent-hi);
+  padding:.15em .4em;
+  border-radius:4px;
+  border:1px solid var(--border-soft);
+}
+strong{color:var(--text);font-weight:600}
+ul.doc-list, ol.doc-list{margin:0 0 16px 0;padding-left:0;list-style:none;max-width:760px}
+ul.doc-list li, ol.doc-list li{
+  color:var(--text-dim);
+  padding:5px 0 5px 22px;
+  position:relative;
+  line-height:1.65;
+}
+ul.doc-list li::before{
+  content:"▸";
+  position:absolute;left:2px;top:5px;
+  color:var(--accent);
+  font-size:.85em;
+}
+ol.doc-list{counter-reset:item}
+ol.doc-list li{counter-increment:item}
+ol.doc-list li::before{
+  content:counter(item);
+  position:absolute;left:-2px;top:4px;
+  color:var(--accent);
+  font-family:var(--font-display);
+  font-size:.72em;
+  font-weight:700;
+  background:var(--accent-soft);
+  border:1px solid rgba(226,152,76,.3);
+  width:18px;height:18px;
+  border-radius:5px;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* ---------- Code blocks ---------- */
+.code-block{
+  margin:16px 0 22px;
+  border-radius:var(--radius);
+  border:1px solid var(--border);
+  overflow:hidden;
+  background:var(--code-bg);
+  max-width:820px;
+}
+.code-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:8px 14px;
+  background:var(--surface-2);
+  border-bottom:1px solid var(--border);
+  font-family:var(--font-display);
+  font-size:11.5px;
+  color:var(--text-faint);
+}
+.code-head .fname{color:var(--text-dim);letter-spacing:.02em}
+.code-head .copy-btn{
+  background:transparent;
+  border:1px solid var(--border);
+  color:var(--text-faint);
+  font-family:var(--font-body);
+  font-size:11px;
+  padding:3px 9px;
+  border-radius:5px;
+  cursor:pointer;
+  transition:all .15s;
+}
+.code-head .copy-btn:hover{color:var(--accent-hi);border-color:var(--accent)}
+.code-head .copy-btn.copied{color:var(--accent2);border-color:var(--accent2)}
+pre{margin:0;overflow-x:auto}
+pre code.hljs{
+  background:transparent !important;
+  padding:16px !important;
+  font-family:var(--font-code) !important;
+  font-size:.83rem !important;
+  line-height:1.65 !important;
+  display:block;
+}
+.code-block.compact pre code.hljs{padding:11px 14px !important;font-size:.8rem !important}
+
+/* ---------- Callouts ---------- */
+.callout{
+  display:flex;
+  gap:12px;
+  padding:14px 18px;
+  border-radius:var(--radius);
+  margin:18px 0 22px;
+  border:1px solid var(--border);
+  max-width:760px;
+  font-size:.91rem;
+}
+.callout .ic{font-size:1.1rem;line-height:1.5;flex-shrink:0}
+.callout .body p:last-child{margin-bottom:0}
+.callout .body strong.ctitle{display:block;color:var(--text);margin-bottom:3px;font-size:.95rem}
+.callout.info{background:rgba(126,196,214,.07);border-color:rgba(126,196,214,.28)}
+.callout.info .body strong.ctitle{color:var(--link)}
+.callout.tip{background:var(--accent2-soft);border-color:rgba(95,184,143,.3)}
+.callout.tip .body strong.ctitle{color:var(--accent2)}
+.callout.warn{background:var(--warning-soft);border-color:rgba(224,179,79,.32)}
+.callout.warn .body strong.ctitle{color:var(--warning)}
+.callout.danger{background:var(--danger-soft);border-color:rgba(224,104,95,.32)}
+.callout.danger .body strong.ctitle{color:var(--danger)}
+
+/* ---------- Tables ---------- */
+.table-wrap{overflow-x:auto;margin:16px 0 24px;max-width:820px;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+table th{
+  font-family:var(--font-display);
+  font-size:11px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  text-align:left;
+  color:var(--text-faint);
+  background:var(--surface-2);
+  padding:11px 14px;
+  border-bottom:1px solid var(--border);
+  white-space:nowrap;
+}
+table td{
+  padding:11px 14px;
+  border-bottom:1px solid var(--border-soft);
+  color:var(--text-dim);
+  vertical-align:top;
+}
+table tr:last-child td{border-bottom:none}
+table td code, table td .k{
+  font-family:var(--font-code);
+  color:var(--accent-hi);
+  background:var(--surface-2);
+  padding:.1em .35em;
+  border-radius:4px;
+  font-size:.85em;
+  white-space:nowrap;
+}
+table tr:hover td{background:rgba(255,255,255,.015)}
+
+/* ---------- Pipeline diagram ---------- */
+.pipeline{
+  display:flex;
+  flex-wrap:wrap;
+  gap:0;
+  align-items:center;
+  margin:22px 0 26px;
+  max-width:820px;
+}
+.pipeline .stage{
+  font-family:var(--font-display);
+  font-size:12.5px;
+  font-weight:700;
+  color:var(--text);
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:10px 13px;
+  text-align:center;
+  min-width:108px;
+  position:relative;
+}
+.pipeline .stage .st-sub{
+  display:block;
+  font-family:var(--font-body);
+  font-weight:400;
+  font-size:10.5px;
+  color:var(--text-faint);
+  margin-top:3px;
+}
+.pipeline .stage.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-hi)}
+.pipeline .arrow{color:var(--text-faint);padding:0 6px;font-size:14px;flex-shrink:0}
+@media (max-width:720px){.pipeline{flex-direction:column;align-items:stretch}.pipeline .arrow{transform:rotate(90deg);align-self:center;padding:2px 0}}
+
+/* ---------- Compare table ---------- */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0 26px;max-width:820px}
+.compare-card{border:1px solid var(--border);border-radius:var(--radius);padding:18px;background:var(--surface)}
+.compare-card.br{border-top:2px solid var(--link)}
+.compare-card.yp{border-top:2px solid var(--accent)}
+.compare-card h4{font-family:var(--font-display);font-size:13px;margin:0 0 10px;color:var(--text)}
+.compare-card ul{list-style:none}
+.compare-card li{font-size:.86rem;color:var(--text-dim);padding:4px 0 4px 16px;position:relative;line-height:1.55}
+.compare-card li::before{content:"–";position:absolute;left:0;color:var(--text-faint)}
+@media (max-width:640px){.compare-grid{grid-template-columns:1fr}}
+
+/* ---------- Misc ---------- */
+.kv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin:16px 0 24px;max-width:820px}
+.kv-item{border:1px solid var(--border);border-radius:8px;padding:12px 14px;background:var(--surface)}
+.kv-item .kv-k{font-family:var(--font-display);font-size:12px;color:var(--accent-hi);margin-bottom:3px}
+.kv-item .kv-v{font-size:12px;color:var(--text-faint)}
+.divider-label{
+  font-family:var(--font-display);
+  font-size:11px;
+  color:var(--text-faint);
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  display:flex;align-items:center;gap:12px;
+  margin:36px 0 18px;
+  max-width:820px;
+}
+.divider-label::after{content:"";flex:1;height:1px;background:var(--border)}
+.tree{
+  font-family:var(--font-code);
+  font-size:.82rem;
+  line-height:1.75;
+  color:var(--text-dim);
+  background:var(--code-bg);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:16px 20px;
+  max-width:820px;
+  overflow-x:auto;
+  white-space:pre;
+}
+.tree .d{color:var(--accent-hi)}
+.tree .c{color:var(--text-faint)}
+footer.doc-footer{padding:44px 56px;color:var(--text-faint);font-size:.85rem}
+footer.doc-footer a{color:var(--text-dim)}
+
+/* ---------- Mobile ---------- */
+.mobile-toggle{
+  display:none;
+  position:fixed;top:16px;left:16px;z-index:50;
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--text);width:42px;height:42px;border-radius:8px;
+  font-size:18px;cursor:pointer;
+}
+@media (max-width:960px){
+  .mobile-toggle{display:block}
+  .sidebar{
+    position:fixed;left:0;top:0;bottom:0;z-index:40;
+    background:var(--bg-elevated);
+    transform:translateX(-100%);
+    transition:transform .25s ease;
+    width:86vw;max-width:340px;
+  }
+  .sidebar.open{transform:translateX(0);box-shadow:20px 0 60px rgba(0,0,0,.5)}
+  .hero{padding:88px 22px 32px}
+  section.doc-section{padding:36px 22px}
+  footer.doc-footer{padding:32px 22px}
+  .hero h1{font-size:1.9rem}
+  .compare-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<button class="mobile-toggle" id="mobileToggle" aria-label="Mở mục lục">☰</button>
+
+<div class="page">
+  <nav class="sidebar" id="sidebar">
+    <div class="sb-brand">
+      <span class="doc-code">YCT-BLD-01</span>
+      <h1>Yocto Project<br>Build Guide</h1>
+      <p>Tài liệu tổng hợp · Embedded Linux</p>
+    </div>
+
+    <div class="sb-group">
+      <div class="sb-group-title">Nền tảng</div>
+      <ul>
+        <li><a class="nav-link" href="#s1"><span class="num">01</span>Yocto là gì?</a></li>
+        <li><a class="nav-link" href="#s2"><span class="num">02</span>Chuẩn bị môi trường</a></li>
+        <li><a class="nav-link" href="#s3"><span class="num">03</span>Build lần đầu (Quick Start)</a></li>
+        <li><a class="nav-link" href="#s4"><span class="num">04</span>Cấu trúc thư mục</a></li>
+      </ul>
+    </div>
+    <div class="sb-group">
+      <div class="sb-group-title">Cơ chế BitBake</div>
+      <ul>
+        <li><a class="nav-link" href="#s5"><span class="num">05</span>BitBake hoạt động thế nào</a></li>
+        <li><a class="nav-link" href="#s6"><span class="num">06</span>Layers</a></li>
+        <li><a class="nav-link" href="#s7"><span class="num">07</span>Recipes chi tiết</a></li>
+        <li><a class="nav-link" href="#s8"><span class="num">08</span>Classes &amp; inherit</a></li>
+        <li><a class="nav-link" href="#s9"><span class="num">09</span>.bbappend</a></li>
+        <li><a class="nav-link" href="#s10"><span class="num">10</span>local.conf</a></li>
+      </ul>
+    </div>
+    <div class="sb-group">
+      <div class="sb-group-title">Thực hành</div>
+      <ul>
+        <li><a class="nav-link" href="#s11"><span class="num">11</span>Tạo layer + recipe riêng</a></li>
+        <li><a class="nav-link" href="#s12"><span class="num">12</span>Kernel &amp; U-Boot</a></li>
+        <li><a class="nav-link" href="#s13"><span class="num">13</span>Debug &amp; Troubleshooting</a></li>
+        <li><a class="nav-link" href="#s14"><span class="num">14</span>SDK / Toolchain</a></li>
+        <li><a class="nav-link" href="#s15"><span class="num">15</span>Build cho board thật</a></li>
+      </ul>
+    </div>
+    <div class="sb-group">
+      <div class="sb-group-title">Tra cứu</div>
+      <ul>
+        <li><a class="nav-link" href="#s16"><span class="num">16</span>Cheatsheet lệnh</a></li>
+        <li><a class="nav-link" href="#s17"><span class="num">17</span>Tài nguyên</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="content">
+    <header class="hero">
+      <div class="hero-badges">
+        <span class="badge accent">LTS hiện tại: 6.0 “Wrynose”</span>
+        <span class="badge green">LTS trước: 5.0 “Scarthgap”</span>
+        <span class="badge">Cập nhật 07/2026</span>
+      </div>
+      <h1>Yocto Project — Từ zero đến build image</h1>
+      <p class="lede">Tài liệu tổng hợp cách <strong>build một Linux distro tùy chỉnh bằng Yocto Project</strong>: kiến trúc BitBake/OpenEmbedded, layer, recipe, tới workflow thực hành tạo layer riêng, build image, debug lỗi và đưa lên board thật. Viết cho người đã quen Buildroot/embedded Linux, muốn nắm Yocto ở mức dùng được ngay trong dự án thực tế.</p>
+    </header>
+
+    <section class="doc-section" id="s1">
+      <div class="sec-eyebrow">Phần 01 · Nền tảng</div>
+      <h2 class="sec-title">Yocto Project là gì?</h2>
+      <p class="sec-intro">Yocto <strong>không phải</strong> một bản Linux distro — nó là một bộ công cụ (framework) để bạn <strong>tự build ra distro của riêng mình</strong>, đóng gói vừa khít cho phần cứng embedded, từ source code, theo cách lặp lại được (reproducible).</p>
+
+      <h3><span class="h-tag">01.1</span>Các thành phần cốt lõi</h3>
+      <p>Khi người ta nói "dùng Yocto", thực chất là đang dùng một tổ hợp nhiều dự án con. Hiểu rõ ai làm gì sẽ giúp đọc lỗi và đọc tài liệu dễ hơn rất nhiều:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Thành phần</th><th>Vai trò</th></tr></thead>
+          <tbody>
+            <tr><td><span class="k">BitBake</span></td><td>Task executor / build engine — đọc metadata, dựng dependency graph, thực thi task theo đúng thứ tự. Tương tự <code>make</code> nhưng hoạt động ở quy mô "toàn bộ distro" thay vì một project.</td></tr>
+            <tr><td><span class="k">OpenEmbedded-Core</span> (OE-Core)</td><td>Tập metadata lõi dùng chung — hàng nghìn recipe, class nền tảng (autotools, cmake, kernel...). Do Yocto Project và OpenEmbedded Project đồng duy trì.</td></tr>
+            <tr><td><span class="k">Poky</span></td><td>Reference distribution — gói sẵn BitBake + OE-Core + meta-poky + meta-yocto-bsp thành một combo dùng được ngay. Khi bạn <code>git clone poky</code>, đây là thứ bạn tải về.</td></tr>
+            <tr><td>Metadata</td><td>Toàn bộ "mô tả" cách build: recipe (<code>.bb</code>), append (<code>.bbappend</code>), class (<code>.bbclass</code>), config (<code>.conf</code>). Yocto không hardcode gì cả — mọi thứ là metadata.</td></tr>
+            <tr><td>Layer</td><td>Cách tổ chức metadata thành các "module" độc lập, xếp chồng và override lẫn nhau theo priority. Đây là cơ chế mở rộng chính của Yocto.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body">
+          <strong class="ctitle">Điểm khác biệt cốt lõi</strong>
+          <p>Buildroot build ra <em>một</em> rootfs theo cấu hình bạn chọn trong <code>menuconfig</code>. Yocto build ra <em>các package nhị phân độc lập</em> (rpm/ipk/deb) rồi mới lắp ráp thành image — giống một distro Linux thật (như Debian) nhưng do chính bạn kiểm soát từng package. Đây là lý do Yocto có SDK export, có thể update từng package riêng lẻ, và scale tốt hơn khi dự án lớn dần.</p>
+        </div>
+      </div>
+
+      <h3><span class="h-tag">01.2</span>So sánh nhanh với Buildroot</h3>
+      <p>Vì bạn đã quen Buildroot, bảng dưới đây dùng nó làm điểm neo để nắm Yocto nhanh hơn:</p>
+
+      <div class="compare-grid">
+        <div class="compare-card br">
+          <h4>Buildroot</h4>
+          <ul>
+            <li>Cấu hình qua <code>menuconfig</code> (Kconfig) — một file <code>.config</code> duy nhất</li>
+            <li>Build tuyến tính, ít trừu tượng, source → rootfs trực tiếp</li>
+            <li>Không có khái niệm package nhị phân độc lập (mặc định)</li>
+            <li>Học nhanh, phù hợp dự án nhỏ/vừa, ít board</li>
+            <li>Khó tái sử dụng metadata giữa nhiều dự án khác nhau</li>
+            <li>Rebuild lại gần như toàn bộ khi đổi cấu hình sâu</li>
+          </ul>
+        </div>
+        <div class="compare-card yp">
+          <h4>Yocto Project</h4>
+          <ul>
+            <li>Cấu hình qua recipe/layer/class — nhiều file, có cấu trúc</li>
+            <li>Build theo package (rpm/ipk/deb) rồi lắp thành image</li>
+            <li>Có package management thật, có thể publish package feed</li>
+            <li>Đường cong học dốc hơn, nhưng scale tốt cho team lớn, nhiều board</li>
+            <li>Layer tái sử dụng được giữa nhiều dự án/nhiều SoC</li>
+            <li>Shared State Cache (sstate) giúp rebuild cực nhanh khi đổi nhỏ</li>
+          </ul>
+        </div>
+      </div>
+
+      <p>Kinh nghiệm chung: nếu chỉ build cho 1 board, ít thay đổi, ưu tiên tốc độ ra sản phẩm → Buildroot vẫn rất hợp lý. Nếu công ty maintain nhiều dòng SoC/board, nhiều team cùng đóng góp package, cần SDK cho dev app, hoặc cần bảo trì lâu dài với security update từng package → Yocto đáng đầu tư thời gian học hơn.</p>
+    </section>
+
+    <section class="doc-section" id="s2">
+      <div class="sec-eyebrow">Phần 02 · Nền tảng</div>
+      <h2 class="sec-title">Chuẩn bị môi trường</h2>
+      <p class="sec-intro">Yocto build toolchain và hầu hết package <strong>từ source</strong>, nên yêu cầu host khá nặng. Chuẩn bị đúng ngay từ đầu sẽ tránh được phần lớn lỗi khó chịu ở bước sau.</p>
+
+      <h3><span class="h-tag">02.1</span>Yêu cầu hệ thống</h3>
+      <div class="kv-grid">
+        <div class="kv-item"><div class="kv-k">Hệ điều hành</div><div class="kv-v">Linux native (Ubuntu LTS khuyến nghị). Windows: dùng WSL2</div></div>
+        <div class="kv-item"><div class="kv-k">Dung lượng ổ đĩa</div><div class="kv-v">Tối thiểu 50GB, thực tế nên có 150–200GB (sstate + downloads + nhiều build)</div></div>
+        <div class="kv-item"><div class="kv-k">RAM</div><div class="kv-v">≥ 8GB tối thiểu, khuyến nghị 16GB+ cho build song song mượt</div></div>
+        <div class="kv-item"><div class="kv-k">CPU</div><div class="kv-v">Càng nhiều core càng tốt — BitBake song song hoá rất tốt</div></div>
+      </div>
+
+      <div class="callout tip">
+        <div class="ic">📌</div>
+        <div class="body">
+          <strong class="ctitle">Về phiên bản Yocto</strong>
+          <p>Tính đến thời điểm viết tài liệu này (07/2026), bản LTS mới nhất là <strong>Yocto 6.0 "Wrynose"</strong> (phát hành 04/2026, kế nhiệm 5.0 "Scarthgap"). Bản 5.0 "Scarthgap" (04/2024) vẫn còn được hỗ trợ chính thức đến 04/2028 và vẫn rất phổ biến trong các BSP vendor hiện có. Nếu layer BSP của bạn chỉ hỗ trợ tới Scarthgap, dùng Scarthgap — đừng cố ép lên bản mới hơn.</p>
+        </div>
+      </div>
+
+      <h3><span class="h-tag">02.2</span>Cài package cần thiết (Ubuntu/Debian)</h3>
+      <p>Danh sách package tối thiểu để build headless (không cần GUI host):</p>
+      <div class="code-block">
+        <div class="code-head"><span class="fname">terminal</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash">sudo apt update
+sudo apt install -y build-essential chrpath cpio debianutils diffstat \
+  file gawk gcc git iputils-ping libacl1 libcrypt-dev locales python3 \
+  python3-git python3-jinja2 python3-pexpect python3-pip python3-subunit \
+  socat texinfo unzip wget xz-utils zstd</code></pre>
+      </div>
+
+      <p>Đảm bảo locale <code>en_US.UTF-8</code> được bật (Yocto yêu cầu locale này để tránh lỗi parse metadata):</p>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">terminal</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash">locale -a | grep -i "en_US.utf8"
+# Nếu chưa có:
+sudo locale-gen en_US.UTF-8
+sudo update-locale LANG=en_US.UTF-8</code></pre>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body">
+          <strong class="ctitle">Không build với quyền root</strong>
+          <p>BitBake chủ động từ chối chạy bằng <code>sudo</code>/root — đây là chủ đích, không phải bug. Build bằng user thường; chỉ dùng <code>sudo</code> cho bước cài package hệ thống.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="s3">
+      <div class="sec-eyebrow">Phần 03 · Nền tảng</div>
+      <h2 class="sec-title">Build lần đầu (Quick Start)</h2>
+      <p class="sec-intro">Đi thẳng vào một build thật với QEMU trước, để có cảm giác về workflow ngay — phần khái niệm sâu hơn sẽ theo sau ở các phần 5–10.</p>
+
+      <h3><span class="h-tag">03.1</span>Lấy source Poky</h3>
+      <div class="code-block">
+        <div class="code-head"><span class="fname">terminal</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash">git clone git://git.yoctoproject.org/poky
+cd poky
+# Chọn nhánh/release — ví dụ dùng LTS Scarthgap (ổn định, hỗ trợ tới 04/2028):
+git checkout scarthgap
+# Hoặc dùng LTS mới nhất Wrynose:
+# git checkout wrynose</code></pre>
+      </div>
+      <div class="callout info">
+        <div class="ic">🌐</div>
+        <div class="body">
+          <strong class="ctitle">Nếu mạng chặn giao thức git://</strong>
+          <p>Một số mạng doanh nghiệp/ISP chặn port của giao thức <code>git://</code>. Dùng HTTPS thay thế: <code>git clone https://git.yoctoproject.org/poky</code>, hoặc mirror trên GitHub: <code>git clone https://github.com/yoctoproject/poky.git</code>.</p>
+        </div>
+      </div>
+
+      <h3><span class="h-tag">03.2</span>Khởi tạo môi trường build</h3>
+      <div class="code-block">
+        <div class="code-head"><span class="fname">terminal</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash">source oe-init-build-env
+# → tự động cd vào ./build (tạo mới nếu chưa có) và nạp toàn bộ
+#   biến môi trường + PATH cần thiết cho bitbake</code></pre>
+      </div>
+      <p>Lệnh này thực hiện 3 việc quan trọng: tạo thư mục <code>build/</code>, sinh ra <code>build/conf/local.conf</code> và <code>build/conf/bblayers.conf</code> với giá trị mặc định nếu chưa tồn tại, và thêm các script của BitBake (<code>bitbake</code>, <code>bitbake-layers</code>, <code>devtool</code>...) vào <code>PATH</code> cho phiên terminal hiện tại. Mỗi terminal mới đều phải <code>source</code> lại file này trước khi chạy bitbake.</p>
+
+      <h3><span class="h-tag">03.3</span>Build image đầu tiên</h3>
+      <div class="code-block">
+        <div class="code-head"><span class="fname">terminal (đang ở trong poky/build)</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash">bitbake core-image-minimal</code></pre>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⏱️</div>
+        <div class="body">
+          <strong class="ctitle">Lần build đầu tiên rất lâu</strong>
+          <p>Lần đầu, Yocto tải và build <strong>toàn bộ toolchain</strong> (gcc, binutils, glibc...) từ source trước khi build bất kỳ package nào — có thể mất 1–4 giờ tuỳ CPU/mạng. Các lần build sau nhanh hơn nhiều nhờ <strong>sstate-cache</strong> (phần 04 giải thích cơ chế này). Đây là hành vi bình thường, không phải build bị treo — cứ để chạy.</p>
+        </div>
+      </div>
+
+      <h3><span class="h-tag">03.4</span>Chạy thử bằng QEMU</h3>
+      <div class="code-block">
+        <div class="code-head"><span class="fname">terminal</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash">runqemu qemux86-64</code></pre>
+      </div>
+      <p>Mặc định <code>MACHINE</code> trong <code>local.conf</code> vừa tạo là <code>qemux86-64</code>, nên lệnh build ở trên đã build sẵn image cho kiến trúc này. <code>runqemu</code> tự tìm image mới build gần nhất khớp với <code>MACHINE</code> hiện tại và khởi động QEMU với network + rootfs đã cấu hình sẵn. Thoát QEMU bằng cách đóng cửa sổ hoặc <code>Ctrl+C</code> trong terminal đã chạy lệnh.</p>
+
+      <ul class="doc-list">
+        <li>Muốn build cho kiến trúc khác? Sửa <code>MACHINE ?= "qemux86-64"</code> trong <code>build/conf/local.conf</code> — các giá trị built-in khác: <code>qemuarm64</code>, <code>qemuarm</code>, <code>qemumips64</code>, <code>qemuriscv64</code>...</li>
+        <li>Build cho board thật cần thêm BSP layer tương ứng — xem Phần 15.</li>
+      </ul>
+    </section>
+
+    <section class="doc-section" id="s4">
+      <div class="sec-eyebrow">Phần 04 · Nền tảng</div>
+      <h2 class="sec-title">Cấu trúc thư mục</h2>
+      <p class="sec-intro">Nắm được cây thư mục giúp đọc log lỗi và tìm output nhanh hơn rất nhiều — đây là bản đồ bạn sẽ quay lại liên tục.</p>
+
+      <h3><span class="h-tag">04.1</span>Thư mục <code>poky/</code> (source)</h3>
+      <div class="tree">poky/
+├── <span class="d">bitbake/</span>        <span class="c"># Source code của BitBake engine + toàn bộ script bitbake-*</span>
+├── <span class="d">meta/</span>            <span class="c"># OpenEmbedded-Core: hàng nghìn recipe + class nền tảng</span>
+├── <span class="d">meta-poky/</span>       <span class="c"># Metadata riêng của distro "poky" (policy mặc định)</span>
+├── <span class="d">meta-yocto-bsp/</span>  <span class="c"># BSP mẫu cho vài board tham khảo (beaglebone, genericx86...)</span>
+├── <span class="d">meta-selftest/</span>   <span class="c"># Layer phục vụ test nội bộ của BitBake/OE-Core</span>
+├── <span class="d">scripts/</span>         <span class="c"># devtool, runqemu, oe-* helper scripts</span>
+├── <span class="d">documentation/</span>   <span class="c"># Source của toàn bộ tài liệu chính thức</span>
+└── oe-init-build-env  <span class="c"># Script bạn source() để khởi tạo build/</span></div>
+
+      <h3><span class="h-tag">04.2</span>Thư mục <code>build/</code> (nơi mọi thứ được sinh ra)</h3>
+      <div class="tree">build/
+├── <span class="d">conf/</span>
+│   ├── local.conf       <span class="c"># Config máy cục bộ: MACHINE, DISTRO, package cần thêm...</span>
+│   ├── bblayers.conf     <span class="c"># Danh sách layer đang active trong build này</span>
+│   └── templateconf.cfg
+├── <span class="d">downloads/</span>       <span class="c"># Source đã fetch về (tarball, git clone...) — dùng chung mọi recipe</span>
+├── <span class="d">sstate-cache/</span>    <span class="c"># Shared State Cache — output đã build sẵn của từng task</span>
+└── <span class="d">tmp/</span>
+    ├── <span class="d">work/</span>&lt;arch&gt;/&lt;recipe&gt;/&lt;version&gt;/  <span class="c"># Nơi từng recipe được fetch/unpack/build</span>
+    │   └── <span class="d">temp/</span>log.do_&lt;task&gt;   <span class="c"># Log chi tiết từng task — chỗ đầu tiên cần xem khi lỗi</span>
+    ├── <span class="d">deploy/images/</span>&lt;machine&gt;/  <span class="c"># Output cuối: .wic, .ext4, kernel Image, dtb...</span>
+    ├── <span class="d">deploy/rpm|ipk|deb/</span>       <span class="c"># Package nhị phân đã build, theo format đã chọn</span>
+    ├── <span class="d">deploy/sdk/</span>               <span class="c"># SDK/toolchain export (populate_sdk)</span>
+    ├── <span class="d">sysroots-components/</span>      <span class="c"># Header/lib đã cài để recipe khác DEPENDS vào</span>
+    └── <span class="d">stamps/</span>                    <span class="c"># File đánh dấu task nào đã chạy xong (BitBake dựa vào đây để skip)</span></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Thư mục</th><th>Khi nào cần vào</th></tr></thead>
+          <tbody>
+            <tr><td><code>tmp/work/.../temp/log.do_compile</code></td><td>Build lỗi ở bước compile — xem log chi tiết tại đây trước tiên</td></tr>
+            <tr><td><code>tmp/deploy/images/&lt;machine&gt;/</code></td><td>Cần lấy file image để flash lên board thật</td></tr>
+            <tr><td><code>tmp/work/.../<span class="k">${S}</span></code></td><td>Muốn xem/sửa trực tiếp source đã patch của một recipe</td></tr>
+            <tr><td><code>sstate-cache/</code></td><td>Muốn chia sẻ cache build giữa nhiều máy/dự án (xem Phần 10)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout tip">
+        <div class="ic">⚡</div>
+        <div class="body">
+          <strong class="ctitle">sstate-cache hoạt động ra sao?</strong>
+          <p>Mỗi task của mỗi recipe được BitBake "chấm hash" dựa trên toàn bộ input ảnh hưởng tới nó (source, biến cấu hình, dependency...). Nếu hash không đổi so với lần trước, BitBake <strong>tải kết quả đã build sẵn từ sstate-cache</strong> thay vì build lại từ đầu. Đây là lý do lần build thứ 2 trở đi nhanh hơn lần đầu rất nhiều, kể cả sau khi xoá <code>tmp/</code>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="s5">
+      <div class="sec-eyebrow">Phần 05 · Cơ chế BitBake</div>
+      <h2 class="sec-title">BitBake hoạt động thế nào</h2>
+      <p class="sec-intro">BitBake không "chạy một script build" — nó đọc toàn bộ metadata, hiểu quan hệ phụ thuộc giữa hàng nghìn recipe, rồi tự quyết định thứ tự thực thi. Hiểu mô hình task này là chìa khoá để debug mọi lỗi build sau này.</p>
+
+      <h3><span class="h-tag">05.1</span>Task pipeline của một recipe</h3>
+      <p>Mỗi recipe khi build đều đi qua một chuỗi task chuẩn (mỗi task là <code>do_&lt;tên&gt;</code>). BitBake chạy tuần tự theo dependency, cache lại kết quả từng task vào sstate:</p>
+
+      <div class="pipeline">
+        <div class="stage active">fetch<span class="st-sub">tải source</span></div><div class="arrow">→</div>
+        <div class="stage active">unpack<span class="st-sub">giải nén</span></div><div class="arrow">→</div>
+        <div class="stage active">patch<span class="st-sub">áp patch</span></div><div class="arrow">→</div>
+        <div class="stage active">configure<span class="st-sub">./configure, cmake</span></div><div class="arrow">→</div>
+        <div class="stage active">compile<span class="st-sub">make</span></div><div class="arrow">→</div>
+        <div class="stage active">install<span class="st-sub">make install → ${D}</span></div><div class="arrow">→</div>
+        <div class="stage active">package<span class="st-sub">đóng gói rpm/ipk/deb</span></div><div class="arrow">→</div>
+        <div class="stage active">populate_sysroot<span class="st-sub">cho recipe khác DEPENDS</span></div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Task</th><th>Ý nghĩa</th></tr></thead>
+          <tbody>
+            <tr><td><span class="k">do_fetch</span></td><td>Tải source theo <code>SRC_URI</code> (git/http/local file...) về <code>downloads/</code></td></tr>
+            <tr><td><span class="k">do_unpack</span></td><td>Giải nén/copy source vào thư mục làm việc <code>${WORKDIR}</code>, thường là <code>${S}</code></td></tr>
+            <tr><td><span class="k">do_patch</span></td><td>Áp các file patch liệt kê trong <code>SRC_URI</code> (thường có prefix <code>file://</code>)</td></tr>
+            <tr><td><span class="k">do_configure</span></td><td>Chạy bước cấu hình build (autoreconf/configure, cmake...) — phụ thuộc class inherit</td></tr>
+            <tr><td><span class="k">do_compile</span></td><td>Biên dịch — thường gọi <code>make</code>/<code>ninja</code> trong <code>${B}</code></td></tr>
+            <tr><td><span class="k">do_install</span></td><td>Cài output vào thư mục ảo <code>${D}</code> (destdir) — <strong>không</strong> cài vào hệ thống thật</td></tr>
+            <tr><td><span class="k">do_package</span></td><td>Quét <code>${D}</code>, chia thành các sub-package theo <code>PACKAGES</code>/<code>FILES</code></td></tr>
+            <tr><td><span class="k">do_populate_sysroot</span></td><td>Export header/lib cần thiết để recipe khác <code>DEPENDS</code> vào recipe này lúc build</td></tr>
+            <tr><td><span class="k">do_rootfs</span></td><td>(Chỉ recipe image) Lắp toàn bộ package đã build thành rootfs hoàn chỉnh</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3><span class="h-tag">05.2</span>Mô hình thực thi</h3>
+      <p>Khi bạn gõ <code>bitbake core-image-minimal</code>, BitBake: (1) parse tất cả file <code>.conf</code>/<code>.bbclass</code>/<code>.bb</code>/<code>.bbappend</code> trong các layer đang active, (2) với target yêu cầu, dựng cây phụ thuộc đầy đủ — cả phụ thuộc build-time (<code>DEPENDS</code>) lẫn runtime (<code>RDEPENDS</code>), (3) với mỗi task trong cây, tính hash dựa trên input ảnh hưởng nó, so với sstate-cache để quyết định build lại hay tái sử dụng, (4) thực thi các task độc lập song song (theo <code>BB_NUMBER_THREADS</code>) trong lúc vẫn tôn trọng thứ tự phụ thuộc.</p>
+
+      <h3><span class="h-tag">05.3</span>Lệnh BitBake thường dùng</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Lệnh</th><th>Công dụng</th></tr></thead>
+          <tbody>
+            <tr><td><code>bitbake &lt;target&gt;</code></td><td>Build một recipe hoặc image tới hết pipeline</td></tr>
+            <tr><td><code>bitbake -c &lt;task&gt; &lt;target&gt;</code></td><td>Chạy một task cụ thể, vd <code>-c compile</code>, <code>-c devshell</code>, <code>-c menuconfig</code></td></tr>
+            <tr><td><code>bitbake -f -c &lt;task&gt; &lt;target&gt;</code></td><td>Ép chạy lại task dù sstate đã có sẵn (force)</td></tr>
+            <tr><td><code>bitbake -c clean &lt;target&gt;</code></td><td>Xoá output build của recipe (giữ lại source đã fetch)</td></tr>
+            <tr><td><code>bitbake -c cleansstate &lt;target&gt;</code></td><td>Như trên, cộng thêm xoá luôn sstate-cache của recipe → build lại từ đầu</td></tr>
+            <tr><td><code>bitbake -c cleanall &lt;target&gt;</code></td><td>Như cleansstate, cộng thêm xoá cả source đã tải → fetch lại từ đầu</td></tr>
+            <tr><td><code>bitbake -e &lt;target&gt;</code></td><td>Dump toàn bộ biến đã resolve — thường dùng với <code>grep ^VAR=</code></td></tr>
+            <tr><td><code>bitbake -g &lt;target&gt;</code></td><td>Sinh dependency graph (<code>task-depends.dot</code>, <code>pn-depends.dot</code>)</td></tr>
+            <tr><td><code>bitbake -k</code></td><td>Tiếp tục build các target khác dù có target lỗi (keep-going)</td></tr>
+            <tr><td><code>bitbake -v</code> / <code>-D</code></td><td>Verbose / debug log — thêm nhiều <code>-D</code> để tăng độ chi tiết</td></tr>
+            <tr><td><code>bitbake-layers show-layers</code></td><td>Liệt kê layer đang active + priority</td></tr>
+            <tr><td><code>bitbake-layers show-recipes</code></td><td>Liệt kê recipe khả dụng, kèm layer nào cung cấp</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">ví dụ tra biến</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash"># Xem giá trị SRC_URI đã resolve của recipe busybox
+bitbake -e busybox | grep ^SRC_URI=
+
+# Xem toàn bộ giá trị mặc định của một biến toàn cục (không cần target)
+bitbake -e | grep ^MACHINE=</code></pre>
+      </div>
+    </section>
+
+    <section class="doc-section" id="s6">
+      <div class="sec-eyebrow">Phần 06 · Cơ chế BitBake</div>
+      <h2 class="sec-title">Layers</h2>
+      <p class="sec-intro">Layer là đơn vị tổ chức metadata chính của Yocto — thứ giúp bạn "cắm vào / rút ra" cả một mảng chức năng (một BSP, một tập ứng dụng, một policy distro) mà không đụng vào code của layer khác.</p>
+
+      <h3><span class="h-tag">06.1</span>Cấu trúc một layer</h3>
+      <div class="tree">meta-mylayer/
+├── conf/
+│   └── layer.conf        <span class="c"># Bắt buộc — khai báo layer này với BitBake</span>
+├── recipes-core/
+│   └── busybox/
+│       └── busybox_%.bbappend
+├── recipes-myapp/
+│   └── myapp/
+│       ├── myapp_1.0.bb
+│       └── files/
+│           └── 0001-fix-something.patch
+├── COPYING.MIT
+└── README</div>
+
+      <p>Chỉ có <code>conf/layer.conf</code> là bắt buộc — đây là thứ biến một thư mục thường thành một "layer" mà BitBake nhận diện được:</p>
+
+      <div class="code-block">
+        <div class="code-head"><span class="fname">meta-mylayer/conf/layer.conf</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-ini"># Thêm layer này vào đường tìm kiếm của BitBake
+BBPATH .= ":${LAYERDIR}"
+
+# Pattern tìm recipe/append trong layer này
+BBFILES += "${LAYERDIR}/recipes-*/*/*.bb \
+            ${LAYERDIR}/recipes-*/*/*.bbappend"
+
+# Tên định danh layer, dùng trong bblayers.conf và khi debug
+BBFILE_COLLECTIONS += "mylayer"
+BBFILE_PATTERN_mylayer = "^${LAYERDIR}/"
+
+# Priority — số càng cao càng được ưu tiên khi 2 layer cùng cung cấp 1 recipe
+BBFILE_PRIORITY_mylayer = "6"
+
+# Layer này cần layer "core" (OE-Core) đã có sẵn
+LAYERDEPENDS_mylayer = "core"
+
+# Chỉ tương thích với các release đã liệt kê — bitbake sẽ cảnh báo nếu không khớp
+LAYERSERIES_COMPAT_mylayer = "scarthgap walnascar wrynose"</code></pre>
+      </div>
+
+      <h3><span class="h-tag">06.2</span>Kích hoạt layer qua bblayers.conf</h3>
+      <p>Layer tồn tại trên đĩa không có nghĩa là nó được dùng — phải khai báo trong <code>build/conf/bblayers.conf</code> của build hiện tại:</p>
+      <div class="code-block">
+        <div class="code-head"><span class="fname">build/conf/bblayers.conf</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-ini">POKY_BBLAYERS_CONF_VERSION = "2"
+BBPATH = "${TOPDIR}"
+BBFILES ?= ""
+
+BBLAYERS ?= " \
+  /home/user/poky/meta \
+  /home/user/poky/meta-poky \
+  /home/user/poky/meta-yocto-bsp \
+  /home/user/poky/meta-mylayer \
+  "</code></pre>
+      </div>
+
+      <p>Trong thực tế, dùng <code>bitbake-layers</code> thay vì sửa tay để tránh lỗi cú pháp:</p>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">terminal</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash">bitbake-layers add-layer ../meta-mylayer
+bitbake-layers remove-layer meta-mylayer
+bitbake-layers show-layers          # xem layer + priority hiện tại
+bitbake-layers show-appends         # xem recipe nào đang bị .bbappend chỉnh sửa
+bitbake-layers show-overlayed       # xem recipe nào bị override bởi layer priority cao hơn</code></pre>
+      </div>
+
+      <h3><span class="h-tag">06.3</span>Ba loại layer thường gặp</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Loại</th><th>Chứa gì</th><th>Ví dụ</th></tr></thead>
+          <tbody>
+            <tr><td>BSP layer</td><td>Machine config, kernel/bootloader recipe riêng cho SoC/board</td><td><code>meta-raspberrypi</code>, <code>meta-ti</code>, layer BSP của vendor SoC</td></tr>
+            <tr><td>Distro layer</td><td>Policy toàn distro: init system, C library, security policy...</td><td><code>meta-poky</code>, <code>meta-openembedded/meta-oe</code></td></tr>
+            <tr><td>Software layer</td><td>Recipe cho ứng dụng/thư viện cụ thể của dự án</td><td>layer riêng của bạn cho app JKC, hoặc <code>meta-qt6</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout tip">
+        <div class="ic">🔎</div>
+        <div class="body">
+          <strong class="ctitle">Tìm layer có sẵn</strong>
+          <p>Trước khi tự viết, luôn kiểm tra <a href="#s17">OpenEmbedded Layer Index</a> — phần lớn thư viện/BSP phổ biến đã có layer cộng đồng maintain sẵn, tiết kiệm rất nhiều thời gian so với viết recipe từ đầu.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="s7">
+      <div class="sec-eyebrow">Phần 07 · Cơ chế BitBake</div>
+      <h2 class="sec-title">Recipes chi tiết</h2>
+      <p class="sec-intro">Recipe (<code>.bb</code>) là đơn vị mô tả "build cái gì, từ đâu, thành gì" cho một package. Đây là phần bạn sẽ viết/đọc nhiều nhất khi làm việc thực tế với Yocto.</p>
+
+      <h3><span class="h-tag">07.1</span>Quy ước đặt tên file</h3>
+      <p>Tên file quyết định <code>PN</code> (package name) và <code>PV</code> (package version) tự động:</p>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">quy ước</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash">myapp_1.2.0.bb    →  PN = "myapp"   PV = "1.2.0"
+myapp_git.bb      →  PN = "myapp"   PV = "git" (thường kèm PV = "1.0+git${SRCPV}" trong file)</code></pre>
+      </div>
+
+      <h3><span class="h-tag">07.2</span>Biến quan trọng</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Biến</th><th>Ý nghĩa</th></tr></thead>
+          <tbody>
+            <tr><td><code>DESCRIPTION</code> / <code>SUMMARY</code></td><td>Mô tả package — hiện trong metadata package quản lý (rpm/ipk)</td></tr>
+            <tr><td><code>LICENSE</code></td><td>Giấy phép (vd <code>"MIT"</code>, <code>"GPL-2.0-only"</code>) — bắt buộc, dùng cho audit license</td></tr>
+            <tr><td><code>LIC_FILES_CHKSUM</code></td><td>Checksum của file license trong source — BitBake báo lỗi nếu nội dung license đổi mà chưa cập nhật, chống thay đổi license âm thầm</td></tr>
+            <tr><td><code>SRC_URI</code></td><td>Nguồn: có thể là <code>http://</code>, <code>git://</code>, <code>file://</code> (patch/file cục bộ trong layer), gộp nhiều dòng được</td></tr>
+            <tr><td><code>S</code></td><td>Thư mục chứa source sau khi unpack (mặc định <code>${WORKDIR}/${BPN}-${PV}</code>)</td></tr>
+            <tr><td><code>B</code></td><td>Thư mục build — khác <code>S</code> khi build out-of-tree (cmake thường vậy)</td></tr>
+            <tr><td><code>D</code></td><td>Thư mục cài đặt ảo (destdir) lúc <code>do_install</code> — <em>không phải</em> hệ thống thật</td></tr>
+            <tr><td><code>DEPENDS</code></td><td>Phụ thuộc lúc <strong>build</strong> (recipe khác phải build/populate_sysroot xong trước)</td></tr>
+            <tr><td><code>RDEPENDS:${PN}</code></td><td>Phụ thuộc lúc <strong>chạy</strong> (package khác phải có mặt trên rootfs)</td></tr>
+            <tr><td><code>PACKAGES</code></td><td>Danh sách sub-package tách ra từ 1 recipe (vd tách <code>-dev</code>, <code>-dbg</code>, <code>-staticdev</code>)</td></tr>
+            <tr><td><code>FILES:${PN}-xxx</code></td><td>File nào thuộc sub-package nào</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3><span class="h-tag">07.3</span>Ví dụ: recipe cho project dùng Makefile thuần</h3>
+      <div class="code-block">
+        <div class="code-head"><span class="fname">recipes-myapp/myapp/myapp_1.0.bb</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-python">DESCRIPTION = "Ứng dụng đo cảm biến JKC"
+LICENSE = "MIT"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=0835ade698e0bcf8506ecda2f7b4f302"
+
+SRC_URI = "git://github.com/myorg/myapp.git;protocol=https;branch=main"
+SRCREV = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+PV = "1.0+git${SRCPV}"
+
+S = "${WORKDIR}/git"
+
+DEPENDS = "zlib"
+RDEPENDS:${PN} = "bash"
+
+do_compile() {
+    oe_runmake
+}
+
+do_install() {
+    install -d ${D}${bindir}
+    install -m 0755 ${B}/myapp ${D}${bindir}
+}</code></pre>
+      </div>
+      <p>Vì recipe này không <code>inherit</code> class build system nào, <code>do_compile</code>/<code>do_install</code> phải viết tay hoàn toàn. <code>oe_runmake</code> là wrapper của <code>make</code> đã tự truyền đúng cờ cross-compile (<code>CC</code>, <code>CFLAGS</code>...).</p>
+
+      <h3><span class="h-tag">07.4</span>Ví dụ: recipe autotools &amp; cmake</h3>
+      <p>Nếu project dùng autotools hoặc CMake chuẩn, <code>inherit</code> class tương ứng và gần như không cần viết task nào — class tự cung cấp <code>do_configure</code>/<code>do_compile</code>/<code>do_install</code> đúng chuẩn:</p>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">recipe dùng autotools (./configure)</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-python">DESCRIPTION = "Thư viện log dùng autotools"
+LICENSE = "BSD-3-Clause"
+LIC_FILES_CHKSUM = "file://COPYING;md5=..."
+
+SRC_URI = "http://example.com/liblog-2.1.tar.gz"
+SRC_URI[sha256sum] = "..."
+
+inherit autotools
+EXTRA_OECONF = "--disable-static"</code></pre>
+      </div>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">recipe dùng CMake</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-python">DESCRIPTION = "Thư viện xử lý ảnh dùng CMake"
+LICENSE = "Apache-2.0"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=..."
+
+SRC_URI = "git://github.com/myorg/libimg.git;protocol=https;branch=main"
+SRCREV = "..."
+S = "${WORKDIR}/git"
+
+inherit cmake
+EXTRA_OECMAKE = "-DBUILD_TESTS=OFF -DUSE_NEON=ON"</code></pre>
+      </div>
+
+      <div class="callout info">
+        <div class="ic">🔑</div>
+        <div class="body">
+          <strong class="ctitle">Dấu "..." trong checksum nghĩa là gì?</strong>
+          <p>Các giá trị <code>md5=...</code> / <code>SRC_URI[sha256sum] = "..."</code> ở trên là placeholder minh hoạ — checksum thật phụ thuộc đúng nội dung file license/source của từng project. Mẹo thực tế: cứ để giá trị sai hoặc để trống, chạy <code>bitbake &lt;recipe&gt;</code>, BitBake sẽ báo lỗi kèm theo <strong>checksum đúng</strong> ngay trong log — copy giá trị đó dán vào recipe là xong, không cần tự tính tay.</p>
+        </div>
+      </div>
+
+      <div class="callout tip">
+        <div class="ic">✅</div>
+        <div class="body">
+          <strong class="ctitle">Ưu tiên inherit class có sẵn</strong>
+          <p>Chỉ viết <code>do_compile</code>/<code>do_install</code> tay khi thực sự cần (Makefile tự chế, script build riêng). Với autotools/cmake/meson chuẩn, luôn <code>inherit</code> class tương ứng — ít code hơn, đồng nhất với toàn bộ OE-Core, và tự động hưởng các cải tiến/patch của class khi upgrade Yocto.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="s8">
+      <div class="sec-eyebrow">Phần 08 · Cơ chế BitBake</div>
+      <h2 class="sec-title">Classes &amp; inherit</h2>
+      <p class="sec-intro">Class (<code>.bbclass</code>) là nơi đóng gói logic dùng chung — thay vì copy-paste task giữa hàng trăm recipe, viết một lần rồi <code>inherit</code>.</p>
+
+      <h3><span class="h-tag">08.1</span>base.bbclass — mọi recipe đều có sẵn</h3>
+      <p><code>base.bbclass</code> được BitBake tự động inherit vào <strong>mọi</strong> recipe, không cần khai báo — đây là nơi định nghĩa các task rỗng mặc định (<code>do_fetch</code>, <code>do_unpack</code>, <code>do_patch</code>...) và các hàm tiện ích dùng chung (<code>oe_runmake</code>, event handler...).</p>
+
+      <h3><span class="h-tag">08.2</span>Các class thường dùng nhất</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Class</th><th>Cung cấp gì</th></tr></thead>
+          <tbody>
+            <tr><td><code>autotools</code></td><td><code>do_configure</code> chạy autoreconf + ./configure, <code>do_compile</code>/<code>do_install</code> gọi make chuẩn</td></tr>
+            <tr><td><code>cmake</code></td><td>Toàn bộ pipeline configure/compile/install qua CMake + Ninja, hỗ trợ cross-compile sẵn qua toolchain file</td></tr>
+            <tr><td><code>kernel</code></td><td>Task riêng cho build Linux kernel: <code>do_kernel_configme</code>, tạo package kernel-image/kernel-modules/kernel-dev tự động</td></tr>
+            <tr><td><code>kernel-yocto</code></td><td>Cơ chế "config fragment" cho kernel Yocto — merge nhiều fragment <code>.cfg</code> thành 1 <code>.config</code> cuối</td></tr>
+            <tr><td><code>systemd</code></td><td>Tự cài/enable unit file systemd (<code>SYSTEMD_SERVICE</code>) đúng chỗ</td></tr>
+            <tr><td><code>pkgconfig</code></td><td>Đảm bảo file <code>.pc</code> được cài đúng sysroot cho recipe khác dùng <code>pkg-config</code></td></tr>
+            <tr><td><code>python3native</code> / <code>setuptools3</code></td><td>Build package Python bằng interpreter native (chạy trên host) hoặc target</td></tr>
+            <tr><td><code>image</code></td><td>Class nền cho mọi recipe image (<code>core-image-*</code>) — lắp package thành rootfs</td></tr>
+            <tr><td><code>allarch</code></td><td>Đánh dấu recipe không phụ thuộc kiến trúc CPU (script, config, data file thuần)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3><span class="h-tag">08.3</span>Viết class riêng</h3>
+      <p>Khi nhiều recipe trong dự án cần chung một đoạn logic (vd: cùng cách nhúng version build vào binary, cùng bước ký firmware), gom vào 1 class riêng:</p>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">meta-mylayer/classes/buildstamp.bbclass</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-python">do_install:append() {
+    echo "Built: ${DATETIME} rev ${SRCREV}" > ${D}${sysconfdir}/build-info
+}</code></pre>
+      </div>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">dùng trong recipe bất kỳ</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-python">inherit buildstamp</code></pre>
+      </div>
+      <p>Lưu ý <code>do_install:append()</code> — cú pháp <code>:append</code>/<code>:prepend</code>/<code>:remove</code> là override syntax hiện tại của BitBake (thay cho cú pháp gạch dưới cũ <code>_append</code> đã lỗi thời từ nhiều release trước), dùng để <strong>thêm vào</strong> một task đã tồn tại thay vì ghi đè toàn bộ.</p>
+    </section>
+
+    <section class="doc-section" id="s9">
+      <div class="sec-eyebrow">Phần 09 · Cơ chế BitBake</div>
+      <h2 class="sec-title">.bbappend — chỉnh recipe có sẵn mà không sửa gốc</h2>
+      <p class="sec-intro">Rất hiếm khi bạn sửa trực tiếp recipe trong <code>meta/</code> hay BSP layer vendor — thay vào đó, dùng <code>.bbappend</code> trong layer riêng để "vá thêm" từ ngoài. Đây là cách làm chuẩn giúp layer của bạn không bao giờ xung đột khi vendor cập nhật layer gốc.</p>
+
+      <h3><span class="h-tag">09.1</span>Quy tắc đặt tên &amp; vị trí</h3>
+      <p>File <code>.bbappend</code> phải cùng tên với recipe gốc (không tính version), và nằm <strong>đúng path tương đối</strong> giống layer gốc (vd cùng nằm dưới <code>recipes-core/busybox/</code>):</p>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">quy ước tên file</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash"># Khớp mọi version của busybox:
+recipes-core/busybox/busybox_%.bbappend
+
+# Chỉ khớp đúng version 1.36.1:
+recipes-core/busybox/busybox_1.36.1.bbappend</code></pre>
+      </div>
+
+      <h3><span class="h-tag">09.2</span>Ví dụ: thêm patch vào recipe có sẵn</h3>
+      <div class="code-block">
+        <div class="code-head"><span class="fname">meta-mylayer/recipes-core/busybox/busybox_%.bbappend</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-python"># Cho BitBake biết tìm file patch trong thư mục con cùng tên recipe,
+# đặt cạnh file .bbappend này (vd: recipes-core/busybox/busybox/0001-...patch)
+FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
+
+SRC_URI += "file://0001-fix-watchdog-timeout.patch"</code></pre>
+      </div>
+      <p><code>THISDIR</code> là thư mục chứa chính file <code>.bbappend</code> đang chạy; dấu <code>:=</code> ép expand ngay lập tức (immediate expansion) vì <code>THISDIR</code> chỉ đúng tại thời điểm parse file này.</p>
+
+      <h3><span class="h-tag">09.3</span>Ví dụ: thêm file cấu hình / service riêng</h3>
+      <div class="code-block">
+        <div class="code-head"><span class="fname">meta-mylayer/recipes-connectivity/openssh/openssh_%.bbappend</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-python">FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
+SRC_URI += "file://sshd_config_custom"
+
+do_install:append() {
+    install -m 0644 ${WORKDIR}/sshd_config_custom ${D}${sysconfdir}/ssh/sshd_config
+}</code></pre>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body">
+          <strong class="ctitle">Đừng dùng <code>=</code> khi bạn muốn "thêm vào"</strong>
+          <p><code>SRC_URI = "..."</code> (dấu <code>=</code> thường) sẽ <strong>ghi đè toàn bộ</strong> giá trị gốc, xoá mất source gốc của recipe. Trong <code>.bbappend</code>, gần như luôn dùng <code>+=</code> hoặc <code>:append</code> để bổ sung, không thay thế.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="s10">
+      <div class="sec-eyebrow">Phần 10 · Cơ chế BitBake</div>
+      <h2 class="sec-title">local.conf — Biến cấu hình quan trọng</h2>
+      <p class="sec-intro"><code>build/conf/local.conf</code> là nơi cấu hình build cho <strong>máy cục bộ</strong> của bạn — không nên đưa vào git chung của layer, vì nó khác nhau giữa các máy/người.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Biến</th><th>Ý nghĩa</th><th>Ví dụ</th></tr></thead>
+          <tbody>
+            <tr><td><code>MACHINE</code></td><td>Board/target đang build cho</td><td><code>MACHINE = "raspberrypi4-64"</code></td></tr>
+            <tr><td><code>DISTRO</code></td><td>Policy distro áp dụng (init system, libc...)</td><td><code>DISTRO = "poky"</code></td></tr>
+            <tr><td><code>IMAGE_INSTALL:append</code></td><td>Thêm package vào image — <strong>chú ý khoảng trắng đầu chuỗi</strong></td><td><code>IMAGE_INSTALL:append = " htop nano"</code></td></tr>
+            <tr><td><code>PACKAGE_CLASSES</code></td><td>Format package nhị phân</td><td><code>PACKAGE_CLASSES ?= "package_ipk"</code></td></tr>
+            <tr><td><code>BB_NUMBER_THREADS</code></td><td>Số task BitBake chạy song song</td><td><code>BB_NUMBER_THREADS = "8"</code></td></tr>
+            <tr><td><code>PARALLEL_MAKE</code></td><td>Cờ <code>-j</code> truyền cho make bên trong mỗi task</td><td><code>PARALLEL_MAKE = "-j 8"</code></td></tr>
+            <tr><td><code>DL_DIR</code></td><td>Nơi lưu source đã fetch — trỏ ra ngoài để share giữa nhiều build</td><td><code>DL_DIR = "/data/yocto-shared/downloads"</code></td></tr>
+            <tr><td><code>SSTATE_DIR</code></td><td>Nơi lưu sstate-cache — trỏ ra ngoài để share tương tự</td><td><code>SSTATE_DIR = "/data/yocto-shared/sstate-cache"</code></td></tr>
+            <tr><td><code>EXTRA_IMAGE_FEATURES</code></td><td>Bật tính năng tiện dev (debug-tweaks = login root không cần password)</td><td><code>EXTRA_IMAGE_FEATURES ?= "debug-tweaks"</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout tip">
+        <div class="ic">💾</div>
+        <div class="body">
+          <strong class="ctitle">Luôn trỏ DL_DIR / SSTATE_DIR ra ngoài <code>build/</code></strong>
+          <p>Nếu bạn maintain nhiều project/branch Yocto (rất phổ biến khi làm nhiều board hoặc nhiều version firmware), đặt <code>DL_DIR</code> và <code>SSTATE_DIR</code> vào một thư mục dùng chung ngoài mọi <code>build/</code> sẽ tiết kiệm rất nhiều băng thông và thời gian — mỗi <code>build/</code> mới tận dụng lại cache của các build trước thay vì tải/build lại từ đầu.</p>
+        </div>
+      </div>
+
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">ví dụ local.conf tối thiểu cho một dự án thật</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-ini">MACHINE = "my-custom-board"
+DISTRO = "poky"
+PACKAGE_CLASSES = "package_ipk"
+
+DL_DIR = "/data/yocto-shared/downloads"
+SSTATE_DIR = "/data/yocto-shared/sstate-cache"
+
+BB_NUMBER_THREADS = "${@oe.utils.cpu_count()}"
+PARALLEL_MAKE = "-j ${@oe.utils.cpu_count()}"
+
+EXTRA_IMAGE_FEATURES ?= "debug-tweaks"
+IMAGE_INSTALL:append = " htop nano openssh"</code></pre>
+      </div>
+
+      <div class="callout info">
+        <div class="ic">🆕</div>
+        <div class="body">
+          <strong class="ctitle">Thay đổi từ Yocto 6.0 "Wrynose"</strong>
+          <p>Từ bản 6.0 trở đi, <code>local.conf</code> mặc định sinh ra <strong>gọn hơn hẳn</strong> so với các bản trước — nhiều thiết lập (như bật root login) giờ được quản lý qua cơ chế "config fragment" mới (<code>bitbake-config-build enable-fragment ...</code>) thay vì các dòng comment sẵn trong file như trước. Cách viết biến trực tiếp vào <code>local.conf</code> như bảng trên <strong>vẫn hoạt động bình thường</strong> ở 6.0 và được hầu hết layer/tài liệu hiện có sử dụng — đây vẫn là cách nắm chắc nhất khi mới học.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="s11">
+      <div class="sec-eyebrow">Phần 11 · Thực hành</div>
+      <h2 class="sec-title">Tạo layer + recipe riêng từ A đến Z</h2>
+      <p class="sec-intro">Ráp toàn bộ kiến thức phần 6–10 thành một luồng thực hành trọn vẹn: tạo layer riêng, viết recipe cho một app tối giản, rồi build một image tuỳ chỉnh có chứa app đó. Chạy tuần tự các bước dưới trong <code>poky/build</code>.</p>
+
+      <h3><span class="h-tag">11.1</span>Tạo &amp; kích hoạt layer</h3>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">terminal</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash">cd ~/poky
+bitbake-layers create-layer ../meta-mylayer
+bitbake-layers add-layer ../meta-mylayer
+bitbake-layers show-layers   # xác nhận meta-mylayer đã xuất hiện</code></pre>
+      </div>
+
+      <h3><span class="h-tag">11.2</span>Viết recipe "hello" tối giản</h3>
+      <p>Tạo cấu trúc thư mục cho recipe, nguồn C được nhúng thẳng trong layer (không cần server git ngoài):</p>
+      <div class="tree">meta-mylayer/recipes-example/hello/
+├── hello_1.0.bb
+└── files/
+    ├── hello.c
+    └── Makefile</div>
+
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">meta-mylayer/recipes-example/hello/files/hello.c</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-cpp">#include &lt;stdio.h&gt;
+
+int main(void)
+{
+    printf("Hello from meta-mylayer!\n");
+    return 0;
+}</code></pre>
+      </div>
+
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">meta-mylayer/recipes-example/hello/files/Makefile</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-makefile">CC ?= gcc
+CFLAGS ?= -Wall
+
+hello: hello.c
+	$(CC) $(CFLAGS) -o hello hello.c
+
+clean:
+	rm -f hello</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-head"><span class="fname">meta-mylayer/recipes-example/hello/hello_1.0.bb</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-python">DESCRIPTION = "Recipe demo — ứng dụng Hello World tối giản"
+LICENSE = "MIT"
+LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
+
+SRC_URI = "file://hello.c \
+           file://Makefile"
+
+S = "${WORKDIR}"
+
+do_compile() {
+    oe_runmake
+}
+
+do_install() {
+    install -d ${D}${bindir}
+    install -m 0755 hello ${D}${bindir}
+}</code></pre>
+      </div>
+
+      <p>BitBake tự tìm <code>file://</code> trong thư mục <code>files/</code> cạnh recipe (một trong các đường dẫn mặc định của <code>FILESPATH</code>), nên không cần khai báo <code>FILESEXTRAPATHS</code> ở đây.</p>
+
+      <h3><span class="h-tag">11.3</span>Build thử recipe độc lập</h3>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">terminal</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash">bitbake hello
+# Kiểm tra output đã cài đúng chưa:
+find tmp/work/*/hello/1.0/image -name hello</code></pre>
+      </div>
+
+      <h3><span class="h-tag">11.4</span>Tạo image tuỳ chỉnh chứa "hello"</h3>
+      <p>Thay vì sửa <code>local.conf</code> (chỉ đúng trên máy bạn), cách chuẩn khi làm dự án thật là tạo <strong>recipe image riêng</strong> — kế thừa <code>core-image-minimal</code> rồi thêm package, để build ra bất kỳ máy nào cũng cho kết quả giống nhau:</p>
+      <div class="code-block">
+        <div class="code-head"><span class="fname">meta-mylayer/recipes-core/images/mylayer-image.bb</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-python">require recipes-core/images/core-image-minimal.bb
+
+DESCRIPTION = "Image tuỳ chỉnh cho dự án — kế thừa core-image-minimal + app riêng"
+
+IMAGE_INSTALL += "hello"</code></pre>
+      </div>
+
+      <h3><span class="h-tag">11.5</span>Build &amp; kiểm chứng trên QEMU</h3>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">terminal</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash">bitbake mylayer-image
+runqemu qemux86-64</code></pre>
+      </div>
+      <p>Trong QEMU, đăng nhập <code>root</code> (không cần password nếu <code>EXTRA_IMAGE_FEATURES</code> có <code>debug-tweaks</code>), rồi chạy thử:</p>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">trong QEMU</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash">root@qemux86-64:~# hello
+Hello from meta-mylayer!</code></pre>
+      </div>
+
+      <div class="callout tip">
+        <div class="ic">🎯</div>
+        <div class="body">
+          <strong class="ctitle">Đây chính là vòng lặp làm việc hằng ngày với Yocto</strong>
+          <p>Viết/sửa recipe → <code>bitbake &lt;target&gt;</code> để build riêng lẻ và kiểm tra nhanh → thêm vào image recipe khi ổn → build image đầy đủ → test trên QEMU hoặc board thật. Với thay đổi nhỏ, sstate-cache khiến bước lặp lại nhanh hơn build đầu rất nhiều.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="s12">
+      <div class="sec-eyebrow">Phần 12 · Thực hành</div>
+      <h2 class="sec-title">Kernel &amp; U-Boot trong Yocto</h2>
+      <p class="sec-intro">Phần này nối trực tiếp với nền tảng bare-metal/kernel bạn đã có — khác biệt lớn nhất so với build kernel tay là Yocto quản lý config qua <strong>fragment</strong> thay vì sửa <code>.config</code> trực tiếp.</p>
+
+      <h3><span class="h-tag">12.1</span>linux-yocto &amp; cơ chế config fragment</h3>
+      <p>Recipe <code>linux-yocto</code> (và các biến thể) dùng class <code>kernel-yocto</code>: thay vì cung cấp một file <code>.config</code> đầy đủ, bạn cung cấp các <strong>fragment</strong> nhỏ (chỉ các <code>CONFIG_*</code> muốn bật/tắt), rồi tool merge lại thành <code>.config</code> cuối. Cách này giúp fragment tái sử dụng được giữa nhiều board/kernel version khác nhau.</p>
+
+      <div class="code-block">
+        <div class="code-head"><span class="fname">meta-mylayer/recipes-kernel/linux/linux-yocto_%.bbappend</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-python">FILESEXTRAPATHS:prepend := "${THISDIR}/linux-yocto:"
+
+SRC_URI += "file://enable-can.cfg"</code></pre>
+      </div>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">meta-mylayer/recipes-kernel/linux/linux-yocto/enable-can.cfg</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-ini">CONFIG_CAN=y
+CONFIG_CAN_RAW=y
+CONFIG_CAN_C_CAN=y</code></pre>
+      </div>
+
+      <h3><span class="h-tag">12.2</span>Workflow sửa kernel nhanh với devtool</h3>
+      <p>Khi cần debug/sửa kernel source trực tiếp (không chỉ đổi config), <code>devtool</code> là công cụ đúng — tránh phải hiểu hết cơ chế patch/fragment ngay từ đầu:</p>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">terminal</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash">devtool modify virtual/kernel
+# → checkout source kernel thật ra workspace/sources/linux-yocto để sửa trực tiếp
+
+cd workspace/sources/linux-yocto
+# sửa code, hoặc: bitbake virtual/kernel -c menuconfig
+
+devtool build virtual/kernel
+
+# deploy thẳng qua SSH lên board đang chạy để test nhanh, không cần re-flash:
+devtool deploy-target virtual/kernel root@192.168.1.50
+
+# khi đã ổn, đưa thay đổi thành patch chính thức vào layer:
+devtool finish virtual/kernel meta-mylayer</code></pre>
+      </div>
+
+      <h3><span class="h-tag">12.3</span>Recipe cho kernel module out-of-tree</h3>
+      <p>Vì bạn đang tìm hiểu sâu về driver — đây là cách đóng gói một module <code>.ko</code> tự viết thành recipe Yocto, dùng <code>module.bbclass</code>:</p>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">meta-mylayer/recipes-kernel/hello-mod/hello-mod_0.1.bb</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-python">SUMMARY = "Kernel module demo"
+LICENSE = "GPL-2.0-only"
+LIC_FILES_CHKSUM = "file://COPYING;md5=..."
+
+inherit module
+
+SRC_URI = "file://hello-mod.c \
+           file://Makefile \
+           file://COPYING"
+S = "${WORKDIR}"
+
+KERNEL_MODULE_AUTOLOAD += "hello-mod"</code></pre>
+      </div>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">files/Makefile (mẫu chuẩn cho module out-of-tree)</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-makefile">obj-m := hello-mod.o
+SRC := $(shell pwd)
+
+all:
+	$(MAKE) -C $(KERNEL_SRC) M=$(SRC)
+
+modules_install:
+	$(MAKE) -C $(KERNEL_SRC) M=$(SRC) modules_install
+
+clean:
+	rm -f *.o *~ core .depend .*.cmd *.ko *.mod.c
+	rm -f Module.markers Module.symvers modules.order</code></pre>
+      </div>
+      <p><code>module.bbclass</code> tự truyền <code>KERNEL_SRC</code>/<code>KERNEL_VERSION</code> và toolchain đúng chuẩn vào make — bạn chỉ cần Makefile theo đúng mẫu trên. <code>KERNEL_MODULE_AUTOLOAD</code> khiến module tự <code>modprobe</code> lúc boot.</p>
+
+      <h3><span class="h-tag">12.4</span>U-Boot (tóm tắt)</h3>
+      <p>Tương tự kernel, U-Boot được cấu hình chủ yếu qua biến trong machine <code>.conf</code>:</p>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">conf/machine/my-board.conf</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-ini">PREFERRED_PROVIDER_u-boot = "u-boot"
+UBOOT_MACHINE = "my_board_defconfig"</code></pre>
+      </div>
+      <p>Muốn patch source U-Boot thì hoàn toàn giống cách làm với kernel/recipe thường: tạo <code>u-boot_%.bbappend</code> trong layer riêng và thêm patch qua <code>SRC_URI +=</code>.</p>
+    </section>
+
+    <section class="doc-section" id="s13">
+      <div class="sec-eyebrow">Phần 13 · Thực hành</div>
+      <h2 class="sec-title">Debug &amp; Troubleshooting</h2>
+      <p class="sec-intro">Phần lớn thời gian làm việc thực tế với Yocto là đọc lỗi build. Nắm vững vài công cụ dưới đây giúp rút ngắn đáng kể thời gian debug.</p>
+
+      <h3><span class="h-tag">13.1</span>devshell — vào đúng môi trường build để debug tay</h3>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">terminal</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash">bitbake -c devshell myapp</code></pre>
+      </div>
+      <p>Mở một terminal mới (mặc định <code>xterm</code>) đã set sẵn <strong>chính xác</strong> mọi biến môi trường (<code>CC</code>, <code>CFLAGS</code>, <code>PATH</code> trỏ vào cross-toolchain...) và <code>cwd</code> tại <code>${S}</code>/<code>${B}</code> — y hệt lúc BitBake chạy <code>do_compile</code>. Cực hữu ích để thử tay từng lệnh <code>configure</code>/<code>make</code> khi build tự động báo lỗi khó hiểu.</p>
+
+      <h3><span class="h-tag">13.2</span>Đọc log &amp; tra biến</h3>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">terminal</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash"># Log chi tiết của task lỗi (đường dẫn BitBake in ra khi báo lỗi):
+cat tmp/work/*/myapp/1.0/temp/log.do_compile
+
+# Tra giá trị cuối cùng (đã resolve) của 1 biến cho 1 recipe:
+bitbake -e myapp | grep ^EXTRA_OECONF=
+
+# Xem toàn bộ task đã/chưa chạy của 1 recipe:
+bitbake -c listtasks myapp</code></pre>
+      </div>
+
+      <h3><span class="h-tag">13.3</span>Lỗi thường gặp</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Lỗi</th><th>Nguyên nhân phổ biến</th><th>Hướng xử lý</th></tr></thead>
+          <tbody>
+            <tr><td>Fetcher failure / do_fetch</td><td>Mạng chặn, URL đổi, hoặc <code>SRC_URI[sha256sum]</code> không khớp</td><td>Kiểm tra URL/mạng; nếu do đổi source, xoá checksum cũ và để BitBake báo checksum đúng trong log rồi cập nhật lại</td></tr>
+            <tr><td>do_patch fails (fuzz)</td><td>Patch không khớp version source hiện tại</td><td>Rebase patch thủ công đúng version mới; ưu tiên tạo patch bằng <code>git format-patch</code> để áp mượt hơn</td></tr>
+            <tr><td>QA Issue: rpath / buildpaths</td><td>Binary chứa đường dẫn tuyệt đối của build host thay vì sysroot chuẩn</td><td>Kiểm tra recipe có override <code>CC</code>/<code>LDFLAGS</code> thủ công, phá mất cờ cross-compile mặc định không</td></tr>
+            <tr><td>Nothing RPROVIDES '&lt;pkg&gt;'</td><td>Sai tên package, hoặc layer chứa recipe chưa được add vào <code>bblayers.conf</code></td><td><code>bitbake-layers show-recipes | grep &lt;tên&gt;</code> để xác nhận recipe có được nhìn thấy không</td></tr>
+            <tr><td>sstate cache "lệch" khó hiểu sau khi sửa</td><td>BitBake tưởng task không đổi nên tái dùng sstate cũ</td><td><code>bitbake -c cleansstate &lt;target&gt;</code> rồi build lại</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout info">
+        <div class="ic">🧭</div>
+        <div class="body">
+          <strong class="ctitle">Thứ tự debug hợp lý</strong>
+          <p>Đọc thông báo lỗi cuối cùng trên terminal (BitBake luôn chỉ thẳng đường dẫn log) → mở log đó xem lỗi thật sự của compiler/configure → nếu chưa rõ, vào <code>devshell</code> để tái hiện lệnh lỗi thủ công → nếu nghi ngờ sstate, thử <code>cleansstate</code>. Tránh xoá cả <code>tmp/</code> ngay từ đầu — vừa mất thời gian vừa mất manh mối.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-section" id="s14">
+      <div class="sec-eyebrow">Phần 14 · Thực hành</div>
+      <h2 class="sec-title">SDK / Toolchain</h2>
+      <p class="sec-intro">Không phải lúc nào cũng cần build lại toàn bộ image chỉ để phát triển một ứng dụng — Yocto có thể export riêng một cross-toolchain đóng gói sẵn (SDK) để dev app độc lập với build chính.</p>
+
+      <h3><span class="h-tag">14.1</span>Standard SDK</h3>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">terminal</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash">bitbake core-image-minimal -c populate_sdk
+# Output: tmp/deploy/sdk/*.sh — installer standalone
+
+./tmp/deploy/sdk/poky-glibc-x86_64-core-image-minimal-*.sh
+source /opt/poky/6.0/environment-setup-*
+# Từ giờ $CC, $CXX, $PKG_CONFIG_PATH... đã trỏ đúng cross-toolchain
+$CC myapp.c -o myapp</code></pre>
+      </div>
+
+      <h3><span class="h-tag">14.2</span>Extensible SDK (eSDK)</h3>
+      <p>Bản mở rộng của SDK — nhúng kèm cả <code>devtool</code> và một phần build system, cho phép thêm/sửa recipe ngay trong SDK mà không cần checkout lại toàn bộ Yocto:</p>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">terminal</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash">bitbake core-image-minimal -c populate_sdk_ext</code></pre>
+      </div>
+      <p>Phù hợp khi muốn giao cho team dev ứng dụng một bộ công cụ độc lập, không cần họ clone/build cả <code>poky</code> để chỉ sửa 1 app.</p>
+    </section>
+
+    <section class="doc-section" id="s15">
+      <div class="sec-eyebrow">Phần 15 · Thực hành</div>
+      <h2 class="sec-title">Build cho board thật</h2>
+      <p class="sec-intro">QEMU tốt để học và test nhanh, nhưng mục tiêu cuối cùng luôn là một board thật. Khác với Buildroot (thường chỉnh trực tiếp defconfig kernel/bootloader trong cây build), Yocto kỳ vọng phần cứng được mô tả qua một <strong>BSP layer</strong> có cấu trúc rõ ràng.</p>
+
+      <h3><span class="h-tag">15.1</span>Tìm BSP layer có sẵn</h3>
+      <p>Trước khi tự viết, luôn kiểm tra xem SoC/board đã có layer cộng đồng hoặc vendor cung cấp chưa, qua <a href="#s17">OpenEmbedded Layer Index</a>. Phần lớn SoC phổ biến (NXP, TI, ST, Rockchip, Allwinner, Broadcom...) đều đã có layer chính thức hoặc cộng đồng maintain.</p>
+
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">terminal</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-bash">cd ~/poky
+git clone https://github.com/vendor/meta-vendor-bsp.git
+bitbake-layers add-layer ../meta-vendor-bsp
+# Kiểm tra dependency của layer (thường cần thêm meta-openembedded):
+cat meta-vendor-bsp/conf/layer.conf | grep LAYERDEPENDS</code></pre>
+      </div>
+
+      <p>Sau đó chỉ cần đổi <code>MACHINE</code> trong <code>local.conf</code> sang giá trị layer BSP định nghĩa (xem trong <code>meta-vendor-bsp/conf/machine/*.conf</code>), rồi build như bình thường:</p>
+      <div class="code-block compact">
+        <div class="code-head"><span class="fname">build/conf/local.conf</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-ini">MACHINE = "vendor-board-name"</code></pre>
+      </div>
+
+      <h3><span class="h-tag">15.2</span>Khi chưa có layer sẵn — machine .conf tối thiểu</h3>
+      <p>Nếu phải tự viết BSP layer cho một board chưa được hỗ trợ, phần lõi là file <code>conf/machine/&lt;tên-machine&gt;.conf</code>. Đây là ví dụ minh hoạ (thực tế sẽ cần nhiều tinh chỉnh hơn tuỳ SoC):</p>
+      <div class="code-block">
+        <div class="code-head"><span class="fname">meta-mylayer/conf/machine/my-board.conf</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-ini">#@TYPE: Machine
+#@NAME: My Custom Board
+#@DESCRIPTION: Cortex-A53 SoC, 1GB RAM
+
+MACHINEOVERRIDES =. "my-board:"
+
+PREFERRED_PROVIDER_virtual/kernel = "linux-yocto"
+PREFERRED_VERSION_linux-yocto ?= "6.6%"
+KERNEL_IMAGETYPE = "Image"
+KERNEL_DEVICETREE = "vendor/my-board.dtb"
+
+PREFERRED_PROVIDER_u-boot = "u-boot"
+UBOOT_MACHINE = "my_board_defconfig"
+
+SERIAL_CONSOLES = "115200;ttyS0"
+MACHINE_FEATURES = "usbhost wifi"
+
+IMAGE_FSTYPES = "wic wic.bmap ext4"</code></pre>
+      </div>
+
+      <h3><span class="h-tag">15.3</span>Lấy output để flash</h3>
+      <p>Sau khi build xong, image nằm ở <code>tmp/deploy/images/&lt;machine&gt;/</code> — thường gồm kernel Image/zImage, device tree <code>.dtb</code>, rootfs (<code>.ext4</code>, <code>.wic</code>...). Cách flash cụ thể (dd, fastboot, JTAG, U-Boot qua TFTP...) phụ thuộc hoàn toàn vào bootloader/SoC, thường được layer BSP vendor tài liệu hoá kèm sẵn.</p>
+    </section>
+
+    <section class="doc-section" id="s16">
+      <div class="sec-eyebrow">Phần 16 · Tra cứu</div>
+      <h2 class="sec-title">Cheatsheet lệnh tổng hợp</h2>
+      <p class="sec-intro">Bảng tổng hợp toàn bộ lệnh dùng thường xuyên nhất — dùng để tra nhanh khi đã quen workflow.</p>
+
+      <h4>Setup &amp; môi trường</h4>
+      <div class="table-wrap">
+        <table>
+          <tbody>
+            <tr><td><code>source oe-init-build-env [dir]</code></td><td>Khởi tạo / vào lại môi trường build</td></tr>
+            <tr><td><code>bitbake-layers create-layer &lt;path&gt;</code></td><td>Tạo layer mới với skeleton sẵn</td></tr>
+            <tr><td><code>bitbake-layers add-layer / remove-layer &lt;path&gt;</code></td><td>Bật / tắt layer trong build hiện tại</td></tr>
+            <tr><td><code>bitbake-layers show-layers</code></td><td>Liệt kê layer + priority đang active</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Build &amp; task control</h4>
+      <div class="table-wrap">
+        <table>
+          <tbody>
+            <tr><td><code>bitbake &lt;target&gt;</code></td><td>Build recipe/image tới hết pipeline</td></tr>
+            <tr><td><code>bitbake -c &lt;task&gt; &lt;target&gt;</code></td><td>Chạy 1 task cụ thể (compile, devshell, menuconfig...)</td></tr>
+            <tr><td><code>bitbake -c clean/cleansstate/cleanall &lt;target&gt;</code></td><td>Dọn output ở 3 mức độ tăng dần</td></tr>
+            <tr><td><code>bitbake -k</code></td><td>Build tiếp dù có lỗi ở target khác</td></tr>
+            <tr><td><code>bitbake -f -c &lt;task&gt; &lt;target&gt;</code></td><td>Ép chạy lại task dù sstate đã có</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Thông tin &amp; debug</h4>
+      <div class="table-wrap">
+        <table>
+          <tbody>
+            <tr><td><code>bitbake -e &lt;target&gt; | grep ^VAR=</code></td><td>Tra giá trị đã resolve của 1 biến</td></tr>
+            <tr><td><code>bitbake-layers show-recipes</code></td><td>Tìm recipe theo tên, xem layer nào cung cấp</td></tr>
+            <tr><td><code>bitbake-layers show-appends</code></td><td>Xem recipe nào đang bị .bbappend can thiệp</td></tr>
+            <tr><td><code>bitbake -g &lt;target&gt;</code></td><td>Xuất dependency graph (.dot)</td></tr>
+            <tr><td><code>bitbake -c devshell &lt;target&gt;</code></td><td>Mở shell đúng môi trường build của recipe</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Image &amp; SDK</h4>
+      <div class="table-wrap">
+        <table>
+          <tbody>
+            <tr><td><code>runqemu &lt;machine&gt;</code></td><td>Chạy image mới build nhất trong QEMU</td></tr>
+            <tr><td><code>bitbake &lt;image&gt; -c populate_sdk</code></td><td>Xuất Standard SDK (toolchain đóng gói)</td></tr>
+            <tr><td><code>bitbake &lt;image&gt; -c populate_sdk_ext</code></td><td>Xuất Extensible SDK (kèm devtool)</td></tr>
+            <tr><td><code>devtool modify &lt;recipe&gt;</code></td><td>Checkout source ra ngoài để sửa trực tiếp</td></tr>
+            <tr><td><code>devtool build / deploy-target / finish</code></td><td>Build lại / deploy qua SSH / hoàn tất đưa vào layer</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="doc-section" id="s17">
+      <div class="sec-eyebrow">Phần 17 · Tra cứu</div>
+      <h2 class="sec-title">Tài nguyên tham khảo</h2>
+      <p class="sec-intro">Nguồn chính thức, nên bookmark để tra cứu khi tài liệu này không đủ chi tiết cho trường hợp cụ thể.</p>
+      <ul class="doc-list">
+        <li><strong>docs.yoctoproject.org</strong> — bộ manual chính thức đầy đủ nhất (Reference Manual, Dev Tasks Manual, BitBake User Manual, Kernel Dev Manual)</li>
+        <li><strong>wiki.yoctoproject.org</strong> — trang release, FAQ, ghi chú cộng đồng</li>
+        <li><strong>layers.openembedded.org</strong> — OpenEmbedded Layer Index, tra layer/BSP có sẵn theo tên SoC hoặc thư viện</li>
+        <li><strong>lists.yoctoproject.org</strong> — mailing list chính thức, nơi maintainer thực sự trả lời câu hỏi khó</li>
+        <li>Kênh chat cộng đồng <strong>#yocto</strong> trên Libera.Chat IRC / Matrix — hỏi nhanh vấn đề cụ thể</li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<footer class="doc-footer">
+  YCT-BLD-01 · Tài liệu tổng hợp cá nhân, tổng hợp từ tài liệu chính thức Yocto Project (LTS 6.0 "Wrynose" / 5.0 "Scarthgap") — cập nhật 07/2026. Kiểm tra lại phiên bản/biến cụ thể trong <a href="https://docs.yoctoproject.org" target="_blank" rel="noopener">docs.yoctoproject.org</a> khi có thay đổi release mới.
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  if (window.hljs) { hljs.highlightAll(); }
+
+  document.querySelectorAll('.code-block').forEach(function (block) {
+    var btn = block.querySelector('.copy-btn');
+    var codeEl = block.querySelector('code');
+    if (!btn || !codeEl) return;
+    btn.addEventListener('click', function () {
+      var text = codeEl.innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        var original = 'Copy';
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+        setTimeout(function () {
+          btn.textContent = original;
+          btn.classList.remove('copied');
+        }, 1600);
+      }).catch(function () {
+        btn.textContent = 'Error';
+      });
+    });
+  });
+
+  var sections = document.querySelectorAll('section.doc-section[id]');
+  var navLinks = document.querySelectorAll('.sidebar a.nav-link');
+  var linkMap = {};
+  navLinks.forEach(function (link) {
+    linkMap[link.getAttribute('href').slice(1)] = link;
+  });
+
+  if ('IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        var link = linkMap[entry.target.getAttribute('id')];
+        if (!link) return;
+        if (entry.isIntersecting) {
+          navLinks.forEach(function (l) { l.classList.remove('active'); });
+          link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    sections.forEach(function (s) { observer.observe(s); });
+  }
+
+  var toggleBtn = document.getElementById('mobileToggle');
+  var sidebar = document.getElementById('sidebar');
+  if (toggleBtn && sidebar) {
+    toggleBtn.addEventListener('click', function () {
+      sidebar.classList.toggle('open');
+    });
+    navLinks.forEach(function (link) {
+      link.addEventListener('click', function () {
+        sidebar.classList.remove('open');
+      });
+    });
+  }
+});
+</script>
+</body>
+</html>

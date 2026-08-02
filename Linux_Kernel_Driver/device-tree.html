@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Linux Device Tree — Tài liệu tham khảo</title>
+<style>
+:root {
+  --bg: #0b0e14;
+  --bg-panel: #121722;
+  --bg-panel-2: #182030;
+  --border: #232b3a;
+  --text: #dce3ee;
+  --text-muted: #7c8aa3;
+  --copper: #e0a45e;
+  --cyan: #5ecdd1;
+  --green: #8fd192;
+  --value: #a9c7e8;
+  --danger: #e2707a;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --sidebar-w: 280px;
+  --content-max: 800px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "IBM Plex Sans", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Liberation Mono", monospace;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: rgba(224,164,94,0.28); color: #fff; }
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+*::-webkit-scrollbar-thumb:hover { background: #2e3850; }
+a { color: var(--cyan); text-decoration: none; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--copper); outline-offset: 2px; border-radius: 4px; }
+
+.layout { display: flex; align-items: flex-start; max-width: 1360px; margin: 0 auto; }
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar-w);
+  flex: 0 0 var(--sidebar-w);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  padding: 1.75rem 1.25rem 2rem;
+}
+.sidebar-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: 1.5rem; }
+.brand { display: flex; align-items: baseline; gap: .35rem; font-family: var(--font-mono); font-size: 1rem; color: var(--text); }
+.brand-mark { color: var(--copper); font-weight: 700; }
+.brand-dim { color: var(--text-muted); }
+.toc-toggle {
+  display: none;
+  font-family: var(--font-mono);
+  font-size: .8rem;
+  background: var(--bg-panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: .4rem .7rem;
+  cursor: pointer;
+}
+.tree-nav { list-style: none; margin: 0; padding: 0; font-family: var(--font-mono); font-size: .84rem; }
+.tree-nav li { margin: 0; }
+.tree-link {
+  display: flex; gap: .5rem; align-items: baseline;
+  padding: .38rem .4rem; border-radius: var(--radius-sm);
+  color: var(--text-muted); line-height: 1.35;
+  transition: color .15s ease, background .15s ease;
+}
+.tree-glyph { color: var(--border); flex: 0 0 auto; }
+.tree-link:hover { color: var(--text); background: var(--bg-panel); text-decoration: none; }
+.tree-nav li.active .tree-link { color: var(--copper); background: var(--bg-panel-2); }
+.tree-nav li.active .tree-glyph { color: var(--copper); }
+.sidebar-note { margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--border); font-size: .78rem; color: var(--text-muted); line-height: 1.6; }
+
+/* Content */
+.content { flex: 1 1 auto; min-width: 0; padding: 3rem 3rem 6rem; }
+.hero { max-width: var(--content-max); margin-bottom: 3.5rem; }
+.hero-eyebrow { font-family: var(--font-mono); color: var(--copper); font-size: .82rem; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 .75rem; }
+.hero h1 { font-size: clamp(1.8rem, 3vw, 2.5rem); line-height: 1.2; margin: 0 0 .75rem; letter-spacing: -0.01em; }
+.hero .tagline { color: var(--text-muted); font-size: 1.05rem; max-width: 62ch; margin: 0 0 1.75rem; }
+
+section { max-width: var(--content-max); margin-bottom: 4rem; scroll-margin-top: 1.25rem; }
+.eyebrow { font-family: var(--font-mono); color: var(--copper); font-size: .78rem; letter-spacing: .1em; margin: 0 0 .4rem; }
+section h2 { font-size: 1.55rem; margin: 0 0 1rem; letter-spacing: -0.01em; padding-bottom: .75rem; border-bottom: 1px solid var(--border); }
+section h3 { font-size: 1.12rem; margin: 2rem 0 .75rem; color: var(--text); }
+section h3 .h3-num { color: var(--text-muted); font-family: var(--font-mono); font-weight: 400; margin-right: .4rem; }
+section p { margin: 0 0 1rem; }
+section ul, section ol { margin: 0 0 1.25rem; padding-left: 1.35rem; }
+section li { margin-bottom: .5rem; }
+section li::marker { color: var(--copper); }
+section strong { color: #fff; font-weight: 600; }
+
+code { font-family: var(--font-mono); font-size: .87em; }
+p code, li code, td code, h3 code { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 4px; padding: .1em .4em; color: var(--copper); white-space: nowrap; }
+
+.code-block { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-md); margin: 1.25rem 0 1.5rem; overflow: hidden; }
+.code-bar { display: flex; align-items: center; justify-content: space-between; padding: .5rem .9rem; border-bottom: 1px solid var(--border); background: var(--bg-panel-2); }
+.code-lang { font-family: var(--font-mono); font-size: .74rem; color: var(--text-muted); letter-spacing: .04em; }
+.copy-btn { font-family: var(--font-mono); font-size: .72rem; background: transparent; color: var(--text-muted); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .25rem .6rem; cursor: pointer; transition: color .15s ease, border-color .15s ease; }
+.copy-btn:hover { color: var(--cyan); border-color: var(--cyan); }
+.code-block pre { margin: 0; padding: 1rem 1.1rem; overflow-x: auto; line-height: 1.65; font-size: .85rem; }
+.code-block code { background: none; border: none; padding: 0; white-space: pre; color: var(--text); }
+
+.tok-comment { color: var(--text-muted); font-style: italic; }
+.tok-string { color: var(--green); }
+.tok-macro, .tok-directive, .tok-type, .tok-const, .tok-flag { color: var(--cyan); }
+.tok-ref, .tok-prop, .tok-keyword, .tok-label { color: var(--copper); }
+.tok-label { font-weight: 600; }
+.tok-cells, .tok-number { color: var(--value); }
+.tok-function { color: var(--green); }
+
+table { width: 100%; border-collapse: collapse; margin: 1.25rem 0 1.5rem; font-size: .88rem; }
+th, td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-family: var(--font-mono); font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); font-weight: 500; }
+td:first-child, th:first-child { padding-left: 0; }
+
+.callout { border-left: 3px solid var(--cyan); background: var(--bg-panel); border-radius: 0 var(--radius-md) var(--radius-md) 0; padding: .9rem 1.1rem; margin: 1.25rem 0 1.5rem; }
+.callout-label { font-family: var(--font-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--cyan); margin: 0 0 .4rem; }
+.callout p:last-child { margin-bottom: 0; }
+.callout.warn { border-left-color: var(--danger); }
+.callout.warn .callout-label { color: var(--danger); }
+
+footer { max-width: var(--content-max); border-top: 1px solid var(--border); padding-top: 1.5rem; color: var(--text-muted); font-size: .88rem; }
+footer a { color: var(--text-muted); }
+.back-to-top { font-family: var(--font-mono); font-size: .8rem; }
+
+@media (max-width: 900px) {
+  .layout { display: block; }
+  .sidebar { position: sticky; top: 0; z-index: 20; width: 100%; height: auto; max-height: none; border-right: none; border-bottom: 1px solid var(--border); background: var(--bg); padding: .85rem 1.1rem; }
+  .sidebar-head { margin-bottom: 0; }
+  .toc-toggle { display: inline-block; }
+  .toc { display: none; margin-top: 1rem; max-height: 65vh; overflow-y: auto; }
+  .toc.open { display: block; }
+  .sidebar-note { display: none; }
+  .content { padding: 2.25rem 1.25rem 4rem; }
+  section { scroll-margin-top: 4.25rem; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <a href="#top" class="brand"><span class="brand-mark">/</span><span>device-tree<span class="brand-dim">.dts</span></span></a>
+      <button class="toc-toggle" id="tocToggle" aria-expanded="false" aria-controls="tocNav">Mục lục</button>
+    </div>
+    <nav class="toc" id="tocNav">
+      <ul class="tree-nav">
+        <li><a class="tree-link" href="#why"><span class="tree-glyph">├──</span><span>01 · Vì sao cần Device Tree</span></a></li>
+        <li><a class="tree-link" href="#syntax"><span class="tree-glyph">├──</span><span>02 · Cấu trúc &amp; cú pháp DTS</span></a></li>
+        <li><a class="tree-link" href="#toolchain"><span class="tree-glyph">├──</span><span>03 · Toolchain: dts/dtb/dtc</span></a></li>
+        <li><a class="tree-link" href="#addressing"><span class="tree-glyph">├──</span><span>04 · Address translation</span></a></li>
+        <li><a class="tree-link" href="#matching"><span class="tree-glyph">├──</span><span>05 · Match Node → Driver</span></a></li>
+        <li><a class="tree-link" href="#bindings"><span class="tree-glyph">├──</span><span>06 · Bindings thường gặp</span></a></li>
+        <li><a class="tree-link" href="#driver-code"><span class="tree-glyph">├──</span><span>07 · Đọc DT trong driver</span></a></li>
+        <li><a class="tree-link" href="#example"><span class="tree-glyph">├──</span><span>08 · Ví dụ đầy đủ: SPI RC522</span></a></li>
+        <li><a class="tree-link" href="#overlay"><span class="tree-glyph">├──</span><span>09 · Device Tree Overlay</span></a></li>
+        <li><a class="tree-link" href="#debug"><span class="tree-glyph">├──</span><span>10 · Debug &amp; công cụ</span></a></li>
+        <li><a class="tree-link" href="#cheatsheet"><span class="tree-glyph">└──</span><span>11 · Bảng tra nhanh</span></a></li>
+      </ul>
+    </nav>
+    <p class="sidebar-note">Tài liệu tự chứa, không phụ thuộc mạng ngoài — mở offline vẫn đầy đủ highlight &amp; điều hướng.</p>
+  </aside>
+  <main class="content" id="top">
+    <header class="hero">
+      <p class="hero-eyebrow">Tài liệu tham khảo kỹ thuật</p>
+      <h1>Linux Device Tree</h1>
+      <p class="tagline">Cách kernel Linux mô tả phần cứng trên các nền tảng không tự khám phá được thiết bị (ARM SoC, embedded Linux) — từ cú pháp DTS, cơ chế match driver, đến overlay và debug thực chiến.</p>
+      <div class="code-block">
+        <div class="code-bar"><span class="code-lang">root.dts</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="lang-dts">/dts-v1/;
+
+/ {
+	model = "Vendor Board Name";
+	compatible = "vendor,board", "vendor,soc";
+	#address-cells = &lt;1&gt;;
+	#size-cells = &lt;1&gt;;
+
+	/* moi node ben duoi la mot phan cua cay - than cay nay
+	   chinh la thu ma kernel doc de biet "phan cung minh dang chay tren cai gi" */
+};</code></pre>
+      </div>
+    </header>
+
+    <section id="why">
+      <p class="eyebrow">01</p>
+      <h2>Vì sao cần Device Tree</h2>
+      <p>Trên PC, phần cứng phần lớn <strong>tự khai báo được</strong>: PCI liệt kê thiết bị qua config space, USB trả descriptor khi cắm vào, ACPI cấp sẵn bảng mô tả cho hệ điều hành. Kernel boot lên, dò bus, hỏi "anh là ai" và tự nhận diện.</p>
+      <p>Trên SoC nhúng (ARM và phần lớn nền tảng embedded Linux khác) thì không như vậy. Một loạt thiết bị nằm trên bus <strong>không tự khám phá được</strong> — chúng chỉ là các thanh ghi memory-mapped: UART ở địa chỉ này, SPI controller ở địa chỉ kia, GPIO controller có bấy nhiêu chân, ngắt số mấy, xung nhịp bao nhiêu. CPU không có cách nào "hỏi" phần cứng những thông tin đó; chỉ người thiết kế board mới biết.</p>
+      <p>Trước khi có Device Tree, thông tin này được <strong>hardcode thẳng vào C</strong>: mỗi board một file trong <code>arch/arm/mach-*/board-*.c</code>, gọi <code>platform_device_register()</code> tay cho từng thiết bị. Hệ quả: một kernel Image build cho board này không chạy được trên board khác dù cùng SoC, chỉ vì địa chỉ GPIO hay số ngắt lệch đi vài chỗ. Thêm board mới đồng nghĩa vá code, build lại, không có cách nào tách biệt.</p>
+      <p>Device Tree giải quyết đúng vấn đề đó bằng cách <strong>tách data ra khỏi code</strong>: driver chỉ chứa logic (cách nói chuyện với chip), còn "chip này nằm ở đâu, dùng ngắt nào, nối với GPIO nào" chuyển hết sang một cấu trúc dữ liệu mô tả riêng — cây Device Tree, biên dịch thành <strong>DTB</strong> (Device Tree Blob) và nạp cùng lúc với kernel lúc boot. Một kernel Image build một lần dùng chung được cho hàng chục board khác nhau, miễn là đổi đúng file .dtb.</p>
+      <div class="callout">
+        <p class="callout-label">Liên hệ với bus-device-driver model</p>
+        <p>Driver core của kernel (<code>drivers/base</code>) có một mô hình chung: mọi thiết bị là một <code>struct device</code> gắn vào một <code>struct bus_type</code>, và được ghép với <code>struct device_driver</code> phù hợp dựa trên vài tiêu chí khớp (id table, tên, hoặc compatible string). Với bus tự khám phá được (PCI, USB), device instance sinh ra từ chính phần cứng thật khi dò bus. Với <strong>platform bus</strong> — nơi hầu hết peripheral SoC trú ngụ — không có gì để "dò" cả, phải có ai đó khai báo device instance bằng tay. Ngày xưa việc đó nằm trong board file C; giờ đây Device Tree đảm nhiệm: kernel đọc DTB lúc boot, với mỗi node hợp lệ sinh ra một <code>struct device</code> tương ứng, rồi driver core tự match nó với driver đã đăng ký compatible khớp. Nói ngắn gọn: Device Tree chính là nguồn dữ liệu nạp cho vế "device" của mô hình bus-device-driver trên platform bus.</p>
+      </div>
+    </section>
+    <section id="syntax">
+      <p class="eyebrow">02</p>
+      <h2>Cấu trúc &amp; cú pháp DTS</h2>
+      <p>File nguồn <code>.dts</code> là text, mô tả một <strong>cây</strong>: node gốc <code>/</code>, mỗi node có thể có node con, mỗi node mang theo các cặp <em>property = value</em>. Cây này biên dịch ra <code>.dtb</code> nhị phân — dạng duy nhất kernel thật sự đọc lúc chạy.</p>
+
+      <h3><span class="h3-num">2.1</span>Node</h3>
+      <div class="code-block">
+        <div class="code-bar"><span class="code-lang">cú pháp node</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="lang-dts">nhan_node: ten-node@dia-chi {
+	property-a = "gia tri";
+	property-b = &lt;1 2 3&gt;;
+
+	node-con@0 {
+		/* ... */
+	};
+};</code></pre>
+      </div>
+      <ul>
+        <li><strong>Label</strong> (<code>nhan_node:</code>) — tuỳ chọn, dùng để những nơi khác tham chiếu tới node này qua <code>&amp;nhan_node</code>. Label không xuất hiện trong path thật của node.</li>
+        <li><strong>Tên node</strong> — theo convention nên mô tả <em>chức năng</em> chứ không phải tên riêng của chip: <code>serial</code>, <code>spi</code>, <code>ethernet</code>, không phải <code>uart0</code> hay <code>my-device</code>.</li>
+        <li><strong>Unit-address</strong> — thường là địa chỉ thanh ghi dạng hex, không có tiền tố <code>0x</code>. Dùng để phân biệt các node trùng tên (<code>serial@101f0000</code>, <code>serial@101f2000</code>), và <strong>phải khớp</strong> với giá trị đầu tiên trong property <code>reg</code> nếu node có <code>reg</code> — <code>dtc</code> sẽ cảnh báo nếu lệch.</li>
+      </ul>
+
+      <h3><span class="h3-num">2.2</span>Kiểu giá trị property</h3>
+      <table>
+        <tr><th>Dạng</th><th>Cú pháp</th><th>Ví dụ</th></tr>
+        <tr><td>Rỗng (boolean)</td><td>chỉ tên property, không có <code>=</code></td><td><code>interrupt-controller;</code></td></tr>
+        <tr><td>Chuỗi</td><td><code>"..."</code></td><td><code>compatible = "vendor,chip";</code></td></tr>
+        <tr><td>Danh sách chuỗi</td><td><code>"...", "..."</code></td><td><code>compatible = "vendor,chip-v2", "vendor,chip";</code></td></tr>
+        <tr><td>Cell (u32)</td><td><code>&lt;...&gt;</code>, nhiều số cách nhau bởi khoảng trắng</td><td><code>reg = &lt;0x101f0000 0x1000&gt;;</code></td></tr>
+        <tr><td>Byte string</td><td><code>[xx yy zz]</code></td><td><code>local-mac-address = [00 11 22 33 44 55];</code></td></tr>
+        <tr><td>Phandle</td><td><code>&amp;label</code> bên trong <code>&lt;&gt;</code> — dtc tự resolve thành số</td><td><code>interrupt-parent = &lt;&amp;gic&gt;;</code></td></tr>
+      </table>
+
+      <h3><span class="h3-num">2.3</span>Property chuẩn hay gặp</h3>
+      <table>
+        <tr><th>Property</th><th>Ý nghĩa</th></tr>
+        <tr><td><code>compatible</code></td><td>Danh sách chuỗi định danh — chìa khoá chính để driver core tìm driver phù hợp (xem mục 05).</td></tr>
+        <tr><td><code>model</code></td><td>Chuỗi mô tả board/thiết bị cho người đọc, không dùng để matching.</td></tr>
+        <tr><td><code>status</code></td><td><code>"okay"</code> (bật), <code>"disabled"</code> (tồn tại nhưng không active). Pattern rất hay gặp: file <code>.dtsi</code> chung của SoC khai mọi peripheral với <code>status = "disabled"</code>, board <code>.dts</code> chỉ bật lại đúng cái board thật có.</td></tr>
+        <tr><td><code>#address-cells</code> / <code>#size-cells</code></td><td>Khai trên node cha, quy định node con diễn giải <code>reg</code> của chính nó ra sao (xem mục 04, đây là phần hay gây rối nhất).</td></tr>
+        <tr><td><code>reg</code></td><td>Địa chỉ + kích thước vùng nhớ mà node chiếm, theo đơn vị cells của node cha. Ý nghĩa cụ thể phụ thuộc bus (xem mục 06 cho SPI/I2C, nơi <code>reg</code> KHÔNG phải địa chỉ vật lý).</td></tr>
+      </table>
+
+      <div class="callout">
+        <p class="callout-label">Ghi chú</p>
+        <p>Comment dùng đúng cú pháp C (<code>//</code> và <code>/* */</code>) vì file <code>.dts</code> thực sự chạy qua C preprocessor trước khi tới <code>dtc</code> — đây cũng là lý do <code>#include</code>, <code>#define</code> dùng được trong DTS dù nó không phải C thật (xem mục 03).</p>
+      </div>
+    </section>
+    <section id="toolchain">
+      <p class="eyebrow">03</p>
+      <h2>Toolchain: dts / dtsi / dtb / dtbo</h2>
+      <h3><span class="h3-num">3.1</span>.dtsi và .dts — kế thừa theo tầng</h3>
+      <p><code>.dtsi</code> ("device tree include") mô tả những gì <strong>chung cho cả một SoC/family</strong> — mọi controller, mọi peripheral chip có, gần như luôn để <code>status = "disabled"</code> vì file này chưa biết board cụ thể nào sẽ dùng gì. File <code>.dts</code> của từng board <code>#include</code> file <code>.dtsi</code> đó, rồi override qua tham chiếu label để bật/cấu hình đúng phần board thật sự có:</p>
+      <div class="code-block">
+        <div class="code-bar"><span class="code-lang">board.dts</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="lang-dts">#include "soc-family.dtsi"
+
+/ {
+	model = "My Custom Board";
+};
+
+&amp;spi0 {              /* tham chieu lai node da khai trong .dtsi qua label */
+	status = "okay"; /* bat len - .dtsi da de san "disabled" */
+
+	rfid@0 {          /* them node con moi - thiet bi gan ngoai that su co tren board nay */
+		compatible = "vendor,rc522";
+		reg = &lt;0&gt;;
+	};
+};</code></pre>
+      </div>
+      <p>Đây không phải override toàn bộ node — mà là <strong>merge property</strong> vào đúng node đã tồn tại theo path/label, cực kỳ tiết kiệm: SoC vendor viết .dtsi một lần, hàng chục board khác nhau chỉ cần vài dòng .dts riêng.</p>
+
+      <h3><span class="h3-num">3.2</span>Vì sao <code>#include</code>/<code>#define</code> dùng được</h3>
+      <p><code>.dts</code> thật ra chạy qua <strong>cpp (C preprocessor)</strong> trước khi tới <code>dtc</code>. Đó là lý do các macro như <code>GPIO_ACTIVE_LOW</code>, <code>IRQ_TYPE_EDGE_FALLING</code> (định nghĩa trong <code>include/dt-bindings/.../*.h</code>) dùng được ngay trong DTS — chúng resolve thành số nguyên ngay ở bước preprocessor, <code>dtc</code> chỉ nhìn thấy con số cuối cùng, không biết gì về tên macro.</p>
+
+      <h3><span class="h3-num">3.3</span>dtc — Device Tree Compiler</h3>
+      <div class="code-block">
+        <div class="code-bar"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="lang-bash">dtc -I dts -O dtb -o output.dtb input.dts       # bien dich dts -&gt; dtb
+dtc -I dtb -O dts -o decompiled.dts input.dtb   # dich nguoc de doi chieu/debug
+dtc -@ -I dts -O dtb -o out.dtbo overlay.dts    # -@ : them __symbols__, bat buoc cho overlay</code></pre>
+      </div>
+      <p>Khả năng dịch ngược (<code>dtb → dts</code>) rất quan trọng khi debug board thật: nó cho biết chính xác DTB nào đang chạy, có thể khác với source gốc nếu bootloader đã chỉnh sửa (fixup memory size, áp overlay...).</p>
+
+      <h3><span class="h3-num">3.4</span>Vị trí trong kernel source &amp; build</h3>
+      <p>Source nằm dưới <code>arch/arm/boot/dts/&lt;vendor&gt;/</code> hoặc <code>arch/arm64/boot/dts/&lt;vendor&gt;/</code>, build bằng <code>make dtbs</code> (build tất cả) hoặc target riêng như <code>make vendor/board.dtb</code>. Trên các SoC dạng vendor BSP (kể cả Sigmastar) thường theo cùng cấu trúc này, chỉ khác đường dẫn vendor cụ thể tuỳ fork kernel.</p>
+
+      <h3><span class="h3-num">3.5</span>Bootloader nạp DTB thế nào</h3>
+      <p>U-Boot thường chịu trách nhiệm: load .dtb vào RAM, rồi <code>fdt addr $fdt_addr; bootm $kernel_addr - $fdt_addr</code> (hoặc <code>booti</code>/<code>bootz</code> tuỳ arch). Địa chỉ DTB được truyền cho kernel qua thanh ghi (ARM 32-bit: r2) hoặc tham số boot protocol tương ứng. Kernel parse DTB rất sớm trong <code>setup_arch()</code> — trước khi bất kỳ driver nào chạy — để biết layout bộ nhớ, console, và toàn bộ cây thiết bị.</p>
+    </section>
+    <section id="addressing">
+      <p class="eyebrow">04</p>
+      <h2>Address translation: #address-cells, #size-cells, reg, ranges</h2>
+      <p>Đây là phần hay gây rối nhất với người mới — nhưng cơ chế thực ra rất máy móc một khi nắm được quy tắc: <strong><code>#address-cells</code>/<code>#size-cells</code> khai trên node cha, quyết định node con phải diễn giải <code>reg</code> của chính nó ra sao.</strong></p>
+
+      <h3><span class="h3-num">4.1</span>reg — số cell được cha quy định</h3>
+      <p>Root node "/" trên nền 32-bit thường khai <code>#address-cells = &lt;1&gt;; #size-cells = &lt;1&gt;;</code> — nghĩa là <code>reg</code> của node con trực tiếp dưới "/" đọc theo từng cặp <code>&lt;địa-chỉ kích-thước&gt;</code>, mỗi phần 1 cell (1 u32). Nếu cha khai <code>#address-cells = &lt;2&gt;</code> (hay gặp trên bus cần không gian địa chỉ rộng hơn 32-bit, hoặc PCI cần thêm cell mã hoá bus/device/function), mỗi địa chỉ chiếm 2 cell: <code>reg = &lt;addr_hi addr_lo size_hi size_lo&gt;;</code>. Một property <code>reg</code> có thể chứa <strong>nhiều entry</strong> liên tiếp nếu node chiếm nhiều dải bộ nhớ rời nhau.</p>
+      <div class="callout">
+        <p class="callout-label">Ghi chú</p>
+        <p>Theo đặc tả, nếu một node <em>không</em> khai <code>#address-cells</code>/<code>#size-cells</code>, giá trị mặc định là <code>2</code> và <code>1</code>. Trong thực tế hầu như mọi bus node đều khai tường minh — nhưng nếu quên khai trên một bus tự định nghĩa, đây chính là nguồn gốc của những giá trị <code>reg</code> bị đọc sai lệch khó hiểu.</p>
+      </div>
+
+      <h3><span class="h3-num">4.2</span>ranges — dịch địa chỉ qua bus lồng bus</h3>
+      <p>Khi một node con là một <strong>bus khác</strong> (có không gian địa chỉ riêng, khác với bus cha), property <code>ranges</code> định nghĩa cách dịch một địa chỉ trong không gian con sang không gian cha:</p>
+      <ul>
+        <li><code>ranges = &lt;child-addr parent-addr length&gt;;</code> — <code>child-addr</code> dùng <code>#address-cells</code> của <strong>chính node này</strong>, <code>parent-addr</code> dùng <code>#address-cells</code> của <strong>node cha</strong>, <code>length</code> dùng <code>#size-cells</code> của chính node này.</li>
+        <li><code>ranges;</code> rỗng (không giá trị) = ánh xạ 1:1 (identity mapping) — hay gặp trên <code>"simple-bus"</code>, tức bus nội bộ đơn giản không dịch địa chỉ.</li>
+        <li><strong>Không có property <code>ranges</code> nào cả</strong> = node đó không phải bus dịch được địa chỉ; các node con của nó không truy cập được bằng địa chỉ CPU thông thường.</li>
+      </ul>
+      <div class="code-block">
+        <div class="code-bar"><span class="code-lang">vi dụ minh hoạ</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="lang-dts">/ {
+	#address-cells = &lt;1&gt;;
+	#size-cells = &lt;1&gt;;
+
+	soc {
+		compatible = "simple-bus";
+		#address-cells = &lt;1&gt;;
+		#size-cells = &lt;1&gt;;
+		ranges = &lt;0x0 0x3f000000 0x1000000&gt;; /* con 0x0 -&gt; cha 0x3f000000, dai 0x1000000 */
+
+		spi0: spi@204000 {
+			compatible = "vendor,spi";
+			reg = &lt;0x204000 0x1000&gt;; /* dia chi trong khong gian con cua "soc" */
+		};
+	};
+};</code></pre>
+      </div>
+      <p><code>spi0</code> khai <code>reg = &lt;0x204000 ...&gt;</code> — đây là địa chỉ trong không gian địa chỉ <em>của bus <code>soc</code></em>, không phải địa chỉ CPU thật. Vì <code>soc</code> có <code>ranges</code> ánh xạ <code>0x0 → 0x3f000000</code> cho một cửa sổ dài <code>0x1000000</code>, và <code>0x204000</code> nằm trong cửa sổ đó, địa chỉ CPU thật sự là <code>0x3f000000 + 0x204000 = 0x3f204000</code>. Driver không cần tự tính — <code>of_address_to_resource()</code>/<code>platform_get_resource()</code> làm việc dịch này ngầm, driver chỉ nhận địa chỉ CPU cuối cùng qua <code>devm_ioremap_resource()</code>.</p>
+      <div class="callout">
+        <p class="callout-label">Thực chiến</p>
+        <p>Đây chính xác là kiểu cơ chế mà .dtsi của BCM283x (chip trên Raspberry Pi) dùng để ánh xạ "bus address" nội bộ sang địa chỉ CPU vật lý thật (khác nhau giữa Pi 3/4/5). Trên Raspberry Pi 5 của bạn, tự kiểm tra bằng <code>dtc -I fs -O dts /sys/firmware/devicetree/base | grep -A2 ranges</code> để xem giá trị <code>ranges</code> thật sự đang chạy — đáng tin hơn là nhớ số hex từ tài liệu.</p>
+      </div>
+    </section>
+    <section id="matching">
+      <p class="eyebrow">05</p>
+      <h2>Cơ chế kernel match Node → Driver</h2>
+      <p>Kernel biểu diễn mỗi node DT trong bộ nhớ bằng <code>struct device_node</code> (dựng lúc boot khi parse DTB). Trên platform bus, mỗi node hợp lệ được bọc thành một <code>struct platform_device</code>. Việc "hợp lệ" ở đây chủ yếu do <code>of_platform_populate()</code>/<code>of_platform_default_populate()</code> quyết định — hàm này duyệt qua node con của cây DT chính (kernel tự gọi rất sớm lúc boot, driver hầu như không cần gọi tay trừ khi có bus con tự quản, ví dụ MFD driver populate node con của chính nó), với mỗi node con có <code>compatible</code> hợp lệ thì tạo một <code>platform_device</code> gắn vào platform bus.</p>
+
+      <h3><span class="h3-num">5.1</span>compatible string — chìa khoá matching</h3>
+      <p>Driver đăng ký một bảng <code>struct of_device_id[]</code> gán qua <code>.driver.of_match_table</code> trong <code>struct platform_driver</code>. Driver core so khớp từng chuỗi trong property <code>compatible</code> của device (theo đúng thứ tự khai — cụ thể nhất trước) với bảng <code>of_match_table</code> đã đăng ký; driver nào có entry khớp thì thắng.</p>
+      <div class="callout">
+        <p class="callout-label">Ghi chú</p>
+        <p>Vì vậy nên liệt kê <code>compatible</code> từ cụ thể nhất (đúng chip đang dùng) đến tổng quát nhất (chip đời cũ tương thích): <code>compatible = "vendor,chip-v2", "vendor,chip";</code> — nếu chưa có driver riêng cho <code>chip-v2</code>, kernel vẫn tận dụng được driver của <code>chip</code> đời trước nếu tương thích ngược.</p>
+      </div>
+
+      <h3><span class="h3-num">5.2</span>I2C và SPI — hơi khác platform bus</h3>
+      <p>I2C/SPI <strong>không</strong> đi qua <code>of_platform_populate()</code>. Khi driver của chính controller (I2C adapter, SPI controller) gọi <code>i2c_add_adapter()</code>/<code>spi_register_controller()</code>, core của từng subsystem tự quét node con bên dưới node controller trong DT, tạo <code>i2c_client</code>/<code>spi_device</code> tương ứng cho mỗi node con có <code>compatible</code> hợp lệ. Driver của thiết bị con (như RC522) chỉ cần đăng ký <code>spi_driver</code> với <code>of_match_table</code> — không cần quan tâm cách "device" được sinh ra.</p>
+
+      <h3><span class="h3-num">5.3</span>device_get_match_data()</h3>
+      <p>Hàm generic hiện đại lấy <code>driver_data</code> tương ứng với entry <code>compatible</code> đã match — dùng chung được cho cả DT lẫn ACPI, tiện khi driver cần chạy đa nền tảng. Rất hữu ích khi một driver support nhiều chip variant, mỗi <code>compatible</code> gắn kèm một cấu trúc cấu hình khác nhau; <code>probe()</code> chỉ cần một lệnh lấy đúng config theo đúng chip đã match, không cần chuỗi if/else so <code>compatible</code> thủ công.</p>
+
+      <div class="callout">
+        <p class="callout-label">Liên hệ với bus-device-driver model</p>
+        <p>Đây chính là bức tranh đầy đủ của mô hình bạn đang tìm hiểu: <code>device_node</code> (dữ liệu từ DTB) → <code>platform_device</code>/<code>spi_device</code>/<code>i2c_client</code> (vế "device") → driver core match với <code>*_driver</code> đã đăng ký compatible (vế "driver") → gọi <code>probe()</code>. Khác duy nhất so với model tổng quát là nguồn sinh ra "device" ở đây là DTB thay vì gọi <code>*_device_register()</code> hardcode trong C.</p>
+      </div>
+    </section>
+    <section id="bindings">
+      <p class="eyebrow">06</p>
+      <h2>Bindings thường gặp</h2>
+      <p>"Binding" là quy ước đặt tên property + ý nghĩa của nó cho một loại thiết bị/bus cụ thể, tài liệu hoá trong <code>Documentation/devicetree/bindings/</code> (ngày nay phần lớn binding mới viết bằng YAML schema, kiểm tra tự động qua <code>dt-schema</code>/<code>make dtbs_check</code>). Dưới đây là các binding lõi hay chạm tới nhất khi làm SPI/GPIO/ngắt.</p>
+
+      <h3><span class="h3-num">6.1</span>GPIO</h3>
+      <p>Node controller cần <code>gpio-controller;</code> (property rỗng, đánh dấu đây LÀ một GPIO controller) và <code>#gpio-cells</code> (số cell mỗi tham chiếu cần — hầu hết là 2: <em>pin, flags</em>). Bên tiêu thụ, property phải kết thúc bằng hậu tố <code>-gpios</code> (dạng cũ <code>-gpio</code> đã deprecated):</p>
+      <div class="code-block">
+        <div class="code-bar"><span class="code-lang">dts</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="lang-dts">reset-gpios = &lt;&amp;gpio 27 GPIO_ACTIVE_LOW&gt;;</code></pre>
+      </div>
+      <div class="callout warn">
+        <p class="callout-label">Lỗi thường gặp</p>
+        <p><code>GPIO_ACTIVE_LOW</code> mô tả <strong>mức điện áp vật lý</strong> tương ứng với trạng thái "bật" theo datasheet — không phải giá trị driver truyền vào. Driver luôn gọi theo <strong>giá trị logic</strong>: <code>gpiod_set_value(desc, 1)</code> nghĩa là "bật", framework tự đảo mức điện áp thật dựa theo flag khai trong DT. Nhầm giữa hai khái niệm này là nguồn bug rất phổ biến khi mới chuyển từ code bare-metal (nơi bạn tự set mức điện áp tay) sang gpiod API.</p>
+      </div>
+
+      <h3><span class="h3-num">6.2</span>Interrupt</h3>
+      <p>Node cấp ngắt cần <code>interrupt-controller;</code> (rỗng) và <code>#interrupt-cells</code> (số cell mỗi entry ngắt — GIC thường 3 cell <code>[type, số ngắt, flags]</code>, một GPIO controller đóng vai trò interrupt controller thường dùng 2 cell <code>[pin, kiểu trigger]</code>). Bên tiêu thụ:</p>
+      <div class="code-block">
+        <div class="code-bar"><span class="code-lang">dts</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="lang-dts">interrupt-parent = &lt;&amp;gpio&gt;;                         /* neu khong khai, ke thua tu node cha gan nhat */
+interrupts = &lt;25 IRQ_TYPE_EDGE_FALLING&gt;;</code></pre>
+      </div>
+
+      <h3><span class="h3-num">6.3</span>SPI</h3>
+      <div class="callout warn">
+        <p class="callout-label">Lỗi thường gặp</p>
+        <p>Trên node dưới SPI controller, <code>reg</code> là <strong>chỉ số chip-select</strong> (0, 1, 2...) — <strong>không phải địa chỉ vật lý</strong>. Đây là điểm rất dễ nhầm vì trên bus khác (như platform bus ở mục 04) <code>reg</code> mang ý nghĩa hoàn toàn khác.</p>
+      </div>
+      <p><code>spi-max-frequency</code> (Hz) gần như bắt buộc. Mode SPI (CPOL/CPHA) mặc định là mode 0 nếu không khai gì; cần mode khác thì thêm <code>spi-cpha</code> và/hoặc <code>spi-cpol</code> (cả hai đều là property rỗng — có mặt nghĩa là bật). Nếu chip-select không dùng chân CS cứng của controller mà dùng GPIO thường, khai <code>cs-gpios</code> trên chính <strong>node controller</strong> (không phải node thiết bị con), liệt kê theo thứ tự index.</p>
+
+      <h3><span class="h3-num">6.4</span>I2C</h3>
+      <p><code>reg</code> ở đây là địa chỉ slave 7-bit (hoặc 10-bit): <code>reg = &lt;0x50&gt;;</code> cho một EEPROM tại địa chỉ <code>0x50</code>.</p>
+
+      <h3><span class="h3-num">6.5</span>Clock</h3>
+      <p><code>clocks = &lt;&amp;clk-controller specifier...&gt;;</code> tham chiếu tới nguồn xung; <code>clock-names = "tên1", "tên2";</code> đặt tên theo thứ tự tương ứng với <code>clocks</code> khi thiết bị cần nhiều input clock, để code driver gọi <code>clk_get(dev, "tên")</code> mà không cần nhớ thứ tự index.</p>
+
+      <h3><span class="h3-num">6.6</span>Pinctrl</h3>
+      <p><code>pinctrl-names = "default", "sleep";</code> đặt tên các state, <code>pinctrl-0</code>/<code>pinctrl-1</code> (index khớp vị trí trong <code>pinctrl-names</code>) trỏ tới nhóm pin tương ứng. State <code>"default"</code> thường được device core tự áp dụng ngầm lúc probe qua <code>devm_pinctrl_get_select_default()</code>, driver thường không cần gọi tay.</p>
+    </section>
+    <section id="driver-code">
+      <p class="eyebrow">07</p>
+      <h2>Đọc Device Tree trong driver</h2>
+      <p>Mọi <code>struct device</code> sinh ra từ DT đều có sẵn con trỏ <code>of_node</code> (<code>pdev-&gt;dev.of_node</code> cho platform driver, <code>spi-&gt;dev.of_node</code> cho SPI driver...) — <code>NULL</code> nếu device không đến từ DT (board file cũ, ACPI), nên nếu code cần chạy đa nền tảng, luôn kiểm tra trước khi dùng.</p>
+
+      <h3><span class="h3-num">7.1</span>Đọc property cơ bản</h3>
+      <div class="code-block">
+        <div class="code-bar"><span class="code-lang">c</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="lang-c">int of_property_read_u32(const struct device_node *np, const char *propname, u32 *out_value);
+int of_property_read_string(const struct device_node *np, const char *propname, const char **out);
+bool of_property_read_bool(const struct device_node *np, const char *propname);
+int of_property_read_u32_array(const struct device_node *np, const char *propname, u32 *out, size_t sz);</code></pre>
+      </div>
+      <p>Các hàm <code>of_property_read_*</code> trả <code>0</code> nếu thành công, mã âm (<code>-EINVAL</code>, <code>-ENODATA</code>, <code>-EOVERFLOW</code>...) nếu thiếu property hoặc sai kiểu. <strong>Luôn kiểm tra giá trị trả về</strong> — đừng giả định property luôn tồn tại chỉ vì .dts của bạn có khai; driver có thể chạy trên board khác quên khai property đó. Riêng <code>of_property_read_bool()</code> không có khái niệm "lỗi" — nó chỉ trả true/false tuỳ property (dạng rỗng) có tồn tại hay không.</p>
+
+      <h3><span class="h3-num">7.2</span>GPIO — API hiện đại (gpiod)</h3>
+      <div class="code-block">
+        <div class="code-bar"><span class="code-lang">c</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="lang-c">/* property DT ten "reset-gpios" -&gt; con_id chi can "reset", framework tu noi hau to */
+struct gpio_desc *reset = devm_gpiod_get(&amp;spi-&gt;dev, "reset", GPIOD_OUT_HIGH);
+if (IS_ERR(reset))
+	return PTR_ERR(reset);
+
+gpiod_set_value_cansleep(reset, 1);   /* set theo GIA TRI LOGIC, framework tu dao cuc neu can */</code></pre>
+      </div>
+      <p><code>con_id</code> truyền vào <strong>không</strong> gồm hậu tố <code>-gpios</code> — framework tự nối. Flag như <code>GPIOD_OUT_LOW</code>/<code>GPIOD_OUT_HIGH</code>/<code>GPIOD_IN</code> cấu hình hướng chân ngay lúc lấy, không cần gọi thêm <code>gpiod_direction_*()</code>. API cũ hơn (<code>of_get_named_gpio()</code> + <code>gpio_request()</code> + <code>gpio_direction_*()</code>) vẫn có thể gặp trong code cũ nhưng không nên dùng cho code mới — gpiod là lớp trừu tượng cao hơn, hoạt động thống nhất bất kể nguồn gốc device là DT, board file hay ACPI.</p>
+
+      <h3><span class="h3-num">7.3</span>devm_* — resource tự dọn dẹp</h3>
+      <p>Tiền tố <code>devm_</code> (device-managed) nghĩa là kernel tự giải phóng resource khi device bị remove/unbind hoặc khi <code>probe()</code> thất bại giữa chừng — nên ưu tiên <code>devm_*</code> cho hầu hết resource (memory, gpio, irq, clk, regulator...) trong <code>probe()</code>, giảm hẳn bug quên free ở <code>remove()</code> hoặc trên các nhánh lỗi.</p>
+
+      <h3><span class="h3-num">7.4</span>Ngắt</h3>
+      <div class="code-block">
+        <div class="code-bar"><span class="code-lang">c</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="lang-c">int irq = platform_get_irq(pdev, 0);   /* platform driver: tu doc property "interrupts" */
+if (irq &lt; 0)
+	return irq;
+/* SPI driver: spi-&gt;irq da duoc core tu dien san neu node co khai "interrupts" */</code></pre>
+      </div>
+      <p><code>platform_get_irq()</code> trả về <strong>Linux IRQ number</strong> (số ảo đã map) sẵn sàng truyền cho <code>request_irq()</code>/<code>devm_request_irq()</code> — không phải số ngắt hardware ghi trong DT.</p>
+
+      <h3><span class="h3-num">7.5</span>Lấy driver data theo compatible đã match</h3>
+      <div class="code-block">
+        <div class="code-bar"><span class="code-lang">c</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="lang-c">const struct my_chip_config *cfg = device_get_match_data(&amp;spi-&gt;dev);</code></pre>
+      </div>
+      <p>Hữu ích khi một driver support nhiều chip variant, mỗi <code>compatible</code> string trong <code>of_device_id[]</code> gắn kèm một con trỏ <code>.data</code> khác nhau — <code>probe()</code> lấy đúng config theo đúng chip đã match, không cần so chuỗi thủ công.</p>
+    </section>
+    <section id="example">
+      <p class="eyebrow">08</p>
+      <h2>Ví dụ hoàn chỉnh: driver SPI cho thiết bị kiểu RC522</h2>
+      <p>Ghép lại toàn bộ cơ chế ở trên thành một ví dụ đầy đủ, dùng RC522 (RFID qua SPI) làm thiết bị mẫu — cùng loại bus bạn đã có kinh nghiệm thực tế. Đây là <strong>skeleton</strong> tập trung vào phần "đọc DT đúng cách", không phải driver RC522 hoàn chỉnh (giao thức thanh ghi MFRC522 nằm ngoài phạm vi tài liệu này).</p>
+
+      <h3><span class="h3-num">8.1</span>Mô tả trong DTS</h3>
+      <div class="code-block">
+        <div class="code-bar"><span class="code-lang">rc522-overlay.dts (trích từ &amp;spi0)</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="lang-dts">&amp;spi0 {
+	status = "okay";
+	#address-cells = &lt;1&gt;;
+	#size-cells = &lt;0&gt;;
+
+	rc522: rfid@0 {
+		compatible = "vendor,rc522";
+		reg = &lt;0&gt;;                       /* chip-select index 0 - KHONG phai dia chi */
+		spi-max-frequency = &lt;1000000&gt;;   /* RC522 toi da ~10MHz, an toan o 1MHz luc dau */
+		/* khong khai spi-cpha/spi-cpol -&gt; mac dinh mode 0, dung theo datasheet MFRC522 */
+
+		interrupt-parent = &lt;&amp;gpio&gt;;
+		interrupts = &lt;25 IRQ_TYPE_EDGE_FALLING&gt;;   /* chan bao co tag RFID moi */
+		reset-gpios = &lt;&amp;gpio 27 GPIO_ACTIVE_LOW&gt;;  /* chan NRSTPD, active low theo datasheet */
+	};
+};</code></pre>
+      </div>
+
+      <h3><span class="h3-num">8.2</span>Driver skeleton</h3>
+      <div class="code-block">
+        <div class="code-bar"><span class="code-lang">rc522.c</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="lang-c">#include &lt;linux/module.h&gt;
+#include &lt;linux/spi/spi.h&gt;
+#include &lt;linux/gpio/consumer.h&gt;
+#include &lt;linux/interrupt.h&gt;
+#include &lt;linux/of.h&gt;
+#include &lt;linux/delay.h&gt;
+
+struct rc522_priv {
+	struct spi_device *spi;
+	struct gpio_desc *reset_gpio;
+	int irq;
+};
+
+static irqreturn_t rc522_irq_thread(int irq, void *data)
+{
+	struct rc522_priv *priv = data;
+
+	/* TODO: doc FIFO qua SPI (spi_sync/spi_write_then_read), day du lieu the len userspace */
+	dev_dbg(&amp;priv-&gt;spi-&gt;dev, "phat hien tag moi\n");
+	return IRQ_HANDLED;
+}
+
+static int rc522_probe(struct spi_device *spi)
+{
+	struct rc522_priv *priv;
+	int ret;
+
+	priv = devm_kzalloc(&amp;spi-&gt;dev, sizeof(*priv), GFP_KERNEL);
+	if (!priv)
+		return -ENOMEM;
+
+	priv-&gt;spi = spi;
+	spi_set_drvdata(spi, priv);
+
+	priv-&gt;reset_gpio = devm_gpiod_get(&amp;spi-&gt;dev, "reset", GPIOD_OUT_HIGH);
+	if (IS_ERR(priv-&gt;reset_gpio))
+		return dev_err_probe(&amp;spi-&gt;dev, PTR_ERR(priv-&gt;reset_gpio),
+				     "khong lay duoc reset-gpios\n");
+
+	/* xung reset theo datasheet: keo thap mot nhip roi tha ra */
+	gpiod_set_value_cansleep(priv-&gt;reset_gpio, 0);
+	usleep_range(100, 200);
+	gpiod_set_value_cansleep(priv-&gt;reset_gpio, 1);
+
+	priv-&gt;irq = spi-&gt;irq;   /* core da tu dien san tu property "interrupts" trong DT */
+	if (priv-&gt;irq &gt; 0) {
+		ret = devm_request_threaded_irq(&amp;spi-&gt;dev, priv-&gt;irq, NULL,
+						rc522_irq_thread, IRQF_ONESHOT,
+						"rc522", priv);
+		if (ret)
+			return dev_err_probe(&amp;spi-&gt;dev, ret,
+					     "khong dang ky duoc irq\n");
+	}
+
+	dev_info(&amp;spi-&gt;dev, "RC522 san sang, CS=%d, IRQ=%d\n",
+		 spi-&gt;chip_select, priv-&gt;irq);
+	return 0;
+}
+
+static void rc522_remove(struct spi_device *spi)
+{
+	/* moi resource deu xin qua devm_* nen khong can tu don dep gi them o day */
+}
+
+static const struct of_device_id rc522_of_match[] = {
+	{ .compatible = "vendor,rc522" },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, rc522_of_match);
+
+static struct spi_driver rc522_driver = {
+	.driver = {
+		.name = "rc522",
+		.of_match_table = rc522_of_match,
+	},
+	.probe = rc522_probe,
+	.remove = rc522_remove,
+};
+module_spi_driver(rc522_driver);
+
+MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("Driver vi du: doc Device Tree cho RFID RC522 qua SPI");</code></pre>
+      </div>
+      <p>Toàn bộ luồng: <code>of_match_table</code> khớp <code>compatible</code> → SPI core gọi <code>rc522_probe()</code> → driver đọc <code>reset-gpios</code> và <code>interrupts</code> thẳng từ <code>of_node</code> gắn sẵn trên <code>spi-&gt;dev</code>, không cần tự parse DTB — toàn bộ việc đó driver core đã làm trước khi <code>probe()</code> được gọi.</p>
+    </section>
+    <section id="overlay">
+      <p class="eyebrow">09</p>
+      <h2>Device Tree Overlay</h2>
+      <p>Overlay nạp thêm một phần cây DT vào <strong>lúc boot hoặc runtime</strong> mà không cần build lại/thay .dtb gốc — đúng nhu cầu khi thêm module mở rộng (HAT, cảm biến, mạch động cơ cắm thêm) mà base board không biết trước. Đây cũng là cơ chế chính Raspberry Pi dùng để bật thêm peripheral qua <code>config.txt</code>.</p>
+
+      <h3><span class="h3-num">9.1</span>Cú pháp fragment</h3>
+      <p>Bắt đầu bằng <code>/plugin/;</code> (bên cạnh <code>/dts-v1/;</code>), nội dung chia thành các <code>fragment@N</code>, mỗi fragment trỏ tới một <code>target</code> (qua phandle hoặc path) và chèn nội dung vào bên trong <code>__overlay__</code>:</p>
+      <div class="code-block">
+        <div class="code-bar"><span class="code-lang">motor-pwm-overlay.dts</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="lang-dts">/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "raspberrypi,5-model-b";
+
+	fragment@0 {
+		target = &lt;&amp;gpio&gt;;
+		__overlay__ {
+			motor_pwm_pins: motor_pwm_pins {
+				brcm,pins = &lt;18&gt;;
+				brcm,function = &lt;2&gt;;   /* ALT5 = PWM0 tren chan GPIO18 */
+			};
+		};
+	};
+
+	fragment@1 {
+		target = &lt;&amp;pwm&gt;;
+		__overlay__ {
+			pinctrl-names = "default";
+			pinctrl-0 = &lt;&amp;motor_pwm_pins&gt;;
+			status = "okay";
+		};
+	};
+};</code></pre>
+      </div>
+      <p>Sau khi overlay này được nạp, <code>/sys/class/pwm/pwmchipN</code> xuất hiện, sẵn sàng cho driver/consumer điều khiển motor set duty cycle qua sysfs hoặc qua <code>pwm_get()</code> trong kernel — bản thân overlay chỉ lo phần "bật controller + đúng pinmux", binding cụ thể cho driver động cơ/H-bridge thật (tuỳ IC bạn dùng cho voice agent) nằm ở lớp trên, tham chiếu tài liệu binding riêng của driver đó.</p>
+
+      <h3><span class="h3-num">9.2</span>Áp dụng trên Raspberry Pi</h3>
+      <div class="code-block">
+        <div class="code-bar"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="lang-bash"># bien dich - co -@ de sinh __symbols__, bat buoc de resolve phandle luc ap overlay
+dtc -@ -I dts -O dtb -o motor-pwm.dtbo motor-pwm-overlay.dts
+
+# copy vao thu muc overlays (duong dan co the la /boot/overlays/ tuy ban Raspberry Pi OS)
+sudo cp motor-pwm.dtbo /boot/firmware/overlays/
+
+# them dong sau vao /boot/firmware/config.txt roi reboot
+# dtoverlay=motor-pwm</code></pre>
+      </div>
+      <p>Firmware Pi áp overlay vào DTB <strong>trước khi</strong> kernel boot — không phải kernel tự làm việc này.</p>
+
+      <h3><span class="h3-num">9.3</span>Áp dụng runtime qua configfs (không cần reboot)</h3>
+      <div class="code-block">
+        <div class="code-bar"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="lang-bash">sudo mkdir /sys/kernel/config/device-tree/overlays/motor-pwm
+sudo cp motor-pwm.dtbo /sys/kernel/config/device-tree/overlays/motor-pwm/dtbo</code></pre>
+      </div>
+      <p>Kernel apply ngay lập tức — rất hữu ích lúc phát triển overlay mới, tránh reboot liên tục. Cần kernel bật sẵn <code>CONFIGFS_FS</code> + <code>OF_CONFIGFS</code> (mặc định có trên Raspberry Pi OS).</p>
+    </section>
+    <section id="debug">
+      <p class="eyebrow">10</p>
+      <h2>Debug &amp; công cụ</h2>
+
+      <h3><span class="h3-num">10.1</span>Xem cây DT đang thật sự chạy</h3>
+      <p><code>/proc/device-tree/</code> hoặc <code>/sys/firmware/devicetree/base/</code> (tương đương, đường dẫn mới hơn) — mỗi property là một file nhỏ chứa raw bytes. Dùng để xác nhận property <strong>thực tế</strong> kernel đang thấy, có thể khác source .dts gốc vì bootloader/firmware có thể đã chỉnh sửa (RPi firmware áp overlay, U-Boot fixup kích thước RAM...).</p>
+      <div class="code-block">
+        <div class="code-bar"><span class="code-lang">bash</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="lang-bash"># dich nguoc truc tiep tu cay dang chay (-I fs: doc tu filesystem, khong can file .dtb rieng)
+dtc -I fs -O dts -o running.dts /sys/firmware/devicetree/base
+
+# tim loi lien quan parse/match DT
+dmesg | grep -iE "of_|devicetree|fdt"</code></pre>
+      </div>
+
+      <h3><span class="h3-num">10.2</span>Lỗi cú pháp/logic thường gặp</h3>
+      <div class="callout warn">
+        <p class="callout-label">Lỗi hay gặp nhất với người mới</p>
+        <p>Quên set lại <code>status = "okay";</code> sau khi override một node vốn <code>"disabled"</code> sẵn trong <code>.dtsi</code> chung của SoC. Hậu quả: device <strong>không bao giờ được tạo ra</strong> — không có lỗi, không có warning nào cả, driver đơn giản không <code>probe()</code>. Rất dễ khiến người mới đi tìm bug trong driver cả buổi trong khi vấn đề chỉ nằm ở một dòng <code>status</code> thiếu trong .dts.</p>
+      </div>
+      <ul>
+        <li>Quên <code>#size-cells</code> trên một bus node tự định nghĩa → <code>reg</code> của node con bị đọc sai số cell, hoặc <code>dtc</code> báo lỗi biên dịch.</li>
+        <li><code>unit-address</code> không khớp giá trị đầu tiên trong <code>reg</code> (VD node tên <code>spi@204000</code> nhưng <code>reg = &lt;0x205000 ...&gt;;</code>) → <code>dtc</code> cảnh báo "node name and first reg property differ".</li>
+        <li>Tham chiếu <code>&amp;label</code> tới label không tồn tại (label ở node đã bị xoá, hoặc gõ sai tên) → <code>dtc</code> lỗi biên dịch "Reference to non-existent node".</li>
+      </ul>
+
+      <h3><span class="h3-num">10.3</span>Công cụ dòng lệnh khác</h3>
+      <table>
+        <tr><th>Lệnh</th><th>Công dụng</th></tr>
+        <tr><td><code>fdtdump file.dtb</code></td><td>Xem header + toàn bộ nội dung .dtb dạng thô, không cần decompile.</td></tr>
+        <tr><td><code>fdtget file.dtb /path prop</code></td><td>Đọc nhanh một property, không cần dịch ngược cả file.</td></tr>
+        <tr><td><code>fdtput file.dtb /path prop val</code></td><td>Ghi/sửa property thẳng vào .dtb đã biên dịch — tiện khi thử nghiệm nhanh, không cần build lại từ .dts.</td></tr>
+      </table>
+      <p>Cả ba nằm trong gói <code>device-tree-compiler</code> cùng với <code>dtc</code> (<code>apt install device-tree-compiler</code> trên Debian/Raspberry Pi OS là đủ dùng).</p>
+    </section>
+    <section id="cheatsheet">
+      <p class="eyebrow">11</p>
+      <h2>Bảng tra nhanh</h2>
+
+      <h3><span class="h3-num">11.1</span>Property chuẩn</h3>
+      <table>
+        <tr><th>Property</th><th>Ý nghĩa</th></tr>
+        <tr><td><code>compatible</code></td><td>Chuỗi định danh, khoá matching driver</td></tr>
+        <tr><td><code>reg</code></td><td>Địa chỉ+size (ý nghĩa tuỳ bus — xem mục 04, 06)</td></tr>
+        <tr><td><code>status</code></td><td><code>"okay"</code> / <code>"disabled"</code></td></tr>
+        <tr><td><code>#address-cells</code> / <code>#size-cells</code></td><td>Số cell cho <code>reg</code> của node con</td></tr>
+        <tr><td><code>ranges</code></td><td>Bảng dịch địa chỉ bus con → bus cha</td></tr>
+        <tr><td><code>interrupt-parent</code> / <code>interrupts</code></td><td>Ngắt dùng và controller xử lý nó</td></tr>
+        <tr><td><code>*-gpios</code></td><td>Tham chiếu GPIO: <code>&lt;&amp;ctrl pin flags&gt;</code></td></tr>
+        <tr><td><code>clocks</code> / <code>clock-names</code></td><td>Nguồn xung nhịp cho thiết bị</td></tr>
+        <tr><td><code>pinctrl-names</code> / <code>pinctrl-0..N</code></td><td>State pinmux và nhóm pin tương ứng</td></tr>
+      </table>
+
+      <h3><span class="h3-num">11.2</span>API driver hay dùng</h3>
+      <table>
+        <tr><th>Hàm</th><th>Việc gì</th></tr>
+        <tr><td><code>of_property_read_u32/string/bool()</code></td><td>Đọc property đơn</td></tr>
+        <tr><td><code>devm_gpiod_get(dev, "con_id", flags)</code></td><td>Lấy GPIO theo con_id (không hậu tố -gpios)</td></tr>
+        <tr><td><code>gpiod_set_value_cansleep()</code></td><td>Set GPIO theo giá trị logic</td></tr>
+        <tr><td><code>platform_get_irq(pdev, idx)</code></td><td>Lấy Linux IRQ number từ property interrupts</td></tr>
+        <tr><td><code>devm_ioremap_resource()</code></td><td>Map vùng nhớ từ reg đã dịch địa chỉ sẵn</td></tr>
+        <tr><td><code>device_get_match_data(dev)</code></td><td>Lấy driver_data theo compatible đã match</td></tr>
+        <tr><td><code>dev_err_probe(dev, err, fmt...)</code></td><td>Log lỗi trong probe(), xử lý gọn -EPROBE_DEFER</td></tr>
+      </table>
+
+      <h3><span class="h3-num">11.3</span>Macro flag hay dùng trong DTS</h3>
+      <table>
+        <tr><th>Macro</th><th>Header</th><th>Ý nghĩa</th></tr>
+        <tr><td><code>GPIO_ACTIVE_HIGH</code> / <code>GPIO_ACTIVE_LOW</code></td><td><code>dt-bindings/gpio/gpio.h</code></td><td>Cực tính GPIO</td></tr>
+        <tr><td><code>IRQ_TYPE_EDGE_RISING/FALLING/BOTH</code></td><td><code>dt-bindings/interrupt-controller/irq.h</code></td><td>Kiểu trigger ngắt theo cạnh</td></tr>
+        <tr><td><code>IRQ_TYPE_LEVEL_HIGH/LOW</code></td><td>như trên</td><td>Kiểu trigger ngắt theo mức</td></tr>
+      </table>
+    </section>
+
+    <footer>
+      <p>Tài liệu tổng hợp phục vụ tham khảo cá nhân — đối chiếu với <code>Documentation/devicetree/</code> trong kernel source, <a href="https://www.devicetree.org/" target="_blank" rel="noopener">devicetree.org</a> (đặc tả chính thức) và <code>dt-schema</code> khi viết binding mới.</p>
+      <p class="back-to-top"><a href="#top">▲ Đầu trang</a></p>
+    </footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function tokenize(code, rules) {
+    let result = '';
+    let cursor = 0;
+    const combined = new RegExp(rules.map(function (r) { return '(' + r.pattern.source + ')'; }).join('|'), 'gm');
+    let match;
+    let guard = 0;
+    while ((match = combined.exec(code)) !== null) {
+      result += escapeHtml(code.slice(cursor, match.index));
+      for (let i = 0; i < rules.length; i++) {
+        if (match[i + 1] !== undefined) {
+          result += '<span class="tok-' + rules[i].cls + '">' + escapeHtml(match[i + 1]) + '</span>';
+          break;
+        }
+      }
+      cursor = match.index + match[0].length;
+      if (match[0].length === 0) combined.lastIndex++;
+      if (++guard > 200000) break;
+    }
+    result += escapeHtml(code.slice(cursor));
+    return result;
+  }
+
+  const RULES = {
+    dts: [
+      { cls: 'comment', pattern: /\/\*[\s\S]*?\*\/|\/\/[^\n]*/ },
+      { cls: 'string', pattern: /"(?:[^"\\]|\\.)*"/ },
+      { cls: 'macro', pattern: /#\s*(?:include|define|if|ifdef|ifndef|else|endif)\b[^\n]*/ },
+      { cls: 'directive', pattern: /\/dts-v1\/|\/plugin\/|\/include\// },
+      { cls: 'ref', pattern: /&[a-zA-Z_][\w-]*/ },
+      { cls: 'cells', pattern: /<[^<>;"]*>/ },
+      { cls: 'label', pattern: /\b[a-zA-Z_][\w]*(?=:\s*\S)/ },
+      { cls: 'number', pattern: /\b0x[0-9a-fA-F]+\b|\b\d+\b/ },
+      { cls: 'prop', pattern: /[#a-zA-Z_][\w,.+?#-]*(?=\s*=)/ },
+    ],
+    c: [
+      { cls: 'comment', pattern: /\/\*[\s\S]*?\*\/|\/\/[^\n]*/ },
+      { cls: 'string', pattern: /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/ },
+      { cls: 'macro', pattern: /#\s*(?:include|define|ifdef|ifndef|if|else|endif|pragma)\b[^\n]*/ },
+      { cls: 'keyword', pattern: /\b(?:static|const|struct|void|int|char|unsigned|signed|long|short|return|if|else|for|while|do|switch|case|break|continue|typedef|enum|union|sizeof|goto|default|extern|inline|volatile|__init|__exit)\b/ },
+      { cls: 'type', pattern: /\b(?:u8|u16|u32|u64|s8|s16|s32|s64|size_t|ssize_t|bool|irqreturn_t)\b/ },
+      { cls: 'const', pattern: /\b[A-Z][A-Z0-9_]{2,}\b/ },
+      { cls: 'number', pattern: /\b0x[0-9a-fA-F]+\b|\b\d+\b/ },
+      { cls: 'function', pattern: /\b[a-zA-Z_]\w*(?=\()/ },
+    ],
+    bash: [
+      { cls: 'comment', pattern: /#[^\n]*/ },
+      { cls: 'string', pattern: /"(?:[^"\\]|\\.)*"|'[^']*'/ },
+      { cls: 'flag', pattern: /(?:^|(?<=\s))-{1,2}[a-zA-Z][\w-]*/ },
+    ],
+  };
+
+  function highlightAll() {
+    document.querySelectorAll('pre code[class*="lang-"]').forEach(function (block) {
+      const m = block.className.match(/lang-(\w+)/);
+      const rules = m && RULES[m[1]];
+      if (!rules) return;
+      block.innerHTML = tokenize(block.textContent, rules);
+    });
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function (resolve, reject) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        ok ? resolve() : reject(new Error('execCommand failed'));
+      } catch (e) { reject(e); }
+    });
+  }
+
+  function wireCopyButtons() {
+    document.querySelectorAll('.copy-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const block = btn.closest('.code-block');
+        const code = block && block.querySelector('code');
+        if (!code) return;
+        const old = btn.textContent;
+        copyText(code.textContent).then(function () {
+          btn.textContent = 'Đã chép';
+          setTimeout(function () { btn.textContent = old; }, 1400);
+        }).catch(function () {
+          btn.textContent = 'Lỗi';
+          setTimeout(function () { btn.textContent = old; }, 1400);
+        });
+      });
+    });
+  }
+
+  function wireScrollspy() {
+    const links = Array.from(document.querySelectorAll('.tree-link'));
+    const map = {};
+    links.forEach(function (l) { map[l.getAttribute('href').slice(1)] = l.parentElement; });
+    const sections = Array.from(document.querySelectorAll('section[id]'));
+    if (!('IntersectionObserver' in window) || sections.length === 0) return;
+    const io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        const li = map[entry.target.id];
+        if (!li || !entry.isIntersecting) return;
+        links.forEach(function (l) { l.parentElement.classList.remove('active'); });
+        li.classList.add('active');
+      });
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    sections.forEach(function (s) { io.observe(s); });
+  }
+
+  function wireMobileToggle() {
+    const btn = document.getElementById('tocToggle');
+    const nav = document.getElementById('tocNav');
+    if (!btn || !nav) return;
+    btn.addEventListener('click', function () {
+      const open = nav.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    nav.querySelectorAll('a').forEach(function (a) {
+      a.addEventListener('click', function () {
+        nav.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+      });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    highlightAll();
+    wireCopyButtons();
+    wireScrollspy();
+    wireMobileToggle();
+  });
+})();
+</script>
+</body>
+</html>

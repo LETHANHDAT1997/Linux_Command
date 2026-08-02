@@ -1,0 +1,2037 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>D-Bus & sdbus-cpp — Tài liệu kỹ thuật</title>
+<style>
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#1c2330;--border:#30363d;
+  --accent:#58a6ff;--accent2:#3fb950;--accent3:#f78166;--accent4:#d2a8ff;
+  --text:#e6edf3;--muted:#8b949e;--code-bg:#0d1117;--code-border:#21262d;
+  --highlight:#1c2940;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;scroll-behavior:smooth}
+body{font-family:'SF Pro Text',-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.7;min-height:100vh}
+.shell{display:grid;grid-template-columns:275px 1fr;grid-template-rows:56px 1fr;min-height:100vh}
+.topbar{grid-column:1/-1;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:14px;position:sticky;top:0;z-index:100}
+.topbar-logo{font-family:'SF Mono','Fira Code',monospace;font-size:1.05rem;font-weight:700;color:var(--accent)}
+.topbar-sep{color:var(--border);font-size:1.2rem}
+.topbar-title{font-size:0.92rem;color:var(--muted)}
+.topbar-badge{margin-left:auto;background:#1a3a1a;color:var(--accent2);font-size:0.72rem;font-family:'SF Mono',monospace;padding:3px 9px;border-radius:20px;border:1px solid #2a5c2a}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:20px 0;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.nav-group-label{font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);padding:14px 20px 5px}
+.nav-link{display:block;padding:5px 20px;font-size:0.82rem;color:var(--muted);text-decoration:none;border-left:3px solid transparent;transition:all .15s}
+.nav-link:hover{color:var(--text);background:var(--surface2)}
+.nav-link.active{color:var(--accent);border-left-color:var(--accent);background:var(--highlight)}
+.nav-link.sub{padding-left:34px;font-size:0.78rem}
+.main{padding:48px 56px;max-width:980px}
+.section-eyebrow{font-size:0.72rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--accent);font-family:'SF Mono',monospace;font-weight:600;margin-bottom:8px}
+h1{font-size:2.2rem;font-weight:800;line-height:1.2;margin-bottom:20px;color:var(--text)}
+h2{font-size:1.45rem;font-weight:700;color:var(--text);margin:52px 0 16px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+h3{font-size:1.1rem;font-weight:700;color:var(--accent);margin:32px 0 12px}
+h4{font-size:0.95rem;font-weight:700;color:var(--accent4);margin:22px 0 8px}
+p{margin-bottom:14px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.hero{background:linear-gradient(135deg,#0d1f3c 0%,#0d2b1a 100%);border:1px solid var(--border);border-radius:12px;padding:36px 40px;margin-bottom:48px;position:relative;overflow:hidden}
+.hero::before{content:'D-BUS';position:absolute;right:32px;top:50%;transform:translateY(-50%);font-family:'SF Mono',monospace;font-size:6rem;font-weight:900;opacity:.05;color:#fff;pointer-events:none}
+.hero-desc{font-size:1.05rem;color:var(--muted);max-width:580px;line-height:1.8}
+.hero-tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}
+.tag{font-size:.74rem;font-family:'SF Mono',monospace;padding:3px 10px;border-radius:20px;border:1px solid}
+.tag-blue{color:#79c0ff;border-color:#1f4a7a;background:#0d1f3c}
+.tag-green{color:#7ee787;border-color:#1a5c2a;background:#0d2b1a}
+.tag-red{color:#ffa198;border-color:#6e2020;background:#1f0d0d}
+.info-note{border-left:4px solid var(--accent);background:var(--highlight);border-radius:0 8px 8px 0;padding:14px 18px;margin:20px 0;font-size:.88rem;line-height:1.65}
+.info-warn{border-left:4px solid #d29922;background:#1f1a0d;border-radius:0 8px 8px 0;padding:14px 18px;margin:20px 0;font-size:.88rem;line-height:1.65}
+.info-tip{border-left:4px solid var(--accent2);background:#0d1f10;border-radius:0 8px 8px 0;padding:14px 18px;margin:20px 0;font-size:.88rem;line-height:1.65}
+.info-danger{border-left:4px solid var(--accent3);background:#1f0d0d;border-radius:0 8px 8px 0;padding:14px 18px;margin:20px 0;font-size:.88rem;line-height:1.65}
+.info-label{font-weight:700;font-size:.78rem;text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.info-note .info-label{color:var(--accent)}
+.info-warn .info-label{color:#d29922}
+.info-tip .info-label{color:var(--accent2)}
+.info-danger .info-label{color:var(--accent3)}
+pre{background:var(--code-bg);border:1px solid var(--code-border);border-radius:8px;padding:20px 22px;overflow-x:auto;margin:14px 0;position:relative}
+pre .lang-label{position:absolute;top:8px;right:12px;font-size:.65rem;font-family:'SF Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+code{font-family:'SF Mono','Fira Code','JetBrains Mono',monospace;font-size:.845rem;line-height:1.7;color:#e6edf3}
+p code,li code,td code{background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:.82rem;color:var(--accent4);border:1px solid var(--border)}
+.kw{color:#ff7b72}.ty{color:#ffa657}.fn{color:#d2a8ff}.st{color:#a5d6ff}.cm{color:#8b949e;font-style:italic}.num{color:#79c0ff}.mac{color:#f78166}
+.tbl-wrap{overflow-x:auto;margin:20px 0}
+table{width:100%;border-collapse:collapse;font-size:.875rem}
+th{background:var(--surface2);color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.8px;font-weight:700;padding:10px 14px;text-align:left;border-bottom:2px solid var(--border)}
+td{padding:9px 14px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.5}
+tr:hover td{background:var(--surface2)}
+.arch-diagram{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:28px;margin:24px 0;font-family:'SF Mono',monospace;font-size:.8rem;line-height:1.8;color:var(--muted);white-space:pre;overflow-x:auto}
+.arch-diagram .box{color:var(--accent)}.arch-diagram .lbl{color:var(--accent4)}.arch-diagram .arr{color:var(--accent3)}.arch-diagram .bus{color:var(--accent2)}
+.bus-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0}
+.bus-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;position:relative;overflow:hidden}
+.bus-card::after{content:'';position:absolute;top:0;left:0;width:100%;height:3px}
+.bus-card.system::after{background:var(--accent)}.bus-card.session::after{background:var(--accent2)}.bus-card.p2p::after{background:var(--accent4)}
+.bus-card-title{font-weight:700;font-size:1rem;margin-bottom:8px}
+.bus-card.system .bus-card-title{color:var(--accent)}.bus-card.session .bus-card-title{color:var(--accent2)}.bus-card.p2p .bus-card-title{color:var(--accent4)}
+.bus-card-desc{font-size:.83rem;color:var(--muted);line-height:1.65}
+.bus-card ul{padding-left:16px;margin-top:8px}.bus-card li{font-size:.80rem;color:var(--muted);margin-bottom:4px}
+.chip-row{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
+.chip{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:9px 14px}
+.chip-title{font-weight:700;color:var(--accent);font-size:.8rem;margin-bottom:2px}
+.chip-desc{color:var(--muted);font-size:.75rem}
+.layer-compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}
+.layer-col{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px}
+.layer-col-title{font-size:.85rem;font-weight:700;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.step-flow{display:flex;flex-direction:column;gap:0;margin:20px 0}
+.step{display:flex;gap:16px;padding:14px 0;position:relative}
+.step:not(:last-child)::after{content:'';position:absolute;left:15px;top:42px;bottom:0;width:1px;background:var(--border)}
+.step-num{width:32px;height:32px;border-radius:50%;background:var(--accent);color:var(--bg);font-weight:800;font-size:.85rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-body{flex:1}
+.step-title{font-weight:700;color:var(--text);margin-bottom:4px}
+.step-desc{font-size:.84rem;color:var(--muted);line-height:1.6}
+.cmd-anatomy{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin:16px 0}
+.cmd-line{font-family:'SF Mono',monospace;font-size:.83rem;color:var(--accent2);margin-bottom:12px;font-weight:600;word-break:break-all}
+.cmd-part{display:flex;gap:16px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--border)}
+.cmd-token{font-family:'SF Mono',monospace;font-size:.80rem;color:var(--accent4);min-width:220px;flex-shrink:0;padding-top:1px}
+.cmd-explain{color:var(--muted);font-size:.82rem;line-height:1.55}
+.out-block{background:#0a1520;border:1px solid #1a3050;border-radius:8px;padding:16px 20px;margin:10px 0;font-family:'SF Mono',monospace;font-size:.80rem;line-height:1.75;overflow-x:auto}
+.out-block .oc{color:#8b949e;font-style:italic}
+.out-block .ok{color:#ffa657}
+.out-block .ov{color:#7ee787}
+.out-block .op{color:var(--accent4)}
+.out-block .oi{color:var(--accent)}
+.out-block .om{color:#ff7b72}
+.tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}
+.tool-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px}
+.tool-card-title{font-weight:700;font-size:.9rem;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.tool-card ul{padding-left:16px}.tool-card li{font-size:.80rem;color:var(--muted);margin-bottom:4px}
+hr{border:none;border-top:1px solid var(--border);margin:40px 0}
+ul,ol{padding-left:22px;margin-bottom:14px}
+li{margin-bottom:6px;font-size:.9rem}
+li::marker{color:var(--accent)}
+@media(max-width:900px){.shell{grid-template-columns:1fr}.sidebar{display:none}.main{padding:32px 24px}.bus-cards,.layer-compare,.tool-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+<header class="topbar">
+  <span class="topbar-logo">⌘ sdbus-cpp</span>
+  <span class="topbar-sep">|</span>
+  <span class="topbar-title">D-Bus Reference — Linux Embedded Systems</span>
+  <span class="topbar-badge">v2.2.1 latest</span>
+</header>
+<nav class="sidebar">
+  <div class="nav-group-label">Tổng quan</div>
+  <a class="nav-link active" href="#intro">D-Bus là gì?</a>
+  <a class="nav-link" href="#architecture">Kiến trúc</a>
+  <a class="nav-link" href="#bus-types">Các loại Bus</a>
+  <a class="nav-link" href="#concepts">Khái niệm cốt lõi</a>
+  <div class="nav-group-label">sdbus-cpp</div>
+  <a class="nav-link" href="#sdbus-intro">Giới thiệu thư viện</a>
+  <a class="nav-link" href="#install">Cài đặt &amp; Dependencies</a>
+  <a class="nav-link" href="#api-layers">Ba tầng API</a>
+  <div class="nav-group-label">Ví dụ hoàn chỉnh</div>
+  <a class="nav-link" href="#project-layout">Cấu trúc project</a>
+  <a class="nav-link" href="#policy-file">Policy file</a>
+  <a class="nav-link" href="#xml-idl">XML IDL</a>
+  <a class="nav-link" href="#codegen">Code generation</a>
+  <a class="nav-link" href="#server-impl">Server implementation</a>
+  <a class="nav-link" href="#client-impl">Client implementation</a>
+  <a class="nav-link" href="#cmake-full">CMakeLists.txt</a>
+  <a class="nav-link" href="#build-run">Build &amp; Run</a>
+  <div class="nav-group-label">API chi tiết</div>
+  <a class="nav-link" href="#basic-api">Basic API Layer</a>
+  <a class="nav-link" href="#convenience-api">Convenience API Layer</a>
+  <a class="nav-link" href="#signals-detail">Signals</a>
+  <a class="nav-link" href="#properties-detail">Properties</a>
+  <a class="nav-link" href="#async-detail">Async Calls</a>
+  <a class="nav-link" href="#connections-detail">Connection Management</a>
+  <div class="nav-group-label">Debug &amp; Tools</div>
+  <a class="nav-link" href="#debug-overview">Tổng quan tools</a>
+  <a class="nav-link" href="#dbus-monitor">dbus-monitor</a>
+  <a class="nav-link" href="#busctl">busctl</a>
+  <a class="nav-link sub" href="#busctl-list">list</a>
+  <a class="nav-link sub" href="#busctl-tree">tree</a>
+  <a class="nav-link sub" href="#busctl-introspect">introspect</a>
+  <a class="nav-link sub" href="#busctl-call">call</a>
+  <a class="nav-link sub" href="#busctl-property">get/set-property</a>
+  <a class="nav-link sub" href="#busctl-monitor">monitor &amp; capture</a>
+  <a class="nav-link" href="#dbus-send">dbus-send</a>
+  <a class="nav-link" href="#gdbus">gdbus</a>
+  <a class="nav-link" href="#debug-compare">So sánh tools</a>
+</nav>
+<main class="main">
+<!-- HERO -->
+<div class="hero">
+  <div class="section-eyebrow">Linux IPC · Embedded Systems · C++17/20</div>
+  <h1>D-Bus &amp; sdbus-cpp</h1>
+  <p class="hero-desc">Tài liệu kỹ thuật chi tiết về D-Bus — cơ chế IPC chuẩn trên Linux — và thư viện <strong>sdbus-cpp</strong> của Kistler-Group. Bao gồm ví dụ hoàn chỉnh có thể build &amp; chạy được, cùng hướng dẫn chi tiết từng lệnh debug.</p>
+  <div class="hero-tags">
+    <span class="tag tag-blue">D-Bus IPC</span>
+    <span class="tag tag-green">sdbus-cpp v2.2.1</span>
+    <span class="tag tag-blue">C++17 / C++20</span>
+    <span class="tag tag-green">Embedded Linux</span>
+    <span class="tag tag-red">systemd / sd-bus</span>
+  </div>
+</div>
+
+<!-- ═══ SECTION 1: D-Bus là gì ═══ -->
+<section id="intro">
+<h2>1. D-Bus là gì?</h2>
+<p><strong>D-Bus (Desktop Bus)</strong> là hệ thống IPC (Inter-Process Communication) tiêu chuẩn trên Linux, phát triển bởi freedesktop.org. Nó cho phép các process giao tiếp qua một <em>message bus</em> trung tâm theo mô hình service-oriented: client gọi method của remote object, nhận signal broadcast, đọc/ghi property — giống OOP nhưng xuyên ranh giới process.</p>
+
+<h3>1.1 So sánh với các cơ chế IPC khác</h3>
+<div class="tbl-wrap"><table>
+<tr><th>Cơ chế IPC</th><th>Đặc điểm</th><th>Hạn chế</th></tr>
+<tr><td>Pipe / FIFO</td><td>Đơn giản, kernel hỗ trợ native</td><td>Chỉ 1-to-1, unidirectional, không có typing</td></tr>
+<tr><td>Unix Socket</td><td>Bidirectional, trên cùng host</td><td>Phải tự định nghĩa protocol, không có service discovery</td></tr>
+<tr><td>Shared Memory</td><td>Throughput cao nhất</td><td>Phức tạp (mutex, semaphore), không có framing</td></tr>
+<tr><td>POSIX MQ</td><td>Async, kernel-buffered</td><td>Không có typing, không có service discovery</td></tr>
+<tr><td><strong>D-Bus</strong></td><td>Service discovery, typed messages, broadcast signals, introspection, standard tooling</td><td>Overhead so với raw socket; phụ thuộc daemon</td></tr>
+</table></div>
+
+<h3>1.2 D-Bus dùng để làm gì?</h3>
+<ul>
+<li><strong>Service discovery:</strong> Tìm service theo well-known name (<code>org.freedesktop.NetworkManager</code>)</li>
+<li><strong>Remote Procedure Call:</strong> Gọi method của object trong process khác — sync hoặc async</li>
+<li><strong>Broadcast signals:</strong> Server phát event, tất cả subscriber nhận — không cần polling</li>
+<li><strong>Property access:</strong> Đọc/ghi thuộc tính qua standard interface <code>org.freedesktop.DBus.Properties</code></li>
+<li><strong>Introspection:</strong> Khám phá API của service tại runtime qua XML</li>
+</ul>
+
+<div class="info-note">
+<div class="info-label">Context trong project JKC</div>
+Trong dự án JKC với Sigmastar SoC, D-Bus dùng để các daemon giao tiếp nhau: media daemon phát signal khi playback state thay đổi, power manager expose method để client yêu cầu shutdown, system monitor cung cấp properties về CPU/RAM. Tất cả qua System Bus — không cần mỗi daemon viết socket protocol riêng.
+</div>
+</section>
+
+<!-- ═══ SECTION 2: Kiến trúc ═══ -->
+<section id="architecture">
+<h2>2. Kiến trúc D-Bus</h2>
+<p>D-Bus hoạt động theo mô hình <strong>message broker</strong>: mọi message đi qua daemon <code>dbus-daemon</code>, daemon định tuyến đến đúng recipient và enforce security policy.</p>
+
+<div class="arch-diagram"><span class="box">┌────────────────────┐</span>   <span class="box">┌──────────────────┐</span>   <span class="box">┌──────────────────┐</span>
+<span class="box">│   media-daemon     │</span>   <span class="box">│  power-manager   │</span>   <span class="box">│   UI client      │</span>
+<span class="box">│  (Server/Service)  │</span>   <span class="box">│  (Server+Client) │</span>   <span class="box">│  (Client only)   │</span>
+<span class="lbl">│  IObject: /media   │</span>   <span class="lbl">│  IObject: /power │</span>   <span class="lbl">│  IProxy → /media │</span>
+<span class="lbl">│  emit: StateChange │</span>   <span class="lbl">│  method: Shutdown│</span>   <span class="lbl">│  IProxy → /power │</span>
+<span class="box">└────────┬───────────┘</span>   <span class="box">└────────┬─────────┘</span>   <span class="box">└──────┬───────────┘</span>
+         <span class="arr">│                        │                      │</span>
+         <span class="arr">│    UNIX Domain Socket (default transport)    │</span>
+         <span class="arr">▼                        ▼                      ▼</span>
+<span class="bus">┌─────────────────────────────────────────────────────────────────────┐
+│                        dbus-daemon                                  │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │  Name Registry:                                               │  │
+│  │    "org.jkc.MediaDaemon"  →  :1.42                           │  │
+│  │    "org.jkc.PowerManager" →  :1.15                           │  │
+│  ├───────────────────────────────────────────────────────────────┤  │
+│  │  Policy Engine (đọc /etc/dbus-1/system.d/*.conf)              │  │
+│  │    ai được phép own tên gì, send/receive đến đâu              │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘</span>
+
+<span class="lbl">4 thành phần địa chỉ (cần đủ cả 4 để gọi một method):</span>
+  <span class="arr">ServiceName  </span>= <span class="arr">"org.jkc.MediaDaemon"</span>     <span class="cm">← well-known name, client tìm service qua đây</span>
+  <span class="arr">ObjectPath   </span>= <span class="arr">"/org/jkc/media"</span>         <span class="cm">← giống URI path, trỏ đến object cụ thể</span>
+  <span class="arr">InterfaceName</span>= <span class="arr">"org.jkc.MediaControl"</span>   <span class="cm">← namespace chứa methods/signals/properties</span>
+  <span class="arr">MethodName   </span>= <span class="arr">"Play"</span>                   <span class="cm">← tên method, signal hoặc property</span></div>
+
+<div class="tbl-wrap"><table>
+<tr><th>Thành phần</th><th>Ví dụ thực tế</th><th>Mô tả</th></tr>
+<tr><td><code>Service Name</code></td><td><code>org.freedesktop.NetworkManager</code></td><td>Well-known name để client tìm service. Định dạng reverse-DNS. Unique name tự động như <code>:1.42</code>.</td></tr>
+<tr><td><code>Object Path</code></td><td><code>/org/freedesktop/NetworkManager/Devices/0</code></td><td>Đường dẫn đến object. Một service có thể expose nhiều objects tại các path khác nhau.</td></tr>
+<tr><td><code>Interface Name</code></td><td><code>org.freedesktop.NetworkManager.Device</code></td><td>Namespace chứa methods/signals/properties. Một object có thể implement nhiều interfaces.</td></tr>
+<tr><td><code>Member Name</code></td><td><code>Disconnect</code> (method), <code>StateChanged</code> (signal)</td><td>Tên của method, signal, hoặc property trong interface.</td></tr>
+</table></div>
+
+<h3>2.1 Standard D-Bus interfaces (mọi object đều có)</h3>
+<div class="tbl-wrap"><table>
+<tr><th>Interface</th><th>Mô tả</th><th>Member chính</th></tr>
+<tr><td><code>org.freedesktop.DBus.Introspectable</code></td><td>Khám phá API của object</td><td><code>Introspect()</code> → XML string mô tả toàn bộ API</td></tr>
+<tr><td><code>org.freedesktop.DBus.Properties</code></td><td>Đọc/ghi properties</td><td><code>Get()</code>, <code>Set()</code>, <code>GetAll()</code>, signal <code>PropertiesChanged</code></td></tr>
+<tr><td><code>org.freedesktop.DBus.Peer</code></td><td>Ping connectivity check</td><td><code>Ping()</code>, <code>GetMachineId()</code></td></tr>
+</table></div>
+</section>
+
+<!-- ═══ SECTION 3: Các loại Bus ═══ -->
+<section id="bus-types">
+<h2>3. Các loại D-Bus</h2>
+<div class="bus-cards">
+<div class="bus-card system">
+<div class="bus-card-title">System Bus</div>
+<div class="bus-card-desc">Bus dùng chung toàn hệ thống. Mọi user và process truy cập cùng một instance duy nhất.
+<ul>
+<li>Socket: <code>/run/dbus/system_bus_socket</code></li>
+<li>Yêu cầu policy file (<code>/etc/dbus-1/system.d/</code>)</li>
+<li>Dùng cho system services: NetworkManager, BlueZ, UPower…</li>
+<li>Trong embedded: media daemon, power manager, CAN adapter…</li>
+</ul></div>
+</div>
+<div class="bus-card session">
+<div class="bus-card-title">Session Bus</div>
+<div class="bus-card-desc">Bus riêng cho mỗi user login session. Instance riêng cho từng user.
+<ul>
+<li>Socket: <code>/run/user/&lt;UID&gt;/bus</code></li>
+<li>Không cần policy file đặc biệt</li>
+<li>Dùng trong desktop environment (GNOME, KDE…)</li>
+<li>Tiện cho development &amp; testing — không cần sudo</li>
+</ul></div>
+</div>
+<div class="bus-card p2p">
+<div class="bus-card-title">Peer-to-Peer (Direct)</div>
+<div class="bus-card-desc">Kết nối trực tiếp giữa hai process, không qua daemon.
+<ul>
+<li>Latency thấp hơn (bỏ qua broker hop)</li>
+<li>Phù hợp embedded resource-constrained</li>
+<li>Không có service discovery, không có broker</li>
+<li>API: <code>createDirectBusConnection()</code></li>
+</ul></div>
+</div>
+</div>
+
+<div class="info-tip">
+<div class="info-label">Lựa chọn phù hợp cho Embedded Linux</div>
+<strong>Có systemd:</strong> System Bus là chuẩn. sdbus-cpp link vào <code>libsystemd</code> có sẵn.<br/>
+<strong>Không có systemd</strong> (BusyBox init): Dùng <code>SDBUSCPP_BUILD_LIBSYSTEMD=ON</code> để sdbus-cpp tự bundle sd-bus static, hoặc dùng Peer-to-Peer bỏ qua hoàn toàn daemon.<br/>
+<strong>Session Bus:</strong> Rất tiện khi dev &amp; test trên máy desktop — không cần sudo hay policy file.
+</div>
+</section>
+
+<!-- ═══ SECTION 4: Khái niệm cốt lõi ═══ -->
+<section id="concepts">
+<h2>4. Khái niệm cốt lõi</h2>
+
+<h3>4.1 Message Types</h3>
+<div class="tbl-wrap"><table>
+<tr><th>Message Type</th><th>Hướng</th><th>Mô tả</th></tr>
+<tr><td><code>MethodCall</code></td><td>Client → Server</td><td>Gọi method trên remote object. Mang serialized arguments.</td></tr>
+<tr><td><code>MethodReply</code></td><td>Server → Client</td><td>Kết quả của method call. Mang serialized return values.</td></tr>
+<tr><td><code>Error</code></td><td>Server → Client</td><td>Thay thế MethodReply khi method throw exception. Mang error name + message.</td></tr>
+<tr><td><code>Signal</code></td><td>Server → All subscribers</td><td>Broadcast event. Không cần reply. Client subscribe trước.</td></tr>
+</table></div>
+
+<h3>4.2 D-Bus Type Signatures</h3>
+<div class="tbl-wrap"><table>
+<tr><th>Signature</th><th>C++ Type (sdbus-cpp)</th><th>Ghi chú</th></tr>
+<tr><td><code>b</code></td><td><code>bool</code></td><td>Boolean</td></tr>
+<tr><td><code>y</code></td><td><code>uint8_t</code></td><td>Byte</td></tr>
+<tr><td><code>n</code></td><td><code>int16_t</code></td><td>Int 16-bit signed</td></tr>
+<tr><td><code>i</code></td><td><code>int32_t</code></td><td>Int 32-bit signed</td></tr>
+<tr><td><code>u</code></td><td><code>uint32_t</code></td><td>Int 32-bit unsigned</td></tr>
+<tr><td><code>x</code></td><td><code>int64_t</code></td><td>Int 64-bit signed</td></tr>
+<tr><td><code>t</code></td><td><code>uint64_t</code></td><td>Int 64-bit unsigned (timestamp)</td></tr>
+<tr><td><code>d</code></td><td><code>double</code></td><td>Double precision float</td></tr>
+<tr><td><code>s</code></td><td><code>std::string</code></td><td>UTF-8 string</td></tr>
+<tr><td><code>o</code></td><td><code>sdbus::ObjectPath</code></td><td>Object path string</td></tr>
+<tr><td><code>v</code></td><td><code>sdbus::Variant</code></td><td>Any D-Bus type</td></tr>
+<tr><td><code>ai</code></td><td><code>std::vector&lt;int32_t&gt;</code></td><td>Array of int32</td></tr>
+<tr><td><code>as</code></td><td><code>std::vector&lt;std::string&gt;</code></td><td>Array of string</td></tr>
+<tr><td><code>ay</code></td><td><code>std::vector&lt;uint8_t&gt;</code></td><td>Byte array</td></tr>
+<tr><td><code>a{sv}</code></td><td><code>std::map&lt;std::string, sdbus::Variant&gt;</code></td><td>Dictionary</td></tr>
+<tr><td><code>(si)</code></td><td><code>sdbus::Struct&lt;std::string,int32_t&gt;</code></td><td>Struct</td></tr>
+<tr><td><code>a(si)</code></td><td><code>std::vector&lt;sdbus::Struct&lt;std::string,int32_t&gt;&gt;</code></td><td>Array of struct</td></tr>
+</table></div>
+
+<h3>4.3 Các entity chính trong sdbus-cpp</h3>
+<div class="chip-row">
+<div class="chip"><div class="chip-title">IConnection</div><div class="chip-desc">Kết nối đến D-Bus daemon. Chạy event loop. Nên share một instance cho nhiều objects/proxies.</div></div>
+<div class="chip"><div class="chip-title">IObject (Server)</div><div class="chip-desc">Đại diện D-Bus object expose API. Đăng ký methods, signals, properties vào vtable. Emit signals.</div></div>
+<div class="chip"><div class="chip-title">IProxy (Client)</div><div class="chip-desc">View của Object từ phía client. Gọi remote methods, subscribe signals, đọc/ghi properties.</div></div>
+<div class="chip"><div class="chip-title">sdbus::Variant</div><div class="chip-desc">Container type-erased cho bất kỳ D-Bus type nào. Dùng trong properties và dict <code>a{sv}</code>.</div></div>
+<div class="chip"><div class="chip-title">sdbus::Error</div><div class="chip-desc">Exception class mang <code>error_name</code> (dot-separated) và <code>message</code>. Server throw, client catch.</div></div>
+<div class="chip"><div class="chip-title">Slot (RAII)</div><div class="chip-desc">Handle quản lý lifetime của signal subscription hoặc vtable registration. Destroy slot = unsubscribe tự động.</div></div>
+</div>
+</section>
+<!-- ═══ SECTION 5: sdbus-cpp intro ═══ -->
+<section id="sdbus-intro">
+<h2>5. sdbus-cpp — Giới thiệu thư viện</h2>
+<p><strong>sdbus-cpp</strong> là thư viện C++ high-level cho D-Bus, phát triển bởi Kistler-Group. Nó wrap <code>sd-bus</code> (C library trong systemd) và cung cấp API C++ hiện đại, type-safe, dùng template metaprogramming để tự động suy ra D-Bus type signatures tại compile time — không cần viết tay signature strings.</p>
+<div class="tbl-wrap"><table>
+<tr><th>Thuộc tính</th><th>Giá trị</th></tr>
+<tr><td>Version</td><td>v2.2.1 (November 2025)</td></tr>
+<tr><td>License</td><td>LGPLv2.1 (với exception cho header/template code)</td></tr>
+<tr><td>C++ standard</td><td>C++17 (public API), C++20 coroutines/awaitable tùy chọn</td></tr>
+<tr><td>Backend</td><td>sd-bus từ libsystemd ≥ v238, hoặc libelogind, hoặc basu</td></tr>
+<tr><td>Build system</td><td>CMake ≥ 3.14</td></tr>
+<tr><td>Embedded</td><td>Yocto (meta-oe), Buildroot (package sdbus-cpp), Conan</td></tr>
+</table></div>
+</section>
+
+<!-- ═══ SECTION 6: Install ═══ -->
+<section id="install">
+<h2>6. Cài đặt &amp; Dependencies</h2>
+
+<h3>6.1 Dependencies</h3>
+<div class="tbl-wrap"><table>
+<tr><th>Dependency</th><th>Bắt buộc?</th><th>Cài trên Ubuntu/Debian</th></tr>
+<tr><td><code>libsystemd-dev</code></td><td>Có (hoặc elogind/basu)</td><td><code>sudo apt install libsystemd-dev</code></td></tr>
+<tr><td>CMake ≥ 3.14</td><td>Có</td><td><code>sudo apt install cmake</code></td></tr>
+<tr><td>GCC ≥ 10 hoặc Clang ≥ 11</td><td>Có (C++17 support)</td><td><code>sudo apt install build-essential</code></td></tr>
+<tr><td><code>pkg-config</code></td><td>Có</td><td><code>sudo apt install pkg-config</code></td></tr>
+<tr><td><code>libexpat-dev</code></td><td>Chỉ khi dùng codegen tool</td><td><code>sudo apt install libexpat-dev</code></td></tr>
+<tr><td><code>meson</code>, <code>ninja</code>, <code>gperf</code></td><td>Chỉ khi <code>BUILD_LIBSYSTEMD=ON</code></td><td><code>sudo apt install meson ninja-build gperf</code></td></tr>
+</table></div>
+
+<h3>6.2 Build từ source</h3>
+<pre><code><span class="cm"># 1. Clone</span>
+git clone https://github.com/Kistler-Group/sdbus-cpp.git
+cd sdbus-cpp && mkdir build && cd build
+
+<span class="cm"># 2a. Host build — dùng libsystemd hệ thống</span>
+cmake .. \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DSDBUSCPP_BUILD_CODEGEN=ON
+
+<span class="cm"># 2b. Non-systemd embedded — bundle libsystemd static</span>
+cmake .. \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DSDBUSCPP_BUILD_LIBSYSTEMD=ON \
+  -DSDBUSCPP_LIBSYSTEMD_VERSION=252 \
+  -DSDBUSCPP_BUILD_CODEGEN=ON
+
+cmake --build . -j$(nproc)
+sudo cmake --build . --target install
+<span class="lang-label">bash</span></code></pre>
+
+<h3>6.3 Cross-compile cho ARM</h3>
+<pre><code><span class="cm"># arm-linux-gnueabihf-toolchain.cmake</span>
+set(CMAKE_SYSTEM_NAME Linux)
+set(CMAKE_SYSTEM_PROCESSOR arm)
+set(CMAKE_C_COMPILER   arm-linux-gnueabihf-gcc)
+set(CMAKE_CXX_COMPILER arm-linux-gnueabihf-g++)
+set(CMAKE_FIND_ROOT_PATH /path/to/sysroot)
+
+<span class="cm"># Build sdbus-cpp với toolchain</span>
+cmake .. \
+  -DCMAKE_TOOLCHAIN_FILE=../arm-linux-gnueabihf-toolchain.cmake \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DSDBUSCPP_BUILD_LIBSYSTEMD=ON \
+  -DSDBUSCPP_LIBSYSTEMD_VERSION=252 \
+  -DBUILD_SHARED_LIBS=ON
+<span class="lang-label">cmake</span></code></pre>
+
+<h3>6.4 Kiểm tra cài đặt</h3>
+<pre><code>pkg-config --modversion sdbus-c++      <span class="cm"># → 2.2.1</span>
+sdbus-c++-xml2cpp --version            <span class="cm"># → sdbus-c++-xml2cpp, version 2.2.1</span>
+ls /usr/local/include/sdbus-c++/
+ls /usr/local/lib/libsdbus-c++*
+<span class="lang-label">bash</span></code></pre>
+</section>
+
+<!-- ═══ SECTION 7: API layers ═══ -->
+<section id="api-layers">
+<h2>7. Ba tầng API của sdbus-cpp</h2>
+<div class="layer-compare">
+<div class="layer-col">
+<div class="layer-col-title" style="color:var(--accent)">① Basic API</div>
+<ul style="font-size:.82rem">
+<li>Làm việc trực tiếp với D-Bus message objects</li>
+<li>Manual serialize/deserialize với <code>&lt;&lt;</code> / <code>&gt;&gt;</code></li>
+<li>Phải tự viết D-Bus signature strings (<code>"ais"</code>)</li>
+<li>Verbose, dễ sai runtime</li>
+<li>Dùng để hiểu internals hoặc edge cases</li>
+</ul>
+</div>
+<div class="layer-col">
+<div class="layer-col-title" style="color:var(--accent2)">② Convenience API</div>
+<ul style="font-size:.82rem">
+<li>Method chaining: <code>.callMethod().onInterface().withArguments()</code></li>
+<li>Compiler tự deduce D-Bus signatures từ C++ types</li>
+<li>Ngắn hơn, type-safe, zero runtime overhead</li>
+<li><strong>Nên dùng khi không cần codegen</strong></li>
+</ul>
+</div>
+</div>
+<div class="layer-col" style="margin:0 0 20px">
+<div class="layer-col-title" style="color:var(--accent4)">③ Generated Bindings (sdbus-c++-xml2cpp)</div>
+<ul style="font-size:.82rem">
+<li>Từ D-Bus XML IDL → generate header C++ (Adaptor + Proxy)</li>
+<li>Remote calls trông như local C++ method calls</li>
+<li>Adaptor: implement pure virtual methods cho server</li>
+<li>Proxy: gọi method như member function cho client</li>
+<li><strong>Tầng cao nhất — dùng cho toàn bộ production service</strong></li>
+</ul>
+</div>
+</section>
+
+<!-- ═══ SECTION 8: Project layout ═══ -->
+<section id="project-layout">
+<h2>8. Ví dụ hoàn chỉnh — Concatenator Service</h2>
+<p>Chúng ta xây dựng một <strong>Concatenator service</strong>: server nhận mảng số nguyên và separator, nối chúng thành chuỗi và emit signal. Ví dụ đủ để <strong>build và chạy ngay</strong> trên bất kỳ Linux nào có dbus.</p>
+
+<h3>8.1 Cấu trúc project</h3>
+<pre><code>concatenator/
+├── CMakeLists.txt
+├── dbus/
+│   └── org.example.Concatenator.xml    ← D-Bus interface definition (IDL)
+├── src/
+│   ├── Concatenator.h                  ← Server class declaration
+│   ├── Concatenator.cpp                ← Server class implementation
+│   ├── main_server.cpp                 ← Server main entry point
+│   └── main_client.cpp                 ← Client main entry point
+└── policy/
+    └── org.example.Concatenator.conf   ← D-Bus policy (chỉ cần cho system bus)
+<span class="lang-label">text</span></code></pre>
+</section>
+
+<!-- ═══ SECTION 9: Policy file ═══ -->
+<section id="policy-file">
+<h2>9. Policy file (System Bus)</h2>
+<p>Policy file cho phép service đăng ký well-known name trên system bus. <strong>Không có file này, service sẽ bị từ chối với lỗi <code>org.freedesktop.DBus.Error.AccessDenied</code>.</strong></p>
+<p>Nếu bạn dùng <strong>Session Bus</strong> để test (khuyến nghị cho phát triển), bỏ qua bước này hoàn toàn.</p>
+
+<pre><code><span class="cm">&lt;!-- policy/org.example.Concatenator.conf --&gt;
+&lt;!-- Deploy: sudo cp policy/... /etc/dbus-1/system.d/ &amp;&amp; sudo systemctl reload dbus --&gt;</span>
+&lt;?xml version=<span class="st">"1.0"</span> encoding=<span class="st">"UTF-8"</span>?&gt;
+&lt;!DOCTYPE busconfig PUBLIC
+  <span class="st">"-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN"</span>
+  <span class="st">"http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd"</span>&gt;
+&lt;busconfig&gt;
+  <span class="cm">&lt;!-- User root được phép own (đăng ký) tên service này --&gt;</span>
+  &lt;policy user=<span class="st">"root"</span>&gt;
+    &lt;allow own=<span class="st">"org.example.Concatenator"</span>/&gt;
+  &lt;/policy&gt;
+  <span class="cm">&lt;!-- Mọi user khác có thể gửi message đến service này --&gt;</span>
+  &lt;policy context=<span class="st">"default"</span>&gt;
+    &lt;allow send_destination=<span class="st">"org.example.Concatenator"</span>/&gt;
+    &lt;allow receive_sender=<span class="st">"org.example.Concatenator"</span>/&gt;
+  &lt;/policy&gt;
+&lt;/busconfig&gt;
+<span class="lang-label">xml</span></code></pre>
+
+<div class="info-warn">
+<div class="info-label">Test nhanh không cần policy</div>
+Dùng <strong>Session Bus</strong> thay System Bus: đổi <code>createSystemBusConnection</code> → <code>createSessionBusConnection</code> trong main_server.cpp và main_client.cpp. Dùng <code>--user</code> (hoặc <code>--session</code>) trong các lệnh debug. Không cần sudo, không cần policy file — phù hợp hoàn toàn cho phát triển trên máy desktop.
+</div>
+</section>
+
+<!-- ═══ SECTION 10: XML IDL ═══ -->
+<section id="xml-idl">
+<h2>10. D-Bus XML IDL</h2>
+<p>File XML là <strong>contract</strong> giữa server và client. Nó định nghĩa tên, type signatures của tất cả methods, signals, properties. File này là input cho codegen tool.</p>
+
+<pre><code><span class="cm">&lt;!-- dbus/org.example.Concatenator.xml --&gt;</span>
+&lt;?xml version=<span class="st">"1.0"</span> encoding=<span class="st">"UTF-8"</span>?&gt;
+
+&lt;node name=<span class="st">"/org/example/concatenator"</span>&gt;
+  &lt;interface name=<span class="st">"org.example.Concatenator"</span>&gt;
+
+    <span class="cm">&lt;!-- Method: nhận mảng số và separator, trả về chuỗi đã ghép --&gt;</span>
+    &lt;method name=<span class="st">"Concatenate"</span>&gt;
+      &lt;arg type=<span class="st">"ai"</span> name=<span class="st">"numbers"</span>   direction=<span class="st">"in"</span>/&gt;  <span class="cm">&lt;!-- ai = array of int32 --&gt;</span>
+      &lt;arg type=<span class="st">"s"</span>  name=<span class="st">"separator"</span> direction=<span class="st">"in"</span>/&gt;  <span class="cm">&lt;!--  s = string --&gt;</span>
+      &lt;arg type=<span class="st">"s"</span>  name=<span class="st">"result"</span>    direction=<span class="st">"out"</span>/&gt; <span class="cm">&lt;!--  s = string return --&gt;</span>
+    &lt;/method&gt;
+
+    <span class="cm">&lt;!-- Signal: phát sau mỗi lần Concatenate thành công --&gt;</span>
+    &lt;signal name=<span class="st">"Concatenated"</span>&gt;
+      &lt;arg type=<span class="st">"s"</span> name=<span class="st">"result"</span>/&gt;
+    &lt;/signal&gt;
+
+    <span class="cm">&lt;!-- Property: version string, read-only --&gt;</span>
+    &lt;property name=<span class="st">"Version"</span>      type=<span class="st">"s"</span> access=<span class="st">"read"</span>/&gt;
+
+    <span class="cm">&lt;!-- Property: số lần xử lý request, read-only --&gt;</span>
+    &lt;property name=<span class="st">"RequestCount"</span> type=<span class="st">"u"</span> access=<span class="st">"read"</span>/&gt; <span class="cm">&lt;!-- u = uint32 --&gt;</span>
+
+  &lt;/interface&gt;
+&lt;/node&gt;
+<span class="lang-label">xml</span></code></pre>
+</section>
+
+<!-- ═══ SECTION 11: Codegen ═══ -->
+<section id="codegen">
+<h2>11. Generate glue code từ XML</h2>
+<pre><code><span class="cm"># Chạy từ thư mục gốc project</span>
+sdbus-c++-xml2cpp dbus/org.example.Concatenator.xml \
+  --adaptor=src/Concatenator-server-glue.h \
+  --proxy=src/Concatenator-client-glue.h
+
+<span class="cm"># Hoặc trong CMake (xem phần CMakeLists.txt bên dưới)</span>
+<span class="lang-label">bash</span></code></pre>
+
+<h4>Concatenator-server-glue.h (rút gọn để hiểu cấu trúc)</h4>
+<pre><code><span class="cm">// FILE NÀY ĐƯỢC GENERATE TỰ ĐỘNG — không chỉnh sửa tay</span>
+<span class="mac">#pragma once</span>
+<span class="mac">#include</span> <span class="st">&lt;sdbus-c++/sdbus-c++.h&gt;</span>
+
+<span class="kw">namespace</span> org::example {
+
+<span class="kw">class</span> <span class="ty">Concatenator_adaptor</span> {
+<span class="kw">public</span>:
+    <span class="kw">static constexpr const char</span>* INTERFACE_NAME = <span class="st">"org.example.Concatenator"</span>;
+
+<span class="kw">protected</span>:
+    <span class="fn">Concatenator_adaptor</span>(sdbus::<span class="ty">IObject</span>&amp; object) : m_object(object) {}
+
+    <span class="kw">void</span> <span class="fn">registerAdaptor</span>() {
+        m_object.<span class="fn">addVTable</span>(
+          sdbus::<span class="fn">registerMethod</span>(<span class="st">"Concatenate"</span>)
+              .<span class="fn">withInputParamNames</span>(<span class="st">"numbers"</span>, <span class="st">"separator"</span>)
+              .<span class="fn">withOutputParamNames</span>(<span class="st">"result"</span>)
+              .<span class="fn">implementedAs</span>([<span class="kw">this</span>](
+                  <span class="kw">const</span> std::vector&lt;<span class="ty">int32_t</span>&gt;&amp; n,
+                  <span class="kw">const</span> std::string&amp; s) {
+                      <span class="kw">return this</span>-&gt;<span class="fn">Concatenate</span>(n, s);
+              }),
+          sdbus::<span class="fn">registerSignal</span>(<span class="st">"Concatenated"</span>)
+              .<span class="fn">withParameters</span>&lt;std::string&gt;(<span class="st">"result"</span>),
+          sdbus::<span class="fn">registerProperty</span>(<span class="st">"Version"</span>)
+              .<span class="fn">withGetter</span>([<span class="kw">this</span>](){ <span class="kw">return this</span>-&gt;<span class="fn">Version</span>(); }),
+          sdbus::<span class="fn">registerProperty</span>(<span class="st">"RequestCount"</span>)
+              .<span class="fn">withGetter</span>([<span class="kw">this</span>](){ <span class="kw">return this</span>-&gt;<span class="fn">RequestCount</span>(); })
+        ).<span class="fn">forInterface</span>(INTERFACE_NAME);
+    }
+
+    <span class="kw">void</span> <span class="fn">unregisterAdaptor</span>() { <span class="cm">/* RAII cleanup */</span> }
+
+<span class="kw">public</span>:
+    <span class="cm">// Helper để emit signal "Concatenated" từ subclass</span>
+    <span class="kw">void</span> <span class="fn">emitConcatenated</span>(<span class="kw">const</span> std::string&amp; result) {
+        m_object.<span class="fn">emitSignal</span>(<span class="st">"Concatenated"</span>)
+               .<span class="fn">onInterface</span>(INTERFACE_NAME)
+               .<span class="fn">withArguments</span>(result);
+    }
+
+<span class="kw">private</span>:
+    <span class="cm">// Pure virtual: subclass phải override</span>
+    <span class="kw">virtual</span> std::string <span class="fn">Concatenate</span>(
+        <span class="kw">const</span> std::vector&lt;<span class="ty">int32_t</span>&gt;&amp;,
+        <span class="kw">const</span> std::string&amp;) = <span class="num">0</span>;
+    <span class="kw">virtual</span> std::string <span class="fn">Version</span>() = <span class="num">0</span>;
+    <span class="kw">virtual</span> <span class="ty">uint32_t</span> <span class="fn">RequestCount</span>() = <span class="num">0</span>;
+    sdbus::<span class="ty">IObject</span>&amp; m_object;
+};
+
+} <span class="cm">// namespace org::example</span>
+<span class="lang-label">cpp</span></code></pre>
+</section>
+<!-- ═══ SECTION 12: Server implementation ═══ -->
+<section id="server-impl">
+<h2>12. Server Implementation</h2>
+
+<h4>src/Concatenator.h</h4>
+<pre><code><span class="mac">#pragma once</span>
+<span class="mac">#include</span> <span class="st">&lt;sdbus-c++/sdbus-c++.h&gt;</span>
+<span class="mac">#include</span> <span class="st">"Concatenator-server-glue.h"</span>  <span class="cm">// generated</span>
+<span class="mac">#include</span> <span class="st">&lt;atomic&gt;</span>
+<span class="mac">#include</span> <span class="st">&lt;string&gt;</span>
+<span class="mac">#include</span> <span class="st">&lt;vector&gt;</span>
+
+<span class="cm">// Kế thừa từ AdaptorInterfaces với generated Adaptor class
+// AdaptorInterfaces<T> tạo IConnection và IObject, bind chúng với T</span>
+<span class="kw">class</span> <span class="ty">Concatenator</span>
+    : <span class="kw">public</span> sdbus::<span class="ty">AdaptorInterfaces</span>&lt;org::example::<span class="ty">Concatenator_adaptor</span>&gt;
+{
+<span class="kw">public</span>:
+    <span class="ty">Concatenator</span>(sdbus::<span class="ty">IConnection</span>&amp; connection,
+                  sdbus::<span class="ty">ObjectPath</span> objectPath);
+    ~<span class="ty">Concatenator</span>();
+
+<span class="kw">protected</span>:
+    std::string <span class="fn">Concatenate</span>(<span class="kw">const</span> std::vector&lt;<span class="ty">int32_t</span>&gt;&amp; numbers,
+                              <span class="kw">const</span> std::string&amp; separator) <span class="kw">override</span>;
+    std::string <span class="fn">Version</span>() <span class="kw">override</span>;
+    <span class="ty">uint32_t</span> <span class="fn">RequestCount</span>() <span class="kw">override</span>;
+
+<span class="kw">private</span>:
+    std::atomic&lt;<span class="ty">uint32_t</span>&gt; m_requestCount{<span class="num">0</span>};
+};
+<span class="lang-label">cpp</span></code></pre>
+
+<h4>src/Concatenator.cpp</h4>
+<pre><code><span class="mac">#include</span> <span class="st">"Concatenator.h"</span>
+<span class="mac">#include</span> <span class="st">&lt;iostream&gt;</span>
+<span class="mac">#include</span> <span class="st">&lt;sstream&gt;</span>
+
+<span class="ty">Concatenator</span>::<span class="fn">Concatenator</span>(sdbus::<span class="ty">IConnection</span>&amp; connection,
+                              sdbus::<span class="ty">ObjectPath</span> objectPath)
+    : <span class="fn">AdaptorInterfaces</span>(connection, std::move(objectPath))
+{
+    <span class="cm">// PHẢI gọi registerAdaptor() trong constructor:
+    // → đăng ký vtable vào D-Bus daemon
+    // → expose object với tất cả methods/signals/properties</span>
+    <span class="fn">registerAdaptor</span>();
+    std::cout &lt;&lt; <span class="st">"[Server] Object registered on D-Bus\n"</span>;
+}
+
+<span class="ty">Concatenator</span>::~<span class="ty">Concatenator</span>()
+{
+    <span class="cm">// PHẢI gọi unregisterAdaptor() trong destructor:
+    // → gỡ object khỏi D-Bus trước khi memory bị free
+    // → tránh crash khi daemon gửi message sau khi object bị destroy</span>
+    <span class="fn">unregisterAdaptor</span>();
+    std::cout &lt;&lt; <span class="st">"[Server] Object unregistered\n"</span>;
+}
+
+std::string <span class="ty">Concatenator</span>::<span class="fn">Concatenate</span>(
+    <span class="kw">const</span> std::vector&lt;<span class="ty">int32_t</span>&gt;&amp; numbers,
+    <span class="kw">const</span> std::string&amp; separator)
+{
+    std::cout &lt;&lt; <span class="st">"[Server] Concatenate("</span> &lt;&lt; numbers.size()
+              &lt;&lt; <span class="st">" numbers, sep='"</span> &lt;&lt; separator &lt;&lt; <span class="st">"')\n"</span>;
+
+    <span class="kw">if</span> (numbers.empty()) {
+        <span class="cm">// Throw sdbus::Error → server gửi Error reply thay vì MethodReply
+        // Error name phải theo định dạng "domain.Category.ErrorName"</span>
+        <span class="kw">throw</span> sdbus::<span class="ty">Error</span>(
+            sdbus::Error::<span class="ty">Name</span>{<span class="st">"org.example.Concatenator.Error.EmptyInput"</span>},
+            <span class="st">"The numbers array must not be empty"</span>);
+    }
+
+    std::ostringstream oss;
+    <span class="kw">for</span> (<span class="ty">size_t</span> i = <span class="num">0</span>; i &lt; numbers.size(); ++i) {
+        <span class="kw">if</span> (i &gt; <span class="num">0</span>) oss &lt;&lt; separator;
+        oss &lt;&lt; numbers[i];
+    }
+    std::string result = oss.<span class="fn">str</span>();
+
+    m_requestCount++;
+
+    <span class="cm">// Emit signal dùng helper method được generate bởi xml2cpp</span>
+    <span class="fn">emitConcatenated</span>(result);
+
+    std::cout &lt;&lt; <span class="st">"[Server] Result: "</span> &lt;&lt; result &lt;&lt; <span class="st">"\n"</span>;
+    <span class="kw">return</span> result;
+}
+
+std::string <span class="ty">Concatenator</span>::<span class="fn">Version</span>() { <span class="kw">return</span> <span class="st">"1.0.0"</span>; }
+
+<span class="ty">uint32_t</span> <span class="ty">Concatenator</span>::<span class="fn">RequestCount</span>() { <span class="kw">return</span> m_requestCount.<span class="fn">load</span>(); }
+<span class="lang-label">cpp</span></code></pre>
+
+<h4>src/main_server.cpp</h4>
+<pre><code><span class="mac">#include</span> <span class="st">&lt;sdbus-c++/sdbus-c++.h&gt;</span>
+<span class="mac">#include</span> <span class="st">"Concatenator.h"</span>
+<span class="mac">#include</span> <span class="st">&lt;iostream&gt;</span>
+<span class="mac">#include</span> <span class="st">&lt;csignal&gt;</span>
+
+sdbus::<span class="ty">IConnection</span>* g_connection = <span class="kw">nullptr</span>;
+
+<span class="kw">void</span> <span class="fn">onSignal</span>(<span class="kw">int</span> sig) {
+    std::cout &lt;&lt; <span class="st">"\n[Server] Signal "</span> &lt;&lt; sig &lt;&lt; <span class="st">" received, shutting down...\n"</span>;
+    <span class="kw">if</span> (g_connection) g_connection-&gt;<span class="fn">leaveEventLoop</span>();
+}
+
+<span class="kw">int</span> <span class="fn">main</span>()
+{
+    <span class="cm">// === BƯỚC 1: Tạo D-Bus connection và request well-known name ===
+    // createSessionBusConnection → Session Bus (không cần sudo, không cần policy)
+    // createSystemBusConnection  → System Bus (cần sudo + policy file)</span>
+    <span class="kw">auto</span> connection = sdbus::<span class="fn">createSessionBusConnection</span>(
+        sdbus::<span class="ty">ServiceName</span>{<span class="st">"org.example.Concatenator"</span>});
+    g_connection = connection.<span class="fn">get</span>();
+
+    <span class="cm">// === BƯỚC 2: Tạo object và đăng ký API lên D-Bus ===
+    // Constructor gọi registerAdaptor() → object visible trên bus ngay sau đây</span>
+    <span class="ty">Concatenator</span> concatenator(
+        *connection,
+        sdbus::<span class="ty">ObjectPath</span>{<span class="st">"/org/example/concatenator"</span>});
+
+    <span class="cm">// === BƯỚC 3: Setup graceful shutdown ===</span>
+    std::<span class="fn">signal</span>(SIGINT,  onSignal);
+    std::<span class="fn">signal</span>(SIGTERM, onSignal);
+
+    std::cout &lt;&lt; <span class="st">"[Server] Running on SESSION bus\n"</span>;
+    std::cout &lt;&lt; <span class="st">"[Server] Service: org.example.Concatenator\n"</span>;
+    std::cout &lt;&lt; <span class="st">"[Server] Object:  /org/example/concatenator\n"</span>;
+    std::cout &lt;&lt; <span class="st">"[Server] Press Ctrl+C to stop\n"</span>;
+
+    <span class="cm">// === BƯỚC 4: Vào event loop — block tại đây ===
+    // Tất cả D-Bus messages được xử lý trong loop này
+    // Khi leaveEventLoop() được gọi, hàm này return</span>
+    connection-&gt;<span class="fn">enterEventLoop</span>();
+
+    <span class="cm">// concatenator destructor → unregisterAdaptor() tự động gọi ở đây</span>
+    std::cout &lt;&lt; <span class="st">"[Server] Shutdown complete\n"</span>;
+    <span class="kw">return</span> <span class="num">0</span>;
+}
+<span class="lang-label">cpp</span></code></pre>
+</section>
+
+<!-- ═══ SECTION 13: Client implementation ═══ -->
+<section id="client-impl">
+<h2>13. Client Implementation</h2>
+
+<h4>src/main_client.cpp</h4>
+<pre><code><span class="mac">#include</span> <span class="st">&lt;sdbus-c++/sdbus-c++.h&gt;</span>
+<span class="mac">#include</span> <span class="st">"Concatenator-client-glue.h"</span>  <span class="cm">// generated</span>
+<span class="mac">#include</span> <span class="st">&lt;iostream&gt;</span>
+<span class="mac">#include</span> <span class="st">&lt;thread&gt;</span>
+<span class="mac">#include</span> <span class="st">&lt;chrono&gt;</span>
+
+<span class="cm">// Client class kế thừa từ ProxyInterfaces + generated Proxy
+// ProxyInterfaces&lt;T&gt; tự tạo IConnection và IProxy, tự subscribe signals</span>
+<span class="kw">class</span> <span class="ty">ConcatenatorClient</span>
+    : <span class="kw">public</span> sdbus::<span class="ty">ProxyInterfaces</span>&lt;org::example::<span class="ty">Concatenator_proxy</span>&gt;
+{
+<span class="kw">public</span>:
+    <span class="ty">ConcatenatorClient</span>(sdbus::<span class="ty">ServiceName</span> dest, sdbus::<span class="ty">ObjectPath</span> path)
+        : <span class="fn">ProxyInterfaces</span>(std::move(dest), std::move(path))
+    {
+        <span class="cm">// registerProxy(): subscribe signals và start event loop thread</span>
+        <span class="fn">registerProxy</span>();
+    }
+
+    ~<span class="ty">ConcatenatorClient</span>()
+    {
+        <span class="cm">// unregisterProxy(): stop event loop thread, unsubscribe</span>
+        <span class="fn">unregisterProxy</span>();
+    }
+
+<span class="kw">protected</span>:
+    <span class="cm">// Override pure virtual signal handler từ generated proxy</span>
+    <span class="kw">void</span> <span class="fn">onConcatenated</span>(<span class="kw">const</span> std::string&amp; result) <span class="kw">override</span>
+    {
+        std::cout &lt;&lt; <span class="st">"[Client] *** Signal 'Concatenated': "</span>
+                  &lt;&lt; result &lt;&lt; <span class="st">" ***\n"</span>;
+    }
+};
+
+<span class="kw">int</span> <span class="fn">main</span>()
+{
+    std::cout &lt;&lt; <span class="st">"[Client] Connecting...\n"</span>;
+
+    <span class="ty">ConcatenatorClient</span> client(
+        sdbus::<span class="ty">ServiceName</span>{<span class="st">"org.example.Concatenator"</span>},
+        sdbus::<span class="ty">ObjectPath</span>{<span class="st">"/org/example/concatenator"</span>});
+
+    <span class="cm">// --- Đọc properties (gọi như member function bình thường) ---</span>
+    std::cout &lt;&lt; <span class="st">"[Client] Version:      "</span> &lt;&lt; client.<span class="fn">Version</span>() &lt;&lt; <span class="st">"\n"</span>;
+    std::cout &lt;&lt; <span class="st">"[Client] RequestCount: "</span> &lt;&lt; client.<span class="fn">RequestCount</span>() &lt;&lt; <span class="st">"\n\n"</span>;
+
+    <span class="cm">// --- Test 1: Gọi Concatenate thành công ---</span>
+    std::cout &lt;&lt; <span class="st">"[Client] Test 1: {1,2,3} sep=':'\n"</span>;
+    {
+        <span class="cm">// Gọi như local C++ method call — không thấy D-Bus ở đây</span>
+        std::string r = client.<span class="fn">Concatenate</span>({<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>}, <span class="st">":"</span>);
+        std::cout &lt;&lt; <span class="st">"[Client] Result: "</span> &lt;&lt; r &lt;&lt; <span class="st">"\n"</span>;
+    }
+    <span class="cm">// sleep để nhận signal async trước khi in dòng tiếp</span>
+    std::this_thread::<span class="fn">sleep_for</span>(std::chrono::milliseconds(<span class="num">100</span>));
+
+    <span class="cm">// --- Test 2: Separator khác ---</span>
+    std::cout &lt;&lt; <span class="st">"\n[Client] Test 2: {10,20,30} sep=' | '\n"</span>;
+    {
+        std::string r = client.<span class="fn">Concatenate</span>({<span class="num">10</span>, <span class="num">20</span>, <span class="num">30</span>}, <span class="st">" | "</span>);
+        std::cout &lt;&lt; <span class="st">"[Client] Result: "</span> &lt;&lt; r &lt;&lt; <span class="st">"\n"</span>;
+    }
+    std::this_thread::<span class="fn">sleep_for</span>(std::chrono::milliseconds(<span class="num">100</span>));
+
+    <span class="cm">// --- Test 3: Empty array — server throw sdbus::Error ---</span>
+    std::cout &lt;&lt; <span class="st">"\n[Client] Test 3: empty array (expect D-Bus Error)\n"</span>;
+    <span class="kw">try</span> {
+        client.<span class="fn">Concatenate</span>({}, <span class="st">","</span>);
+    } <span class="kw">catch</span> (<span class="kw">const</span> sdbus::<span class="ty">Error</span>&amp; e) {
+        std::cout &lt;&lt; <span class="st">"[Client] Caught sdbus::Error:\n"</span>
+                  &lt;&lt; <span class="st">"         Name:    "</span> &lt;&lt; e.<span class="fn">getName</span>()    &lt;&lt; <span class="st">"\n"</span>
+                  &lt;&lt; <span class="st">"         Message: "</span> &lt;&lt; e.<span class="fn">getMessage</span>() &lt;&lt; <span class="st">"\n"</span>;
+    }
+
+    <span class="cm">// --- Check RequestCount cuối ---</span>
+    std::cout &lt;&lt; <span class="st">"\n[Client] Final RequestCount: "</span>
+              &lt;&lt; client.<span class="fn">RequestCount</span>() &lt;&lt; <span class="st">"\n"</span>;  <span class="cm">// → 2</span>
+
+    std::this_thread::<span class="fn">sleep_for</span>(std::chrono::milliseconds(<span class="num">200</span>));
+    std::cout &lt;&lt; <span class="st">"[Client] Done.\n"</span>;
+    <span class="kw">return</span> <span class="num">0</span>;
+}
+<span class="lang-label">cpp</span></code></pre>
+
+<h4>Expected output</h4>
+<div class="out-block"><span class="oc"># Terminal 1 — server:</span>
+[Server] Object registered on D-Bus
+[Server] Running on SESSION bus
+[Server] Service: org.example.Concatenator
+[Server] Object:  /org/example/concatenator
+[Server] Press Ctrl+C to stop
+[Server] Concatenate(3 numbers, sep=':')
+[Server] Result: 1:2:3
+[Server] Concatenate(3 numbers, sep=' | ')
+[Server] Result: 10 | 20 | 30
+
+<span class="oc"># Terminal 2 — client:</span>
+[Client] Connecting...
+[Client] Version:      1.0.0
+[Client] RequestCount: 0
+
+[Client] Test 1: {1,2,3} sep=':'
+[Client] Result: 1:2:3
+[Client] *** Signal 'Concatenated': 1:2:3 ***
+
+[Client] Test 2: {10,20,30} sep=' | '
+[Client] Result: 10 | 20 | 30
+[Client] *** Signal 'Concatenated': 10 | 20 | 30 ***
+
+[Client] Test 3: empty array (expect D-Bus Error)
+[Client] Caught sdbus::Error:
+         Name:    org.example.Concatenator.Error.EmptyInput
+         Message: The numbers array must not be empty
+
+[Client] Final RequestCount: 2
+[Client] Done.</div>
+</section>
+
+<!-- ═══ SECTION 14: CMake ═══ -->
+<section id="cmake-full">
+<h2>14. CMakeLists.txt hoàn chỉnh</h2>
+<pre><code>cmake_minimum_required(VERSION 3.14)
+project(concatenator-example LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD <span class="num">17</span>)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+<span class="cm"># ── Tìm sdbus-c++ ───────────────────────────────────</span>
+<span class="fn">find_package</span>(sdbus-c++ REQUIRED)
+
+<span class="cm"># ── Tìm codegen tool ────────────────────────────────</span>
+<span class="fn">find_package</span>(sdbus-c++-tools REQUIRED)
+
+<span class="cm"># ── Generate glue headers từ XML IDL ─────────────────</span>
+set(DBUS_XML  <span class="st">${CMAKE_CURRENT_SOURCE_DIR}/dbus/org.example.Concatenator.xml</span>)
+set(SRV_GLUE  <span class="st">${CMAKE_CURRENT_BINARY_DIR}/Concatenator-server-glue.h</span>)
+set(CLI_GLUE  <span class="st">${CMAKE_CURRENT_BINARY_DIR}/Concatenator-client-glue.h</span>)
+
+<span class="fn">add_custom_command</span>(
+    OUTPUT  <span class="st">${SRV_GLUE}</span> <span class="st">${CLI_GLUE}</span>
+    COMMAND SDBusCpp::sdbus-c++-xml2cpp <span class="st">${DBUS_XML}</span>
+            <span class="st">--adaptor=${SRV_GLUE}</span>
+            <span class="st">--proxy=${CLI_GLUE}</span>
+    DEPENDS <span class="st">${DBUS_XML}</span>
+    COMMENT <span class="st">"Generating D-Bus glue code from XML IDL..."</span>
+)
+
+<span class="fn">add_custom_target</span>(generate_dbus_glue ALL
+    DEPENDS <span class="st">${SRV_GLUE}</span> <span class="st">${CLI_GLUE}</span>
+)
+
+<span class="cm"># ── Server ───────────────────────────────────────────</span>
+<span class="fn">add_executable</span>(concatenator-server
+    src/main_server.cpp
+    src/Concatenator.cpp
+)
+<span class="fn">add_dependencies</span>(concatenator-server generate_dbus_glue)
+<span class="fn">target_include_directories</span>(concatenator-server PRIVATE
+    <span class="st">${CMAKE_CURRENT_BINARY_DIR}</span>   <span class="cm"># generated glue headers</span>
+    <span class="st">${CMAKE_CURRENT_SOURCE_DIR}/src</span>
+)
+<span class="fn">target_link_libraries</span>(concatenator-server PRIVATE SDBusCpp::sdbus-c++)
+
+<span class="cm"># ── Client ───────────────────────────────────────────</span>
+<span class="fn">add_executable</span>(concatenator-client
+    src/main_client.cpp
+)
+<span class="fn">add_dependencies</span>(concatenator-client generate_dbus_glue)
+<span class="fn">target_include_directories</span>(concatenator-client PRIVATE
+    <span class="st">${CMAKE_CURRENT_BINARY_DIR}</span>
+    <span class="st">${CMAKE_CURRENT_SOURCE_DIR}/src</span>
+)
+<span class="fn">target_link_libraries</span>(concatenator-client PRIVATE SDBusCpp::sdbus-c++)
+<span class="lang-label">cmake</span></code></pre>
+</section>
+
+<!-- ═══ SECTION 15: Build & Run ═══ -->
+<section id="build-run">
+<h2>15. Build &amp; Run từng bước</h2>
+<div class="step-flow">
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-body">
+    <div class="step-title">Cài dependencies và build</div>
+    <pre style="margin:8px 0"><code>sudo apt install libsystemd-dev cmake build-essential pkg-config libexpat-dev
+<span class="cm"># Cài sdbus-cpp trước (xem mục 6.2)</span>
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Debug
+cmake --build . -j$(nproc)
+<span class="cm"># Output: build/concatenator-server  và  build/concatenator-client</span>
+<span class="lang-label">bash</span></code></pre>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-body">
+    <div class="step-title">Chạy server (Terminal 1)</div>
+    <pre style="margin:8px 0"><code><span class="cm"># Session Bus — không cần sudo, không cần policy file</span>
+./concatenator-server
+<span class="lang-label">bash</span></code></pre>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-body">
+    <div class="step-title">Chạy client (Terminal 2)</div>
+    <pre style="margin:8px 0"><code>./concatenator-client
+<span class="lang-label">bash</span></code></pre>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">4</div>
+  <div class="step-body">
+    <div class="step-title">[Tùy chọn] Chuyển sang System Bus</div>
+    <div class="step-desc">Sửa <code>createSessionBusConnection</code> → <code>createSystemBusConnection</code> trong cả hai main file. Deploy policy file và reload dbus.</div>
+    <pre style="margin:8px 0"><code>sudo cp ../policy/org.example.Concatenator.conf /etc/dbus-1/system.d/
+sudo systemctl reload dbus
+sudo ./concatenator-server   <span class="cm"># cần root để own system bus name</span>
+./concatenator-client        <span class="cm"># client không cần root</span>
+<span class="lang-label">bash</span></code></pre>
+  </div>
+</div>
+</div>
+</section>
+<!-- ═══ SECTION 16: Basic API ═══ -->
+<section id="basic-api">
+<h2>16. Basic API Layer — Chi tiết</h2>
+<p>Cùng chức năng nhưng làm việc thủ công với D-Bus message objects. Phải tự viết signature strings và serialize/deserialize arguments.</p>
+<pre><code><span class="cm">// Server — Basic API: thấy rõ D-Bus messages</span>
+<span class="mac">#include</span> <span class="st">&lt;sdbus-c++/sdbus-c++.h&gt;</span>
+
+sdbus::<span class="ty">IObject</span>* g_obj = <span class="kw">nullptr</span>;
+
+<span class="kw">void</span> <span class="fn">onConcatenate</span>(sdbus::<span class="ty">MethodCall</span> call)
+{
+    <span class="cm">// Deserialize theo đúng thứ tự và đúng type như D-Bus signature "ais"</span>
+    std::vector&lt;<span class="ty">int32_t</span>&gt; numbers;
+    call &gt;&gt; numbers;    <span class="cm">// "ai" → vector&lt;int32_t&gt;</span>
+
+    std::string separator;
+    call &gt;&gt; separator;  <span class="cm">// "s" → string</span>
+
+    <span class="kw">if</span> (numbers.empty())
+        <span class="kw">throw</span> sdbus::<span class="ty">Error</span>(
+            sdbus::Error::<span class="ty">Name</span>{<span class="st">"org.example.Concatenator.Error.EmptyInput"</span>},
+            <span class="st">"Array must not be empty"</span>);
+
+    std::string result;
+    <span class="kw">for</span> (<span class="kw">auto</span> n : numbers)
+        result += (result.empty() ? <span class="st">""</span> : separator) + std::to_string(n);
+
+    <span class="cm">// Tạo reply và serialize return value</span>
+    <span class="kw">auto</span> reply = call.<span class="fn">createReply</span>();
+    reply &lt;&lt; result;  <span class="cm">// "s" → string</span>
+    reply.<span class="fn">send</span>();
+
+    <span class="cm">// Tạo và gửi signal thủ công</span>
+    <span class="kw">auto</span> sig = g_obj-&gt;<span class="fn">createSignal</span>(
+        sdbus::<span class="ty">InterfaceName</span>{<span class="st">"org.example.Concatenator"</span>},
+        sdbus::<span class="ty">SignalName</span>{<span class="st">"Concatenated"</span>});
+    sig &lt;&lt; result;
+    g_obj-&gt;<span class="fn">emitSignal</span>(sig);
+}
+
+<span class="kw">int</span> <span class="fn">main</span>()
+{
+    <span class="kw">auto</span> conn = sdbus::<span class="fn">createSessionBusConnection</span>(
+        sdbus::<span class="ty">ServiceName</span>{<span class="st">"org.example.Concatenator"</span>});
+    <span class="kw">auto</span> obj  = sdbus::<span class="fn">createObject</span>(*conn,
+        sdbus::<span class="ty">ObjectPath</span>{<span class="st">"/org/example/concatenator"</span>});
+    g_obj = obj.<span class="fn">get</span>();
+
+    <span class="cm">// Phải viết signature strings thủ công: "ais" và "s"</span>
+    obj-&gt;<span class="fn">addVTable</span>(
+        sdbus::<span class="ty">MethodVTableItem</span>{
+            sdbus::<span class="ty">MethodName</span>{<span class="st">"Concatenate"</span>},
+            sdbus::<span class="ty">Signature</span>{<span class="st">"ais"</span>},         <span class="cm">// input sig</span>
+            {<span class="st">"numbers"</span>, <span class="st">"separator"</span>},        <span class="cm">// input names</span>
+            sdbus::<span class="ty">Signature</span>{<span class="st">"s"</span>},           <span class="cm">// output sig</span>
+            {<span class="st">"result"</span>},                       <span class="cm">// output names</span>
+            &amp;onConcatenate, {}},
+        sdbus::<span class="ty">SignalVTableItem</span>{
+            sdbus::<span class="ty">SignalName</span>{<span class="st">"Concatenated"</span>},
+            sdbus::<span class="ty">Signature</span>{<span class="st">"s"</span>}, {}, {}}
+    ).<span class="fn">forInterface</span>(<span class="st">"org.example.Concatenator"</span>);
+
+    conn-&gt;<span class="fn">enterEventLoop</span>();
+}
+<span class="lang-label">cpp</span></code></pre>
+</section>
+
+<!-- ═══ SECTION 17: Convenience API ═══ -->
+<section id="convenience-api">
+<h2>17. Convenience API Layer</h2>
+<p>Compiler tự deduce D-Bus type signatures từ C++ types tại compile-time. Không cần viết signature strings, không cần serialize thủ công. Code ngắn và an toàn hơn Basic API.</p>
+
+<pre><code><span class="cm">// Server — Convenience API</span>
+<span class="kw">int</span> <span class="fn">main</span>()
+{
+    <span class="kw">auto</span> conn = sdbus::<span class="fn">createSessionBusConnection</span>(
+        sdbus::<span class="ty">ServiceName</span>{<span class="st">"org.example.Concatenator"</span>});
+    <span class="kw">auto</span> obj  = sdbus::<span class="fn">createObject</span>(*conn,
+        sdbus::<span class="ty">ObjectPath</span>{<span class="st">"/org/example/concatenator"</span>});
+
+    <span class="kw">auto</span> doConcat = [&amp;obj](
+        <span class="kw">const</span> std::vector&lt;<span class="ty">int32_t</span>&gt;&amp; numbers,
+        <span class="kw">const</span> std::string&amp; separator) -&gt; std::string
+    {
+        <span class="kw">if</span> (numbers.empty())
+            <span class="kw">throw</span> sdbus::<span class="ty">Error</span>(
+                sdbus::Error::<span class="ty">Name</span>{<span class="st">"org.example.Concatenator.Error.EmptyInput"</span>},
+                <span class="st">"Array must not be empty"</span>);
+
+        std::string result;
+        <span class="kw">for</span> (<span class="ty">size_t</span> i = <span class="num">0</span>; i &lt; numbers.size(); ++i)
+            result += (i ? separator : <span class="st">""</span>) + std::to_string(numbers[i]);
+
+        <span class="cm">// Emit signal — compiler deduce type "s" từ const string&amp;</span>
+        obj-&gt;<span class="fn">emitSignal</span>(<span class="st">"Concatenated"</span>)
+              .<span class="fn">onInterface</span>(<span class="st">"org.example.Concatenator"</span>)
+              .<span class="fn">withArguments</span>(result);
+        <span class="kw">return</span> result;
+    };
+
+    <span class="cm">// Đăng ký vtable — không cần signature strings</span>
+    obj-&gt;<span class="fn">addVTable</span>(
+        sdbus::<span class="fn">registerMethod</span>(<span class="st">"Concatenate"</span>)
+             .<span class="fn">withInputParamNames</span>(<span class="st">"numbers"</span>, <span class="st">"separator"</span>)
+             .<span class="fn">withOutputParamNames</span>(<span class="st">"result"</span>)
+             .<span class="fn">implementedAs</span>(std::move(doConcat)),
+        sdbus::<span class="fn">registerSignal</span>(<span class="st">"Concatenated"</span>)
+             .<span class="fn">withParameters</span>&lt;std::string&gt;(<span class="st">"result"</span>),
+        sdbus::<span class="fn">registerProperty</span>(<span class="st">"Version"</span>)
+             .<span class="fn">withGetter</span>([]() -&gt; std::string { <span class="kw">return</span> <span class="st">"1.0.0"</span>; })
+    ).<span class="fn">forInterface</span>(<span class="st">"org.example.Concatenator"</span>);
+
+    conn-&gt;<span class="fn">enterEventLoop</span>();
+}
+<span class="lang-label">cpp</span></code></pre>
+
+<pre><code><span class="cm">// Client — Convenience API</span>
+<span class="kw">int</span> <span class="fn">main</span>()
+{
+    <span class="kw">auto</span> proxy = sdbus::<span class="fn">createProxy</span>(
+        sdbus::<span class="ty">ServiceName</span>{<span class="st">"org.example.Concatenator"</span>},
+        sdbus::<span class="ty">ObjectPath</span>{<span class="st">"/org/example/concatenator"</span>});
+
+    <span class="cm">// Subscribe signal — lambda với typed params, không cần deserialize</span>
+    proxy-&gt;<span class="fn">uponSignal</span>(<span class="st">"Concatenated"</span>)
+           .<span class="fn">onInterface</span>(<span class="st">"org.example.Concatenator"</span>)
+           .<span class="fn">call</span>([](<span class="kw">const</span> std::string&amp; r) {
+               std::cout &lt;&lt; <span class="st">"Signal: "</span> &lt;&lt; r &lt;&lt; <span class="st">"\n"</span>;
+           });
+
+    <span class="cm">// Gọi method — compiler deduce types từ arguments</span>
+    std::string result;
+    proxy-&gt;<span class="fn">callMethod</span>(<span class="st">"Concatenate"</span>)
+          .<span class="fn">onInterface</span>(<span class="st">"org.example.Concatenator"</span>)
+          .<span class="fn">withArguments</span>(std::vector&lt;<span class="ty">int32_t</span>&gt;{<span class="num">1</span>,<span class="num">2</span>,<span class="num">3</span>}, std::string{<span class="st">":"</span>})
+          .<span class="fn">storeResultsTo</span>(result);
+    std::cout &lt;&lt; result &lt;&lt; <span class="st">"\n"</span>;  <span class="cm">// "1:2:3"</span>
+
+    <span class="cm">// Đọc property</span>
+    <span class="kw">auto</span> ver = proxy-&gt;<span class="fn">getProperty</span>(<span class="st">"Version"</span>)
+                      .<span class="fn">onInterface</span>(<span class="st">"org.example.Concatenator"</span>)
+                      .<span class="fn">get</span>&lt;std::string&gt;();
+
+    sleep(<span class="num">1</span>);  <span class="cm">// đợi signal arrive</span>
+}
+<span class="lang-label">cpp</span></code></pre>
+</section>
+
+<!-- ═══ SECTION 18: Signals ═══ -->
+<section id="signals-detail">
+<h2>18. Signals — Chi tiết</h2>
+<pre><code><span class="cm">// Emit signal với RAII Slot — kiểm soát lifetime subscription</span>
+<span class="kw">auto</span> slot = proxy-&gt;<span class="fn">uponSignal</span>(<span class="st">"Concatenated"</span>)
+                   .<span class="fn">onInterface</span>(<span class="st">"org.example.Concatenator"</span>)
+                   .<span class="fn">call</span>(sdbus::<span class="fn">return_slot</span>,  <span class="cm">// tag để nhận slot object</span>
+                        [](<span class="kw">const</span> std::string&amp; r) {
+                            std::cout &lt;&lt; <span class="st">"Signal: "</span> &lt;&lt; r &lt;&lt; <span class="st">"\n"</span>;
+                        });
+<span class="cm">// slot destroyed khi ra scope → tự unsubscribe</span>
+<span class="lang-label">cpp</span></code></pre>
+
+<pre><code><span class="cm">// Debug type mismatch — thêm std::optional&lt;Error&gt; làm tham số đầu tiên</span>
+proxy-&gt;<span class="fn">uponSignal</span>(<span class="st">"Concatenated"</span>)
+       .<span class="fn">onInterface</span>(<span class="st">"org.example.Concatenator"</span>)
+       .<span class="fn">call</span>([](std::optional&lt;sdbus::<span class="ty">Error</span>&gt; err, <span class="kw">const</span> std::string&amp; r) {
+           <span class="kw">if</span> (err) {
+               std::cerr &lt;&lt; <span class="st">"Deserialize error: "</span> &lt;&lt; err-&gt;<span class="fn">getMessage</span>() &lt;&lt; <span class="st">"\n"</span>;
+               <span class="kw">return</span>;
+           }
+           std::cout &lt;&lt; <span class="st">"Signal OK: "</span> &lt;&lt; r &lt;&lt; <span class="st">"\n"</span>;
+       });
+<span class="lang-label">cpp</span></code></pre>
+</section>
+
+<!-- ═══ SECTION 19: Properties ═══ -->
+<section id="properties-detail">
+<h2>19. Properties — Chi tiết</h2>
+<pre><code><span class="cm">// Server: đăng ký read-only và read-write properties</span>
+<span class="ty">int32_t</span> logLevel = <span class="num">1</span>;
+obj-&gt;<span class="fn">addVTable</span>(
+    sdbus::<span class="fn">registerProperty</span>(<span class="st">"Version"</span>)
+         .<span class="fn">withGetter</span>([]() -&gt; std::string { <span class="kw">return</span> <span class="st">"1.0.0"</span>; }),
+    sdbus::<span class="fn">registerProperty</span>(<span class="st">"LogLevel"</span>)
+         .<span class="fn">withGetter</span>([&amp;]() -&gt; <span class="ty">int32_t</span> { <span class="kw">return</span> logLevel; })
+         .<span class="fn">withSetter</span>([&amp;](<span class="ty">int32_t</span> v) { logLevel = v; })
+         <span class="cm">// withSetter → read-write; chỉ withGetter → read-only</span>
+).<span class="fn">forInterface</span>(<span class="st">"org.example.Service"</span>);
+<span class="lang-label">cpp</span></code></pre>
+<pre><code><span class="cm">// Client: đọc, ghi, getAll properties</span>
+<span class="kw">auto</span> ver = proxy-&gt;<span class="fn">getProperty</span>(<span class="st">"Version"</span>)
+                  .<span class="fn">onInterface</span>(<span class="st">"org.example.Service"</span>)
+                  .<span class="fn">get</span>&lt;std::string&gt;();
+
+proxy-&gt;<span class="fn">setProperty</span>(<span class="st">"LogLevel"</span>)
+       .<span class="fn">onInterface</span>(<span class="st">"org.example.Service"</span>)
+       .<span class="fn">toValue</span>((<span class="ty">int32_t</span>)<span class="num">3</span>);
+
+<span class="cm">// Lấy toàn bộ properties trong một D-Bus call</span>
+<span class="kw">auto</span> all = proxy-&gt;<span class="fn">getAllProperties</span>()
+                  .<span class="fn">onInterface</span>(<span class="st">"org.example.Service"</span>);
+<span class="cm">// all: std::map&lt;sdbus::PropertyName, sdbus::Variant&gt;</span>
+<span class="kw">for</span> (<span class="kw">const auto</span>&amp; [name, val] : all)
+    std::cout &lt;&lt; name &lt;&lt; <span class="st">"\n"</span>;
+<span class="lang-label">cpp</span></code></pre>
+</section>
+
+<!-- ═══ SECTION 20: Async ═══ -->
+<section id="async-detail">
+<h2>20. Async Method Calls</h2>
+
+<h3>20.1 Vấn đề: Tại sao cần Async?</h3>
+<p>Ở các section trước (<a href="#convenience-api">17. Convenience API</a>, <a href="#client-impl">13. Client</a>), khi client gọi method, code dùng <code>callMethod()</code> — đây là <strong>synchronous call</strong>: thread client bị <strong>block (đứng im)</strong> cho đến khi server xử lý xong và trả reply. Tương tự, khi server handler <code>return</code>, sdbus-cpp tự động gửi reply — nếu handler chạy lâu, <strong>event loop thread bị block</strong>, mọi request khác phải xếp hàng chờ.</p>
+
+<p><strong>Async method call</strong> giải quyết vấn đề này: client gửi request rồi <strong>tiếp tục chạy ngay</strong>, không chờ; server có thể <strong>hoãn reply</strong> mà không block event loop.</p>
+
+<div class="info-warn">
+<div class="info-label">Hiểu đơn giản</div>
+<strong>Sync</strong> = gọi điện thoại: bạn phải đứng chờ người ta trả lời xong mới làm tiếp.<br/>
+<strong>Async</strong> = gửi tin nhắn: bạn gửi xong làm việc khác, khi nào có reply thì đọc.
+</div>
+
+<h3>20.2 So sánh Sync vs Async</h3>
+<div class="tbl-wrap"><table>
+<tr><th>Tiêu chí</th><th>Sync (callMethod)</th><th>Async (callMethodAsync)</th></tr>
+<tr><td>Client thread</td><td>Block chờ reply</td><td>Gửi xong chạy tiếp ngay</td></tr>
+<tr><td>Server handler</td><td>Return = auto-reply, block event loop</td><td>Có thể hoãn reply, giao cho thread khác xử lý</td></tr>
+<tr><td>Nhận kết quả</td><td><code>storeResultsTo(result)</code> — tại chỗ</td><td>Qua callback (<code>uponReplyInvoke</code>) hoặc <code>std::future</code></td></tr>
+<tr><td>Error handling</td><td><code>try/catch sdbus::Error</code></td><td><code>std::optional&lt;sdbus::Error&gt;</code> trong callback</td></tr>
+<tr><td>Phù hợp khi</td><td>Method chạy nhanh, logic đơn giản</td><td>Method chạy lâu, cần gọi nhiều method song song, UI thread không được block</td></tr>
+</table></div>
+
+<div class="info-note">
+<div class="info-label">Quan trọng</div>
+D-Bus message bên dưới hoàn toàn giống nhau: <code>MethodCall</code> → <code>MethodReply</code>. Async chỉ khác ở <strong>cách code C++ tổ chức việc chờ reply</strong> — thay vì block thread, nó dùng callback, future, hoặc hoãn reply phía server.
+</div>
+
+<h3>20.3 Timeline: Sync vs Async</h3>
+<div class="arch-diagram"><span class="lbl">═══ SYNC — client thread bị block ═══</span>
+
+<span class="box">Client thread:</span>
+  <span class="arr">──[gọi Concatenate()]──── [⏳ BLOCK CHỜ 2 giây] ────[nhận reply]──[tiếp tục]──</span>
+
+<span class="box">Server event loop:</span>
+  <span class="arr">──[nhận call]──[xử lý 2 giây 🔴]──[auto-reply]──[nhận call tiếp]──</span>
+  <span class="cm">                ↑ trong 2 giây này, mọi request khác phải XẾP HÀNG CHỜ</span>
+
+
+<span class="lbl">═══ ASYNC (client callback) — client thread tự do ═══</span>
+
+<span class="box">Client thread:</span>
+  <span class="arr">──[gọi callMethodAsync()]──[tiếp tục làm việc khác ✅]──────────────</span>
+
+<span class="box">Event loop thread:</span>
+  <span class="arr">──────────────────────────[nhận reply]──[gọi callback]──────────────</span>
+
+
+<span class="lbl">═══ ASYNC (server-side) — event loop server tự do ═══</span>
+
+<span class="box">Server event loop:</span>
+  <span class="arr">──[nhận call]──[spawn thread]──[return ngay ✅]──[nhận call tiếp]──</span>
+
+<span class="box">Worker thread:</span>
+  <span class="arr">────────────────[xử lý 2 giây]──[returnResults() → reply client]──[end]</span></div>
+
+<hr/>
+
+<h3>20.4 Client-side Async — Cách 1: Callback</h3>
+<p>Client gửi request rồi <strong>chạy tiếp ngay</strong>. Khi server trả reply, callback được gọi trên event loop thread. Dùng <code>callMethodAsync()</code> thay cho <code>callMethod()</code>.</p>
+
+<pre><code><span class="cm">// ① GỬI request rồi CHẠY TIẾP NGAY — không chờ reply</span>
+proxy-&gt;<span class="fn">callMethodAsync</span>(<span class="st">"Concatenate"</span>)
+       .<span class="fn">onInterface</span>(<span class="st">"org.example.Concatenator"</span>)
+       .<span class="fn">withArguments</span>(std::vector&lt;<span class="ty">int32_t</span>&gt;{<span class="num">1</span>,<span class="num">2</span>,<span class="num">3</span>}, std::string{<span class="st">":"</span>})
+       <span class="cm">// ② Đăng ký callback — sẽ được gọi SAU khi reply đến</span>
+       .<span class="fn">uponReplyInvoke</span>([](std::optional&lt;sdbus::<span class="ty">Error</span>&gt; err,
+                            <span class="kw">const</span> std::string&amp; r) {
+           <span class="cm">// ③ Kiểm tra lỗi — async không throw exception,
+           //    lỗi được truyền qua std::optional&lt;Error&gt;</span>
+           <span class="kw">if</span> (err) { std::cerr &lt;&lt; err-&gt;<span class="fn">getMessage</span>(); <span class="kw">return</span>; }
+           <span class="cm">// ④ Xử lý kết quả khi reply thành công</span>
+           std::cout &lt;&lt; <span class="st">"Async: "</span> &lt;&lt; r &lt;&lt; <span class="st">"\n"</span>;
+       });
+<span class="cm">// ⑤ Code ở đây chạy NGAY LẬP TỨC — không đợi server reply</span>
+std::cout &lt;&lt; <span class="st">"Đã gửi request, đang làm việc khác...\n"</span>;
+<span class="lang-label">cpp</span></code></pre>
+
+<div class="info-tip">
+<div class="info-label">So sánh với sync</div>
+<strong>Sync:</strong> <code>callMethod("X").withArguments(...).storeResultsTo(result)</code> — block, lỗi qua <code>try/catch</code>.<br/>
+<strong>Async:</strong> <code>callMethodAsync("X").withArguments(...).uponReplyInvoke(callback)</code> — không block, lỗi qua <code>std::optional&lt;Error&gt;</code> trong callback.
+</div>
+
+<h3>20.5 Client-side Async — Cách 2: std::future</h3>
+<p>Gửi request ngay, nhận <code>std::future</code>. Bạn có thể <strong>làm việc khác</strong> rồi gọi <code>.get()</code> khi thực sự cần kết quả — lúc đó mới block.</p>
+
+<pre><code><span class="cm">// ① Gửi request, nhận future — KHÔNG block</span>
+<span class="kw">auto</span> future = proxy-&gt;<span class="fn">callMethodAsync</span>(<span class="st">"Concatenate"</span>)
+                     .<span class="fn">onInterface</span>(<span class="st">"org.example.Concatenator"</span>)
+                     .<span class="fn">withArguments</span>(std::vector&lt;<span class="ty">int32_t</span>&gt;{<span class="num">4</span>,<span class="num">5</span>}, std::string{<span class="st">","</span>})
+                     .<span class="fn">getResultAsFuture</span>&lt;std::string&gt;();
+
+<span class="cm">// ② Làm việc khác trong khi chờ server xử lý</span>
+doSomethingElse();
+
+<span class="cm">// ③ Khi THỰC SỰ CẦN kết quả — .get() sẽ block nếu reply chưa đến</span>
+<span class="cm">//    Nếu reply đã đến rồi → .get() trả về ngay</span>
+std::string r = future.<span class="fn">get</span>();  <span class="cm">// → "4,5"</span>
+
+<span class="cm">// ④ Nếu server throw Error → future.get() sẽ throw sdbus::Error</span>
+<span class="lang-label">cpp</span></code></pre>
+
+<div class="info-note">
+<div class="info-label">Khi nào dùng Callback vs Future?</div>
+<strong>Callback:</strong> Khi bạn muốn xử lý reply hoàn toàn non-blocking (ví dụ: fire-and-forget, hoặc cập nhật UI khi có reply).<br/>
+<strong>Future:</strong> Khi bạn muốn gửi nhiều request song song rồi chờ tất cả — giống <code>Promise.all()</code> trong JavaScript.
+</div>
+
+<hr/>
+
+<h3>20.6 Server-side Async — Hoãn reply, không block event loop</h3>
+
+<h4>Vấn đề với Sync Server</h4>
+<p>Ở sync server, khi handler <code>return</code>, sdbus-cpp <strong>tự động</strong> gửi reply. Nếu method chạy lâu (transcode video, query database), event loop thread bị block — <strong>toàn bộ D-Bus service đơ</strong>, không thể trả lời bất kỳ request nào khác.</p>
+
+<pre><code><span class="cm">// ❌ Sync server — BLOCK event loop 2 giây</span>
+sdbus::<span class="fn">registerMethod</span>(<span class="st">"LongOperation"</span>)
+     .<span class="fn">implementedAs</span>([](std::string input) -&gt; std::string {
+         std::this_thread::<span class="fn">sleep_for</span>(std::chrono::seconds(<span class="num">2</span>));  <span class="cm">// 🔴 block!</span>
+         <span class="kw">return</span> <span class="st">"Done: "</span> + input;
+         <span class="cm">// return → sdbus auto-gửi reply</span>
+         <span class="cm">// Trong 2 giây trên, KHÔNG có request nào khác được xử lý</span>
+     })
+<span class="lang-label">cpp</span></code></pre>
+
+<h4>Giải pháp: Server-side Async</h4>
+<p>Dùng <code>sdbus::Result&lt;T&gt;</code> làm tham số đầu tiên + <code>.markAsAsync()</code>. Lambda handler spawn thread riêng để xử lý, rồi <strong>return ngay</strong> — event loop thread được giải phóng. Worker thread xử lý xong thì gọi <code>returnResults()</code> để gửi reply cho client.</p>
+
+<pre><code><span class="cm">// ✅ Async server — KHÔNG block event loop</span>
+obj-&gt;<span class="fn">addVTable</span>(
+    sdbus::<span class="fn">registerMethod</span>(<span class="st">"LongOperation"</span>)
+         .<span class="fn">implementedAs</span>(
+             [](sdbus::<span class="ty">Result</span>&lt;std::string&gt; result,  <span class="cm">// ① "Hộp reply" — KHÔNG phải input từ client</span>
+                std::string input)                    <span class="cm">//    input từ client bắt đầu từ đây</span>
+             {
+                 <span class="cm">// ② Tạo thread mới, MOVE hộp reply vào thread đó</span>
+                 <span class="cm">//    std::move(result) = chuyển quyền sở hữu, lambda gốc không còn giữ</span>
+                 std::thread([r = std::move(result), input]() <span class="kw">mutable</span> {
+                     <span class="cm">// ③ Xử lý nặng trên thread riêng — KHÔNG phải event loop thread</span>
+                     std::this_thread::<span class="fn">sleep_for</span>(std::chrono::seconds(<span class="num">2</span>));
+
+                     <span class="cm">// ④ Gửi reply cho client từ thread này</span>
+                     <span class="cm">//    sdbus-cpp xử lý thread-safe — gọi từ bất kỳ thread nào</span>
+                     r.<span class="fn">returnResults</span>(std::string(<span class="st">"Done: "</span>) + input);
+
+                     <span class="cm">// Nếu muốn trả lỗi thay vì kết quả:</span>
+                     <span class="cm">// r.returnError(sdbus::Error{...});</span>
+
+                 }).<span class="fn">detach</span>();  <span class="cm">// ⑤ .detach() = "thả" thread, nó chạy độc lập</span>
+                                <span class="cm">//    Sau detach, lambda RETURN NGAY → event loop tự do</span>
+
+                 <span class="cm">// ⑥ Lambda return tại đây — KHÔNG chờ thread ở trên xong</span>
+                 <span class="cm">//    Event loop thread được giải phóng, xử lý request tiếp</span>
+             })
+         .<span class="fn">markAsAsync</span>()  <span class="cm">// ⑦ BẮT BUỘC: báo sdbus "đừng auto-reply khi lambda return"</span>
+                        <span class="cm">//    Nếu QUÊN → sdbus gửi reply rỗng ngay + thread gửi reply lần 2 → lỗi!</span>
+).<span class="fn">forInterface</span>(<span class="st">"org.example.Service"</span>);
+<span class="lang-label">cpp</span></code></pre>
+
+<h4>Giải thích từng thành phần quan trọng</h4>
+
+<div class="tbl-wrap"><table>
+<tr><th>Thành phần</th><th>Giải thích</th></tr>
+<tr><td><code>sdbus::Result&lt;std::string&gt; result</code></td><td>"Hộp reply" — handle để gửi reply cho client <strong>bất kỳ lúc nào, từ bất kỳ thread nào</strong>. <code>std::string</code> là kiểu return value. sdbus-cpp thấy tham số đầu kiểu <code>Result&lt;T&gt;</code> → hiểu đây là async method, tham số này <strong>không phải</strong> input từ client.</td></tr>
+<tr><td><code>std::move(result)</code></td><td>Chuyển quyền sở hữu hộp reply sang thread mới. Sau move, lambda gốc không còn giữ <code>result</code>.</td></tr>
+<tr><td><code>.detach()</code></td><td>Thả thread chạy độc lập — không chờ. Trong C++, tạo <code>std::thread</code> phải chọn <code>.join()</code> (chờ xong) hoặc <code>.detach()</code> (thả đi). Nếu dùng <code>.join()</code> ở đây → lambda block chờ thread → vô nghĩa, giống sync.</td></tr>
+<tr><td><code>r.returnResults(...)</code></td><td>Gửi <code>MethodReply</code> message cho client. Thread-safe — gọi từ bất kỳ thread nào.</td></tr>
+<tr><td><code>.markAsAsync()</code></td><td><strong>Bắt buộc.</strong> Nói sdbus đừng tự gửi reply khi lambda return. Nếu quên → sdbus gửi auto-reply (rỗng) + sau đó thread gọi <code>returnResults()</code> → gửi reply lần 2 → lỗi/behavior sai.</td></tr>
+</table></div>
+
+<div class="info-danger">
+<div class="info-label">Lưu ý trong production</div>
+Ví dụ dùng <code>std::thread(...).detach()</code> cho đơn giản. Trong production, nên dùng <strong>thread pool</strong> thay vì tạo/hủy thread liên tục — đặc biệt trên embedded nơi tài nguyên hạn chế. Mỗi lần client gọi method = tạo 1 thread mới, gọi 100 lần = 100 thread → không scalable.
+</div>
+
+<h4>Ví dụ: Server-side Async với Thread Pool</h4>
+<p>Thay vì <code>std::thread(...).detach()</code> mỗi lần có request, tạo sẵn một pool gồm N worker threads. Các task được đẩy vào queue, worker thread nào rảnh thì lấy ra xử lý.</p>
+
+<pre><code><span class="cm">// ── ThreadPool đơn giản — tạo sẵn N threads, dùng lại cho mọi request ──</span>
+<span class="mac">#include</span> <span class="st">&lt;thread&gt;</span>
+<span class="mac">#include</span> <span class="st">&lt;mutex&gt;</span>
+<span class="mac">#include</span> <span class="st">&lt;condition_variable&gt;</span>
+<span class="mac">#include</span> <span class="st">&lt;queue&gt;</span>
+<span class="mac">#include</span> <span class="st">&lt;functional&gt;</span>
+<span class="mac">#include</span> <span class="st">&lt;vector&gt;</span>
+
+<span class="kw">class</span> <span class="ty">ThreadPool</span> {
+<span class="kw">public</span>:
+    <span class="cm">// Tạo sẵn `count` worker threads — chạy suốt đời chương trình</span>
+    <span class="kw">explicit</span> <span class="fn">ThreadPool</span>(<span class="ty">size_t</span> count) : m_stop(<span class="kw">false</span>) {
+        <span class="kw">for</span> (<span class="ty">size_t</span> i = <span class="num">0</span>; i &lt; count; ++i) {
+            m_workers.<span class="fn">emplace_back</span>([<span class="kw">this</span>]() {
+                <span class="kw">while</span> (<span class="kw">true</span>) {
+                    std::function&lt;<span class="kw">void</span>()&gt; task;
+                    {   <span class="cm">// ── lock scope ──</span>
+                        std::unique_lock lock(m_mtx);
+                        <span class="cm">// Chờ cho đến khi có task trong queue hoặc pool bị stop</span>
+                        m_cv.<span class="fn">wait</span>(lock, [<span class="kw">this</span>]{ <span class="kw">return</span> m_stop || !m_tasks.empty(); });
+                        <span class="kw">if</span> (m_stop &amp;&amp; m_tasks.empty()) <span class="kw">return</span>;
+                        task = std::move(m_tasks.front());
+                        m_tasks.<span class="fn">pop</span>();
+                    }
+                    task();  <span class="cm">// Thực thi task ngoài lock</span>
+                }
+            });
+        }
+    }
+
+    <span class="cm">// Đẩy task vào queue — worker thread rảnh sẽ lấy ra chạy</span>
+    <span class="kw">void</span> <span class="fn">enqueue</span>(std::function&lt;<span class="kw">void</span>()&gt; task) {
+        {
+            std::lock_guard lock(m_mtx);
+            m_tasks.<span class="fn">push</span>(std::move(task));
+        }
+        m_cv.<span class="fn">notify_one</span>();  <span class="cm">// Đánh thức 1 worker đang chờ</span>
+    }
+
+    ~<span class="ty">ThreadPool</span>() {
+        { std::lock_guard lock(m_mtx); m_stop = <span class="kw">true</span>; }
+        m_cv.<span class="fn">notify_all</span>();
+        <span class="kw">for</span> (<span class="kw">auto</span>&amp; w : m_workers) w.<span class="fn">join</span>();  <span class="cm">// Chờ tất cả workers xong</span>
+    }
+
+<span class="kw">private</span>:
+    std::vector&lt;std::thread&gt;            m_workers;
+    std::queue&lt;std::function&lt;<span class="kw">void</span>()&gt;&gt;  m_tasks;
+    std::mutex                          m_mtx;
+    std::condition_variable             m_cv;
+    <span class="kw">bool</span>                                m_stop;
+};
+<span class="lang-label">cpp</span></code></pre>
+
+<pre><code><span class="cm">// ── Sử dụng ThreadPool với server-side async ────────────────────────</span>
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">auto</span> conn = sdbus::<span class="fn">createSessionBusConnection</span>(
+        sdbus::<span class="ty">ServiceName</span>{<span class="st">"org.example.Service"</span>});
+    <span class="kw">auto</span> obj  = sdbus::<span class="fn">createObject</span>(*conn,
+        sdbus::<span class="ty">ObjectPath</span>{<span class="st">"/org/example/service"</span>});
+
+    <span class="cm">// Tạo pool 4 threads — dùng chung cho MỌI async method</span>
+    <span class="ty">ThreadPool</span> pool(<span class="num">4</span>);
+
+    obj-&gt;<span class="fn">addVTable</span>(
+        sdbus::<span class="fn">registerMethod</span>(<span class="st">"LongOperation"</span>)
+             .<span class="fn">implementedAs</span>(
+                 <span class="cm">// Capture &amp;pool bằng reference — pool sống suốt đời main()</span>
+                 [&amp;pool](sdbus::<span class="ty">Result</span>&lt;std::string&gt; result, std::string input) {
+                     <span class="cm">// Đẩy task vào pool — KHÔNG tạo thread mới</span>
+                     pool.<span class="fn">enqueue</span>([r = std::move(result), input]() <span class="kw">mutable</span> {
+                         <span class="cm">// Worker thread xử lý</span>
+                         std::this_thread::<span class="fn">sleep_for</span>(std::chrono::seconds(<span class="num">2</span>));
+                         r.<span class="fn">returnResults</span>(std::string(<span class="st">"Done: "</span>) + input);
+                     });
+                     <span class="cm">// Lambda return ngay → event loop tự do</span>
+                 })
+             .<span class="fn">markAsAsync</span>()
+    ).<span class="fn">forInterface</span>(<span class="st">"org.example.Service"</span>);
+
+    conn-&gt;<span class="fn">enterEventLoop</span>();
+    <span class="cm">// pool destructor gọi join() tất cả workers khi main() kết thúc</span>
+}
+<span class="lang-label">cpp</span></code></pre>
+
+<div class="info-tip">
+<div class="info-label">So sánh detach vs thread pool</div>
+<strong><code>std::thread().detach()</code>:</strong> Mỗi request tạo 1 thread mới → overhead tạo/hủy thread, không giới hạn số lượng, 100 requests đồng thời = 100 threads.<br/>
+<strong>Thread pool:</strong> Tạo sẵn N threads, dùng lại cho mọi request → không overhead tạo/hủy, giới hạn concurrency. Nếu 100 requests đến cùng lúc với pool size 4 → 4 xử lý song song, 96 xếp hàng trong queue chờ.<br/>
+Trên embedded (ví dụ: Sigmastar SoC 2-4 core), pool size 2-4 là hợp lý.
+</div>
+
+</section>
+
+<!-- ═══ SECTION 21: Connections ═══ -->
+<section id="connections-detail">
+<h2>21. Connection Management</h2>
+<pre><code><span class="cm">// ── Các loại connection factory ─────────────────────────</span>
+<span class="kw">auto</span> sys  = sdbus::<span class="fn">createSystemBusConnection</span>();            <span class="cm">// system bus</span>
+<span class="kw">auto</span> ses  = sdbus::<span class="fn">createSessionBusConnection</span>();           <span class="cm">// session bus</span>
+<span class="kw">auto</span> svc  = sdbus::<span class="fn">createSessionBusConnection</span>(             <span class="cm">// session + service name</span>
+              sdbus::<span class="ty">ServiceName</span>{<span class="st">"org.example.Svc"</span>});
+<span class="kw">auto</span> p2p  = sdbus::<span class="fn">createDirectBusConnection</span>(<span class="st">"/tmp/d.sock"</span>); <span class="cm">// peer-to-peer</span>
+
+<span class="cm">// ── Event loop options ───────────────────────────────────</span>
+conn-&gt;<span class="fn">enterEventLoop</span>();        <span class="cm">// blocking — current thread bị block</span>
+conn-&gt;<span class="fn">enterEventLoopAsync</span>();   <span class="cm">// non-blocking — spawn dedicated thread</span>
+conn-&gt;<span class="fn">leaveEventLoop</span>();        <span class="cm">// stop blocking loop từ thread khác</span>
+
+<span class="cm">// ── Light-weight Proxy (sync calls only, no event loop) ─</span>
+<span class="kw">auto</span> lw = sdbus::<span class="fn">createLightWeightProxy</span>(
+    sdbus::<span class="ty">ServiceName</span>{<span class="st">"org.example.Concatenator"</span>},
+    sdbus::<span class="ty">ObjectPath</span>{<span class="st">"/org/example/concatenator"</span>});
+
+std::string r;
+lw-&gt;<span class="fn">callMethod</span>(<span class="st">"Concatenate"</span>)
+    .<span class="fn">onInterface</span>(<span class="st">"org.example.Concatenator"</span>)
+    .<span class="fn">withArguments</span>(std::vector&lt;<span class="ty">int32_t</span>&gt;{<span class="num">1</span>,<span class="num">2</span>}, std::string{<span class="st">"-"</span>})
+    .<span class="fn">storeResultsTo</span>(r);
+<span class="cm">// lw ra scope → destroyed ngay, không cần cleanup</span>
+<span class="lang-label">cpp</span></code></pre>
+
+<div class="info-note">
+<div class="info-label">Best practice: Shared connection</div>
+Trong ứng dụng có nhiều objects và proxies, dùng <strong>một IConnection duy nhất</strong> và pass reference cho tất cả. Mỗi object/proxy tạo connection riêng lẻ → tốn fd, tốn memory, không scalable. Chỉ tạo connection riêng khi cần isolate bus name hoặc security context.
+</div>
+</section>
+<!-- ═══ DEBUG SECTION ═══ -->
+<section id="debug-overview">
+<h2>22. Công cụ Debug D-Bus</h2>
+<p>D-Bus cung cấp nhiều tool CLI để inspect, monitor và test service. <strong>Tất cả đều dùng được trên Linux desktop lẫn embedded target</strong> — không phải chỉ dành cho embedded. Sự khác biệt chỉ là tool nào có sẵn theo distro hoặc init system.</p>
+
+<div class="tool-grid">
+<div class="tool-card"><div class="tool-card-title" style="color:var(--accent)">dbus-monitor</div><ul>
+<li>Monitor D-Bus traffic realtime</li>
+<li>Filter theo type, sender, interface, member</li>
+<li>Package: <code>dbus</code> — có trên mọi distro</li>
+<li>Không phụ thuộc systemd</li>
+</ul></div>
+<div class="tool-card"><div class="tool-card-title" style="color:var(--accent2)">busctl</div><ul>
+<li>Tool mạnh nhất — từ systemd</li>
+<li>List, tree, introspect, call, get/set property, monitor, capture pcap</li>
+<li>Package: <code>systemd</code> — có khi dùng systemd</li>
+<li>Dùng được ở bất kỳ đâu có systemd: desktop Ubuntu, Yocto embedded…</li>
+</ul></div>
+<div class="tool-card"><div class="tool-card-title" style="color:var(--accent4)">dbus-send</div><ul>
+<li>Gửi D-Bus message từ CLI</li>
+<li>List services, call method, get property</li>
+<li>Package: <code>dbus</code> — không cần systemd</li>
+<li>Cú pháp verbose hơn busctl</li>
+</ul></div>
+<div class="tool-card"><div class="tool-card-title" style="color:#ffa657">gdbus</div><ul>
+<li>GLib-based D-Bus tool</li>
+<li>Introspect, call, monitor, emit signal</li>
+<li>Package: <code>libglib2.0-bin</code></li>
+<li>Cú pháp GVariant, output JSON-like</li>
+</ul></div>
+</div>
+</section>
+
+<!-- ═══ dbus-monitor ═══ -->
+<section id="dbus-monitor">
+<h2>23. dbus-monitor</h2>
+<p><code>dbus-monitor</code> là cách đơn giản nhất để quan sát D-Bus traffic realtime. Hữu ích khi cần kiểm tra: message có gửi đến không, signal có emit không, arguments đúng type không.</p>
+
+<h3>23.1 Cú pháp</h3>
+<div class="cmd-anatomy">
+<div class="cmd-line">dbus-monitor [--system | --session] [match_rule ...]</div>
+<div class="cmd-part"><span class="cmd-token">--system</span><span class="cmd-explain">Monitor System Bus. Dùng <code>sudo</code> để thấy traffic của tất cả process, không chỉ của user mình.</span></div>
+<div class="cmd-part"><span class="cmd-token">--session</span><span class="cmd-explain">Monitor Session Bus của user hiện tại. Default nếu không chỉ định. Không cần sudo.</span></div>
+<div class="cmd-part"><span class="cmd-token">match_rule</span><span class="cmd-explain">Filter string theo cú pháp D-Bus match rule: cặp <code>key='value'</code> phân cách bằng dấu phẩy. Ví dụ: <code>"type='signal',sender='org.example.Concatenator'"</code>. Nếu bỏ trống, monitor toàn bộ bus.</span></div>
+</div>
+
+<h3>23.2 Các key filter phổ biến</h3>
+<div class="tbl-wrap"><table>
+<tr><th>Key</th><th>Giá trị ví dụ</th><th>Lọc theo</th></tr>
+<tr><td><code>type</code></td><td><code>signal</code>, <code>method_call</code>, <code>method_return</code>, <code>error</code></td><td>Loại message</td></tr>
+<tr><td><code>sender</code></td><td><code>org.example.Concatenator</code> hoặc <code>:1.42</code></td><td>Nguồn gửi</td></tr>
+<tr><td><code>destination</code></td><td><code>org.example.Concatenator</code></td><td>Đích nhận</td></tr>
+<tr><td><code>interface</code></td><td><code>org.example.Concatenator</code></td><td>Interface name</td></tr>
+<tr><td><code>member</code></td><td><code>Concatenated</code>, <code>Concatenate</code></td><td>Method hoặc signal name</td></tr>
+<tr><td><code>path</code></td><td><code>/org/example/concatenator</code></td><td>Object path</td></tr>
+</table></div>
+
+<h3>23.3 Lệnh thực tế</h3>
+<pre><code><span class="cm"># Monitor toàn bộ session bus — thấy mọi message</span>
+dbus-monitor --session
+
+<span class="cm"># Chỉ xem signals (bỏ qua method calls và replies)</span>
+dbus-monitor --session "type='signal'"
+
+<span class="cm"># Chỉ xem signals từ service của chúng ta</span>
+dbus-monitor --session "type='signal',sender='org.example.Concatenator'"
+
+<span class="cm"># Chỉ xem một signal cụ thể trên một interface cụ thể</span>
+dbus-monitor --session \
+  "type='signal',interface='org.example.Concatenator',member='Concatenated'"
+
+<span class="cm"># Xem tất cả traffic đến/đi từ một service (cả 2 hướng)</span>
+dbus-monitor --session "sender='org.example.Concatenator'"
+dbus-monitor --session "destination='org.example.Concatenator'"
+
+<span class="cm"># Xem method calls vào object path cụ thể</span>
+dbus-monitor --session \
+  "type='method_call',path='/org/example/concatenator'"
+<span class="lang-label">bash</span></code></pre>
+
+<h3>23.4 Đọc output</h3>
+<div class="out-block"><span class="oc"># ① Method call — client gọi server</span>
+<span class="ok">method call</span> time=1718000001.123 sender=<span class="ov">:1.85</span> → destination=<span class="ov">org.example.Concatenator</span>
+             serial=5 path=<span class="op">/org/example/concatenator</span>;
+             interface=<span class="oi">org.example.Concatenator</span>; member=<span class="om">Concatenate</span>
+   <span class="ok">array</span> [
+      <span class="ok">int32</span> <span class="ov">1</span>
+      <span class="ok">int32</span> <span class="ov">2</span>
+      <span class="ok">int32</span> <span class="ov">3</span>
+   ]
+   <span class="ok">string</span> <span class="ov">":"</span>
+
+<span class="oc"># ② Method reply — server trả về kết quả</span>
+<span class="ok">method return</span> time=1718000001.124 sender=<span class="ov">:1.42</span> → destination=<span class="ov">:1.85</span>
+              reply_serial=5
+   <span class="ok">string</span> <span class="ov">"1:2:3"</span>
+
+<span class="oc"># ③ Signal — server broadcast cho tất cả subscriber</span>
+<span class="ok">signal</span> time=1718000001.124 sender=<span class="ov">:1.42</span> → destination=<span class="ov">(null destination)</span>
+       path=<span class="op">/org/example/concatenator</span>; interface=<span class="oi">org.example.Concatenator</span>;
+       member=<span class="om">Concatenated</span>
+   <span class="ok">string</span> <span class="ov">"1:2:3"</span>
+
+<span class="oc"># ④ Error reply — khi server throw sdbus::Error</span>
+<span class="ok">error</span> time=1718000002.000 sender=<span class="ov">:1.42</span> → destination=<span class="ov">:1.85</span>
+      error_name=<span class="om">org.example.Concatenator.Error.EmptyInput</span>
+      reply_serial=6
+   <span class="ok">string</span> <span class="ov">"The numbers array must not be empty"</span></div>
+
+<div class="info-tip">
+<div class="info-label">Giải thích các trường trong output</div>
+<ul style="margin:4px 0">
+<li><code>sender=:1.42</code> — unique name tự động của server process (do dbus-daemon cấp)</li>
+<li><code>sender=:1.85</code> — unique name của client process</li>
+<li><code>destination=(null destination)</code> — signal broadcast, không có đích cụ thể</li>
+<li><code>serial=5</code> — số thứ tự message trong connection này</li>
+<li><code>reply_serial=5</code> — reply này trả lời cho message có serial=5</li>
+<li>Thứ tự arguments trong output = thứ tự trong D-Bus signature (<code>"ais"</code>: array trước, string sau)</li>
+</ul>
+</div>
+</section>
+
+<!-- ═══ busctl ═══ -->
+<section id="busctl">
+<h2>24. busctl — Tool mạnh nhất</h2>
+<p><code>busctl</code> đi kèm systemd, là tool toàn năng nhất để debug D-Bus. Không chỉ dùng trên embedded — dùng được trên bất kỳ Linux nào có systemd, bao gồm Ubuntu, Debian, Fedora desktop. Lý do ưu tiên <code>busctl</code> hơn <code>dbus-send</code>: cú pháp ngắn gọn hơn, output có type label, tích hợp introspect, hỗ trợ capture pcap.</p>
+
+<div class="cmd-anatomy">
+<div class="cmd-line">busctl [--system | --user] SUBCOMMAND [ARGS...]</div>
+<div class="cmd-part"><span class="cmd-token">--system</span><span class="cmd-explain">Truy cập System Bus. Không cần sudo để đọc, nhưng cần sudo để gọi methods của service chạy dưới root.</span></div>
+<div class="cmd-part"><span class="cmd-token">--user</span><span class="cmd-explain">Truy cập Session Bus của user hiện tại. Tương đương <code>--session</code> trong dbus-monitor/dbus-send. Không cần sudo.</span></div>
+</div>
+</section>
+
+<section id="busctl-list">
+<h3>24.1 list — Xem services đang chạy</h3>
+<pre><code><span class="cm"># Session bus (không cần sudo)</span>
+busctl --user list
+
+<span class="cm"># System bus</span>
+busctl --system list
+
+<span class="cm"># Chỉ well-known names (bỏ unique :1.xx)</span>
+busctl --user list | grep -v "^:"
+<span class="lang-label">bash</span></code></pre>
+<div class="out-block">NAME                             PID  PROCESS          USER   CONNECTION
+<span class="oi">org.example.Concatenator</span>       <span class="ov">12345</span> concatenator-se  user   <span class="ov">:1.42</span>
+org.freedesktop.DBus               1 dbus-daemon      root   -
+<span class="oc">:1.42</span>                          <span class="ov">12345</span> concatenator-se  user   -
+<span class="oc">:1.85</span>                          <span class="ov">23456</span> concatenator-cl  user   -
+
+<span class="oc"># → NAME: well-known name hoặc unique name</span>
+<span class="oc"># → PID: process ID của owner</span>
+<span class="oc"># → CONNECTION: unique name của connection (:1.42 = server, :1.85 = client)</span></div>
+</section>
+
+<section id="busctl-tree">
+<h3>24.2 tree — Xem object hierarchy</h3>
+<div class="cmd-anatomy">
+<div class="cmd-line">busctl [--user|--system] tree [SERVICE_NAME]</div>
+<div class="cmd-part"><span class="cmd-token">SERVICE_NAME</span><span class="cmd-explain">Well-known name của service. Nếu bỏ trống, hiện toàn bộ D-Bus object tree của mọi service.</span></div>
+</div>
+<pre><code>busctl --user tree org.example.Concatenator
+<span class="lang-label">bash</span></code></pre>
+<div class="out-block">└─/org
+  └─/org/example
+    └─<span class="op">/org/example/concatenator</span>
+
+<span class="oc"># → Xác nhận object path đúng là /org/example/concatenator</span></div>
+</section>
+
+<section id="busctl-introspect">
+<h3>24.3 introspect — Xem toàn bộ API</h3>
+<div class="cmd-anatomy">
+<div class="cmd-line">busctl [--user|--system] introspect SERVICE_NAME OBJECT_PATH [INTERFACE]</div>
+<div class="cmd-part"><span class="cmd-token">SERVICE_NAME</span><span class="cmd-explain">Well-known name</span></div>
+<div class="cmd-part"><span class="cmd-token">OBJECT_PATH</span><span class="cmd-explain">Path đến object (bắt đầu bằng /)</span></div>
+<div class="cmd-part"><span class="cmd-token">INTERFACE</span><span class="cmd-explain">(Tùy chọn) Lọc một interface cụ thể</span></div>
+</div>
+<pre><code>busctl --user introspect \
+  org.example.Concatenator \
+  /org/example/concatenator
+<span class="lang-label">bash</span></code></pre>
+<div class="out-block">NAME                                   TYPE      SIGNATURE  RESULT/VALUE  FLAGS
+<span class="oi">org.example.Concatenator</span>               interface -           -             -
+<span class="om">.Concatenate</span>                           method    ais         s             -
+<span class="om">.Concatenated</span>                          signal    s           -             -
+<span class="ok">.RequestCount</span>                          property  u           2             const
+<span class="ok">.Version</span>                               property  s           "1.0.0"       const
+<span class="oi">org.freedesktop.DBus.Introspectable</span>    interface -           -             -
+.Introspect                            method    -           s             -
+<span class="oi">org.freedesktop.DBus.Properties</span>        interface -           -             -
+.Get                                   method    ss          v             -
+.GetAll                                method    s           a{sv}         -
+.Set                                   method    ssv         -             -
+.PropertiesChanged                     signal    sa{sv}as    -             -
+<span class="oi">org.freedesktop.DBus.Peer</span>              interface -           -             -
+.Ping                                  method    -           -             -
+
+<span class="oc"># → TYPE: method | signal | property</span>
+<span class="oc"># → SIGNATURE: D-Bus type của input (method/signal) hoặc value type (property)</span>
+<span class="oc"># → RESULT/VALUE: output signature (method) hoặc current value (property)</span>
+<span class="oc"># → ais = array-of-int32 (ai) + string (s)  →  input của Concatenate</span>
+<span class="oc"># → s   = string  →  output của Concatenate</span>
+<span class="oc"># → u   = uint32  →  type của property RequestCount, value hiện tại = 2</span></div>
+</section>
+
+<section id="busctl-call">
+<h3>24.4 call — Gọi method</h3>
+<div class="cmd-anatomy">
+<div class="cmd-line">busctl [--user|--system] call SERVICE OBJECT INTERFACE METHOD [SIGNATURE [ARGS...]]</div>
+<div class="cmd-part"><span class="cmd-token">SERVICE</span><span class="cmd-explain">Well-known name của service</span></div>
+<div class="cmd-part"><span class="cmd-token">OBJECT</span><span class="cmd-explain">Object path (bắt đầu bằng /)</span></div>
+<div class="cmd-part"><span class="cmd-token">INTERFACE</span><span class="cmd-explain">Tên interface chứa method</span></div>
+<div class="cmd-part"><span class="cmd-token">METHOD</span><span class="cmd-explain">Tên method cần gọi</span></div>
+<div class="cmd-part"><span class="cmd-token">SIGNATURE</span><span class="cmd-explain">D-Bus type signature của toàn bộ arguments. Lấy từ <code>busctl introspect</code>. Bỏ qua nếu method không có args.</span></div>
+<div class="cmd-part"><span class="cmd-token">ARGS...</span><span class="cmd-explain">Giá trị arguments theo thứ tự. Array: <code>N e1 e2 ... eN</code> (số lượng trước rồi từng phần tử). String: không cần quotes trong busctl. Bool: <code>true</code> / <code>false</code>.</span></div>
+</div>
+
+<pre><code><span class="cm"># Concatenate([1,2,3], ":")  →  "1:2:3"</span>
+<span class="cm"># SIGNATURE="ais" → array-of-int32 (ai) + string (s)</span>
+<span class="cm"># ARGS: "3 1 2 3" → array có 3 phần tử: 1, 2, 3; tiếp theo là chuỗi ":"</span>
+busctl --user call \
+  org.example.Concatenator \
+  /org/example/concatenator \
+  org.example.Concatenator \
+  Concatenate \
+  "ais" 3 1 2 3 ":"
+<span class="lang-label">bash</span></code></pre>
+<div class="out-block">s <span class="ov">"1:2:3"</span>
+<span class="oc"># → "s" là type của return value, "1:2:3" là giá trị</span></div>
+
+<pre><code><span class="cm"># Concatenate([10,20,30], " - ")  →  "10 - 20 - 30"</span>
+busctl --user call \
+  org.example.Concatenator \
+  /org/example/concatenator \
+  org.example.Concatenator \
+  Concatenate \
+  "ais" 3 10 20 30 " - "
+<span class="lang-label">bash</span></code></pre>
+<div class="out-block">s <span class="ov">"10 - 20 - 30"</span></div>
+
+<pre><code><span class="cm"># Concatenate([], ",") → server throw Error → busctl in error ra stderr</span>
+busctl --user call \
+  org.example.Concatenator \
+  /org/example/concatenator \
+  org.example.Concatenator \
+  Concatenate \
+  "ais" 0 ","
+<span class="lang-label">bash</span></code></pre>
+<div class="out-block"><span class="oc"># stderr:</span>
+Call failed: The numbers array must not be empty
+<span class="oc"># exit code: non-zero (có thể dùng $? để detect error trong script)</span></div>
+
+<pre><code><span class="cm"># Ping — method không có arguments, không có return</span>
+busctl --user call \
+  org.example.Concatenator \
+  /org/example/concatenator \
+  org.freedesktop.DBus.Peer \
+  Ping
+<span class="lang-label">bash</span></code></pre>
+
+<h4>Bảng encoding arguments trong busctl</h4>
+<div class="tbl-wrap"><table>
+<tr><th>D-Bus Type</th><th>Signature</th><th>Ví dụ trong busctl args</th></tr>
+<tr><td>string</td><td><code>s</code></td><td><code>"hello world"</code> hoặc <code>hello</code> (nếu không có space)</td></tr>
+<tr><td>int32</td><td><code>i</code></td><td><code>42</code></td></tr>
+<tr><td>uint32</td><td><code>u</code></td><td><code>100</code></td></tr>
+<tr><td>int64</td><td><code>x</code></td><td><code>9223372036854</code></td></tr>
+<tr><td>bool</td><td><code>b</code></td><td><code>true</code> hoặc <code>false</code></td></tr>
+<tr><td>double</td><td><code>d</code></td><td><code>3.14</code></td></tr>
+<tr><td>array of int32</td><td><code>ai</code></td><td><code>3 1 2 3</code> (count trước, rồi elements)</td></tr>
+<tr><td>array of string</td><td><code>as</code></td><td><code>2 "foo" "bar"</code></td></tr>
+<tr><td>array of byte</td><td><code>ay</code></td><td><code>3 0x41 0x42 0x43</code></td></tr>
+<tr><td>dict string→variant</td><td><code>a{sv}</code></td><td><code>1 "key" s "value"</code> (count, key, type_char, value)</td></tr>
+<tr><td>struct (string, int)</td><td><code>(si)</code></td><td><code>"name" 42</code></td></tr>
+</table></div>
+</section>
+
+<section id="busctl-property">
+<h3>24.5 get-property &amp; set-property</h3>
+<div class="cmd-anatomy">
+<div class="cmd-line">busctl [--user|--system] get-property SERVICE OBJECT INTERFACE PROPERTY</div>
+<div class="cmd-line">busctl [--user|--system] set-property SERVICE OBJECT INTERFACE PROPERTY SIGNATURE VALUE</div>
+</div>
+<pre><code><span class="cm"># Đọc property "Version" (type "s" = string)</span>
+busctl --user get-property \
+  org.example.Concatenator \
+  /org/example/concatenator \
+  org.example.Concatenator \
+  Version
+<span class="lang-label">bash</span></code></pre>
+<div class="out-block">s <span class="ov">"1.0.0"</span></div>
+
+<pre><code><span class="cm"># Đọc property "RequestCount" (type "u" = uint32)</span>
+busctl --user get-property \
+  org.example.Concatenator \
+  /org/example/concatenator \
+  org.example.Concatenator \
+  RequestCount
+<span class="lang-label">bash</span></code></pre>
+<div class="out-block">u <span class="ov">2</span></div>
+
+<pre><code><span class="cm"># Ghi property "LogLevel" (nếu có, type "i" = int32)</span>
+busctl --user set-property \
+  org.example.Concatenator \
+  /org/example/concatenator \
+  org.example.Concatenator \
+  LogLevel \
+  "i" 3
+<span class="lang-label">bash</span></code></pre>
+</section>
+
+<section id="busctl-monitor">
+<h3>24.6 monitor &amp; capture</h3>
+<pre><code><span class="cm"># Monitor chỉ service của chúng ta (output có màu, đẹp hơn dbus-monitor)</span>
+busctl --user monitor org.example.Concatenator
+
+<span class="cm"># Monitor toàn bộ session bus</span>
+busctl --user monitor
+
+<span class="cm"># Capture traffic vào file .pcap để mở bằng Wireshark</span>
+busctl --user capture org.example.Concatenator > dbus-capture.pcap
+wireshark dbus-capture.pcap
+<span class="lang-label">bash</span></code></pre>
+<div class="out-block"><span class="oc"># Output của busctl monitor (đẹp hơn dbus-monitor):</span>
+‣ Type=MethodCall Sender=<span class="ov">:1.85</span> Destination=<span class="ov">org.example.Concatenator</span>
+  Path=<span class="op">/org/example/concatenator</span> Interface=<span class="oi">org.example.Concatenator</span> Member=<span class="om">Concatenate</span>
+  MESSAGE "<span class="ok">ais</span>" {
+    ARRAY "i" { INT32 1; INT32 2; INT32 3; };
+    STRING ":";
+  };
+‣ Type=MethodReturn Sender=<span class="ov">:1.42</span> Destination=<span class="ov">:1.85</span>
+  MESSAGE "<span class="ok">s</span>" { STRING "1:2:3"; };
+‣ Type=Signal Sender=<span class="ov">:1.42</span> Path=<span class="op">/org/example/concatenator</span>
+  Interface=<span class="oi">org.example.Concatenator</span> Member=<span class="om">Concatenated</span>
+  MESSAGE "<span class="ok">s</span>" { STRING "1:2:3"; };</div>
+</section>
+
+<!-- ═══ dbus-send ═══ -->
+<section id="dbus-send">
+<h2>25. dbus-send</h2>
+<p><code>dbus-send</code> có trong package <code>dbus</code>, không phụ thuộc systemd — dùng được kể cả trên embedded không có systemd. Cú pháp verbose hơn busctl nhưng phổ biến hơn trong script.</p>
+
+<div class="cmd-anatomy">
+<div class="cmd-line">dbus-send [--system|--session] [--print-reply] --dest=DEST OBJECT_PATH MEMBER [ARGS...]</div>
+<div class="cmd-part"><span class="cmd-token">--system / --session</span><span class="cmd-explain">Chọn bus. Default là session bus.</span></div>
+<div class="cmd-part"><span class="cmd-token">--print-reply</span><span class="cmd-explain">In MethodReply ra stdout. Không có flag này, reply bị bỏ qua.</span></div>
+<div class="cmd-part"><span class="cmd-token">--dest=DEST</span><span class="cmd-explain">Well-known name của service đích.</span></div>
+<div class="cmd-part"><span class="cmd-token">OBJECT_PATH</span><span class="cmd-explain">Object path (bắt đầu bằng /)</span></div>
+<div class="cmd-part"><span class="cmd-token">MEMBER</span><span class="cmd-explain">Dạng <code>InterfaceName.MethodName</code> — phải bao gồm cả interface name (không như busctl).</span></div>
+<div class="cmd-part"><span class="cmd-token">ARGS</span><span class="cmd-explain">Dạng <code>type:value</code>. Ví dụ: <code>string:"hello"</code>, <code>int32:42</code>, <code>boolean:true</code>, <code>array:int32:1,2,3</code>.</span></div>
+</div>
+
+<pre><code><span class="cm"># List tất cả service names</span>
+dbus-send --session --print-reply \
+  --dest=org.freedesktop.DBus \
+  /org/freedesktop/DBus \
+  org.freedesktop.DBus.ListNames
+<span class="lang-label">bash</span></code></pre>
+<div class="out-block">method return ...
+   <span class="ok">array</span> [
+      <span class="ok">string</span> <span class="ov">"org.freedesktop.DBus"</span>
+      <span class="ok">string</span> <span class="ov">"org.example.Concatenator"</span>
+      <span class="ok">string</span> <span class="ov">":1.42"</span>
+   ]</div>
+
+<pre><code><span class="cm"># Gọi method Concatenate</span>
+dbus-send --session --print-reply \
+  --dest=org.example.Concatenator \
+  /org/example/concatenator \
+  org.example.Concatenator.Concatenate \
+  array:int32:1,2,3 \
+  string:":"
+<span class="lang-label">bash</span></code></pre>
+<div class="out-block">method return ...
+   <span class="ok">string</span> <span class="ov">"1:2:3"</span></div>
+
+<pre><code><span class="cm"># Đọc property "Version" qua org.freedesktop.DBus.Properties.Get</span>
+<span class="cm"># Get(interface_name, property_name) → Variant</span>
+dbus-send --session --print-reply \
+  --dest=org.example.Concatenator \
+  /org/example/concatenator \
+  org.freedesktop.DBus.Properties.Get \
+  string:"org.example.Concatenator" \
+  string:"Version"
+<span class="lang-label">bash</span></code></pre>
+<div class="out-block">method return ...
+   <span class="ok">variant</span>       <span class="ok">string</span> <span class="ov">"1.0.0"</span></div>
+
+<pre><code><span class="cm"># Introspect — xem XML của object</span>
+dbus-send --session --print-reply \
+  --dest=org.example.Concatenator \
+  /org/example/concatenator \
+  org.freedesktop.DBus.Introspectable.Introspect
+<span class="lang-label">bash</span></code></pre>
+
+<h4>dbus-send type syntax</h4>
+<div class="tbl-wrap"><table>
+<tr><th>Kiểu</th><th>Syntax</th><th>Ví dụ</th></tr>
+<tr><td>string</td><td><code>string:VALUE</code></td><td><code>string:"hello world"</code></td></tr>
+<tr><td>int32</td><td><code>int32:VALUE</code></td><td><code>int32:42</code></td></tr>
+<tr><td>uint32</td><td><code>uint32:VALUE</code></td><td><code>uint32:100</code></td></tr>
+<tr><td>boolean</td><td><code>boolean:VALUE</code></td><td><code>boolean:true</code></td></tr>
+<tr><td>double</td><td><code>double:VALUE</code></td><td><code>double:3.14</code></td></tr>
+<tr><td>array of int32</td><td><code>array:int32:v1,v2,v3</code></td><td><code>array:int32:1,2,3</code></td></tr>
+<tr><td>array of string</td><td><code>array:string:v1,v2</code></td><td><code>array:string:foo,bar</code></td></tr>
+<tr><td>object path</td><td><code>objpath:PATH</code></td><td><code>objpath:/org/example</code></td></tr>
+</table></div>
+</section>
+
+<!-- ═══ gdbus ═══ -->
+<section id="gdbus">
+<h2>26. gdbus</h2>
+<p><code>gdbus</code> (package <code>libglib2.0-bin</code>) có cú pháp GVariant thân thiện hơn dbus-send, đặc biệt dễ dùng với arrays và structs.</p>
+
+<pre><code><span class="cm"># Introspect</span>
+gdbus introspect --session \
+  --dest org.example.Concatenator \
+  --object-path /org/example/concatenator
+
+<span class="cm"># Gọi method — GVariant format: array dùng [1,2,3], string dùng 'str'</span>
+gdbus call --session \
+  --dest org.example.Concatenator \
+  --object-path /org/example/concatenator \
+  --method org.example.Concatenator.Concatenate \
+  "[1, 2, 3]" "':'"
+<span class="lang-label">bash</span></code></pre>
+<div class="out-block">(<span class="ov">'1:2:3'</span>,)
+<span class="oc"># → Tuple format: (value,)</span></div>
+
+<pre><code><span class="cm"># Monitor signals realtime</span>
+gdbus monitor --session \
+  --dest org.example.Concatenator
+
+<span class="cm"># Emit signal thủ công (để test subscriber)</span>
+gdbus emit --session \
+  --object-path /org/example/concatenator \
+  --signal org.example.Concatenator.Concatenated \
+  "'test-emit'"
+<span class="lang-label">bash</span></code></pre>
+</section>
+
+<!-- ═══ Debug compare ═══ -->
+<section id="debug-compare">
+<h2>27. So sánh tổng hợp &amp; Workflow debug</h2>
+
+<div class="tbl-wrap"><table>
+<tr><th>Tác vụ</th><th>busctl</th><th>dbus-send</th><th>gdbus</th><th>dbus-monitor</th></tr>
+<tr><td>List services</td><td><code>busctl list</code></td><td>Gọi ListNames</td><td>–</td><td>–</td></tr>
+<tr><td>Xem object tree</td><td><code>busctl tree</code></td><td>–</td><td>–</td><td>–</td></tr>
+<tr><td>Introspect</td><td><code>busctl introspect</code></td><td>Gọi Introspect</td><td><code>gdbus introspect</code></td><td>–</td></tr>
+<tr><td>Gọi method</td><td><code>busctl call</code></td><td><code>dbus-send</code></td><td><code>gdbus call</code></td><td>–</td></tr>
+<tr><td>Đọc property</td><td><code>busctl get-property</code></td><td>Gọi Properties.Get</td><td>–</td><td>–</td></tr>
+<tr><td>Ghi property</td><td><code>busctl set-property</code></td><td>Gọi Properties.Set</td><td>–</td><td>–</td></tr>
+<tr><td>Monitor traffic</td><td><code>busctl monitor</code></td><td>–</td><td><code>gdbus monitor</code></td><td><code>dbus-monitor</code></td></tr>
+<tr><td>Capture .pcap</td><td><code>busctl capture</code></td><td>–</td><td>–</td><td>–</td></tr>
+<tr><td>Emit signal</td><td>–</td><td>–</td><td><code>gdbus emit</code></td><td>–</td></tr>
+<tr><td>Cần systemd</td><td><strong>Có</strong></td><td>Không</td><td>Không</td><td>Không</td></tr>
+<tr><td>Cú pháp args</td><td>Ngắn nhất</td><td>Verbose</td><td>GVariant</td><td>Chỉ monitor</td></tr>
+</table></div>
+
+<h3>27.1 Workflow debug gợi ý</h3>
+<div class="step-flow">
+<div class="step"><div class="step-num">1</div><div class="step-body">
+<div class="step-title">Xác nhận service đã đăng ký tên</div>
+<pre style="margin:6px 0"><code>busctl --user list | grep org.example
+<span class="cm"># Phải thấy: org.example.Concatenator  12345  concatenator-server  user  :1.42</span>
+<span class="lang-label">bash</span></code></pre>
+</div></div>
+<div class="step"><div class="step-num">2</div><div class="step-body">
+<div class="step-title">Xác nhận object path đúng</div>
+<pre style="margin:6px 0"><code>busctl --user tree org.example.Concatenator
+<span class="cm"># Phải thấy: └─/org/example/concatenator</span>
+<span class="lang-label">bash</span></code></pre>
+</div></div>
+<div class="step"><div class="step-num">3</div><div class="step-body">
+<div class="step-title">Xem đầy đủ API và type signatures</div>
+<pre style="margin:6px 0"><code>busctl --user introspect \
+  org.example.Concatenator /org/example/concatenator
+<span class="cm"># → thấy Concatenate method với sig "ais" → s</span>
+<span class="lang-label">bash</span></code></pre>
+</div></div>
+<div class="step"><div class="step-num">4</div><div class="step-body">
+<div class="step-title">Mở terminal monitor realtime</div>
+<pre style="margin:6px 0"><code>busctl --user monitor org.example.Concatenator
+<span class="cm"># giữ terminal này chạy, quan sát messages</span>
+<span class="lang-label">bash</span></code></pre>
+</div></div>
+<div class="step"><div class="step-num">5</div><div class="step-body">
+<div class="step-title">Gọi thử method và kiểm tra output</div>
+<pre style="margin:6px 0"><code>busctl --user call \
+  org.example.Concatenator /org/example/concatenator \
+  org.example.Concatenator Concatenate "ais" 3 1 2 3 ":"
+<span class="cm"># → s "1:2:3"  (terminal monitor cũng hiện MethodCall + Reply + Signal)</span>
+<span class="lang-label">bash</span></code></pre>
+</div></div>
+<div class="step"><div class="step-num">6</div><div class="step-body">
+<div class="step-title">Nếu không có systemd trên embedded target</div>
+<div class="step-desc">Dùng <code>dbus-monitor</code> và <code>dbus-send</code> thay thế — cả hai đều có trong package <code>dbus</code> và không phụ thuộc systemd.</div>
+<pre style="margin:6px 0"><code>dbus-monitor --session "type='signal'"
+dbus-send --session --print-reply \
+  --dest=org.example.Concatenator \
+  /org/example/concatenator \
+  org.example.Concatenator.Concatenate \
+  array:int32:1,2,3 string:":"
+<span class="lang-label">bash</span></code></pre>
+</div></div>
+</div>
+
+<hr/>
+<section style="margin-top:32px;padding:22px;background:var(--surface);border-radius:10px;border:1px solid var(--border)">
+<div style="font-size:.8rem;color:var(--muted)">
+<strong style="color:var(--accent)">References</strong><br/>
+<a href="https://github.com/Kistler-Group/sdbus-cpp">github.com/Kistler-Group/sdbus-cpp</a> ·
+<a href="https://kistler-group.github.io/sdbus-cpp/docs/using-sdbus-c++.html">sdbus-cpp Official Docs</a> ·
+<a href="https://dbus.freedesktop.org/doc/dbus-specification.html">D-Bus Specification (freedesktop.org)</a> ·
+<a href="https://www.freedesktop.org/software/systemd/man/busctl.html">busctl(1) manpage</a> ·
+<a href="http://0pointer.net/blog/the-new-sd-bus-api-of-systemd.html">sd-bus API Overview</a><br/>
+sdbus-cpp v2.2.1 · LGPLv2.1
+</div>
+</section>
+</section>
+
+</main>
+</div>
+
+<script>
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.nav-link[href^="#"]');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const a = document.querySelector('.nav-link[href="#'+entry.target.id+'"]');
+      if (a) a.classList.add('active');
+    }
+  });
+}, { rootMargin: '-10% 0px -75% 0px' });
+sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

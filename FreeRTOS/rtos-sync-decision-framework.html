@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phân Tích &amp; Trình Bày Giải Pháp Đồng Bộ — RTOS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0e13; --bg-panel:#10151d; --bg-code:#0d1117; --bg-inline:#161d27;
+    --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.16);
+    --text:#e8ecf1; --text-soft:#93a0af; --text-dim:#5a6472;
+    --amber:#e8a33d; --amber-dim:rgba(232,163,61,.14);
+    --cyan:#52c7d4; --cyan-dim:rgba(82,199,212,.14);
+    --violet:#a78bd1; --violet-dim:rgba(167,139,209,.14);
+    --green:#7fb069; --green-dim:rgba(127,176,105,.14);
+    --danger:#e5637a;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif;margin:0;color:var(--text);}
+  p{margin:0 0 12px;}
+  a{color:inherit;text-decoration:none;}
+  code{font-family:'IBM Plex Mono',monospace;}
+  ::selection{background:var(--cyan-dim);color:var(--text);}
+  a:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:3px;}
+
+  .layout{display:flex;min-height:100vh;max-width:1280px;margin:0 auto;}
+
+  .sidebar{width:272px;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg-panel);border-right:1px solid var(--border);padding:28px 20px 40px;scrollbar-width:thin;scrollbar-color:var(--border-strong) transparent;}
+  .sidebar::-webkit-scrollbar{width:6px;}
+  .sidebar::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:3px;}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:28px;padding:0 4px;}
+  .brand-mark{width:26px;height:26px;flex-shrink:0;}
+  .brand-text{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.92rem;letter-spacing:.02em;line-height:1.15;}
+  .brand-sub{display:block;font-family:'IBM Plex Mono',monospace;font-weight:400;font-size:.66rem;color:var(--text-dim);letter-spacing:.04em;margin-top:1px;}
+  .group-label{font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin:20px 4px 8px;}
+  .group-label:first-of-type{margin-top:4px;}
+  .toc-link{display:flex;align-items:center;gap:9px;padding:7px 10px;margin:1px 0;border-radius:6px;font-size:.85rem;color:var(--text-soft);border-left:2px solid transparent;transition:background .15s,color .15s;}
+  .toc-link:hover{background:rgba(255,255,255,.04);color:var(--text);}
+  .toc-link.active{background:rgba(255,255,255,.05);color:var(--text);border-left-color:var(--cyan);}
+
+  .main{flex:1;min-width:0;padding:60px 56px 100px;max-width:840px;}
+
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.12em;color:var(--cyan);text-transform:uppercase;margin-bottom:14px;}
+  .hero h1{font-size:2.15rem;font-weight:700;letter-spacing:-.01em;margin-bottom:18px;}
+  .hero-lead{font-size:1.02rem;color:var(--text-soft);max-width:660px;margin-bottom:36px;}
+  .hero-lead strong{color:var(--text);font-weight:600;}
+
+  .flow-wrap{background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:22px 20px 14px;margin-bottom:56px;position:relative;overflow:hidden;}
+  .flow-wrap::before{content:"";position:absolute;top:-60px;left:50%;transform:translateX(-50%);width:420px;height:160px;background:radial-gradient(ellipse at center, var(--amber-dim), transparent 70%);pointer-events:none;}
+  .flow-wrap svg{position:relative;width:100%;height:auto;display:block;}
+  .flow-caption{font-size:.82rem;color:var(--text-dim);padding-top:6px;font-family:'IBM Plex Mono',monospace;line-height:1.55;}
+
+  .section-title{font-size:1.5rem;margin-bottom:6px;}
+  .section-desc{font-size:.9rem;color:var(--text-dim);margin-bottom:26px;max-width:640px;}
+
+  /* ---- step cards (framework) ---- */
+  .step-card{display:flex;gap:20px;padding:20px 0;border-bottom:1px solid var(--border);}
+  .step-card:last-child{border-bottom:none;}
+  .step-num{width:38px;height:38px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1rem;background:var(--cyan-dim);color:var(--cyan);border:1px solid rgba(82,199,212,.3);}
+  .step-card.emphasis .step-num{background:var(--amber);color:var(--bg);border-color:var(--amber);}
+  .step-body h3{font-size:1.02rem;margin-bottom:8px;}
+  .step-q{font-size:.87rem;color:var(--text-soft);margin-bottom:5px;line-height:1.55;}
+  .step-q b{color:var(--text);font-weight:600;}
+  .step-why{font-size:.85rem;color:var(--text-dim);line-height:1.55;}
+  .step-why b{color:var(--text-soft);font-weight:600;}
+  section#framework{margin-bottom:60px;}
+
+  /* ---- case study cards ---- */
+  .case-card{background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;margin-bottom:28px;overflow:hidden;scroll-margin-top:24px;}
+  .case-prompt{background:var(--bg-code);padding:20px 24px;border-bottom:1px solid var(--border);}
+  .case-prompt-label{font-family:'IBM Plex Mono',monospace;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;}
+  .case-prompt-text{font-family:'IBM Plex Mono',monospace;font-size:.87rem;color:var(--text);line-height:1.6;font-style:italic;}
+  .case-body{padding:22px 24px 24px;}
+  .case-section{margin-bottom:18px;}
+  .case-section:last-child{margin-bottom:0;}
+  .case-label{font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px;}
+  .case-section > p{font-size:.88rem;color:var(--text-soft);line-height:1.65;margin:0;}
+  .case-candidates{list-style:none;padding:0;margin:0;}
+  .case-candidates li{font-size:.87rem;color:var(--text-soft);padding:11px 0;border-bottom:1px solid var(--border);line-height:1.62;}
+  .case-candidates li:last-child{border-bottom:none;padding-bottom:0;}
+  .case-candidates li b{color:var(--text);font-weight:600;}
+  .case-conclusion{background:var(--green-dim);border:1px solid rgba(127,176,105,.28);border-radius:8px;padding:14px 18px;font-size:.87rem;color:var(--text-soft);line-height:1.65;}
+  .case-conclusion b{color:var(--green);font-weight:600;}
+
+  /* ---- interview template ---- */
+  .template-list{counter-reset:tstep;list-style:none;padding:0;margin:0 0 22px;}
+  .template-list li{counter-increment:tstep;position:relative;padding:13px 0 13px 44px;font-size:.9rem;color:var(--text-soft);border-bottom:1px solid var(--border);line-height:1.6;}
+  .template-list li:last-child{border-bottom:none;}
+  .template-list li::before{content:counter(tstep);position:absolute;left:0;top:11px;width:26px;height:26px;border-radius:50%;background:var(--cyan-dim);color:var(--cyan);font-family:'IBM Plex Mono',monospace;font-size:.75rem;display:flex;align-items:center;justify-content:center;}
+  .clarify-box{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:9px;padding:16px 20px;}
+  .clarify-label{font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:10px;}
+  .clarify-box ul{margin:0;padding-left:18px;}
+  .clarify-box li{font-size:.85rem;color:var(--text-soft);margin-bottom:7px;font-style:italic;}
+  .clarify-box li:last-child{margin-bottom:0;}
+
+  /* ---- checklist ---- */
+  .checklist{list-style:none;padding:0;margin:0;}
+  .checklist li{display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-bottom:1px solid var(--border);}
+  .checklist li:last-child{border-bottom:none;}
+  .checklist input[type=checkbox]{width:18px;height:18px;flex-shrink:0;margin-top:2px;accent-color:var(--cyan);cursor:pointer;}
+  .checklist label{font-size:.9rem;color:var(--text-soft);line-height:1.55;cursor:pointer;}
+
+  footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--border);font-size:.78rem;color:var(--text-dim);}
+
+  @media (max-width:860px){
+    .layout{flex-direction:column;}
+    .sidebar{width:100%;height:auto;position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:2px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;padding:10px 14px;border-right:none;border-bottom:1px solid var(--border-strong);}
+    .sidebar .brand,.sidebar .group-label{display:none;}
+    .sidebar nav{display:flex;gap:2px;}
+    .toc-link{white-space:nowrap;border-left:none;border-bottom:2px solid transparent;border-radius:6px 6px 0 0;}
+    .toc-link.active{border-left:none;border-bottom-color:var(--cyan);}
+    .main{padding:36px 20px 64px;}
+    .hero h1{font-size:1.55rem;}
+    .step-card{gap:14px;}
+    .case-body,.case-prompt{padding-left:18px;padding-right:18px;}
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 26 26" fill="none">
+        <path d="M2 13h5l2-7 4 14 3-10 2 3h6" stroke="#e8a33d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand-text">RTOS Sync<span class="brand-sub">Phân tích &amp; trình bày</span></span>
+    </div>
+    <nav class="toc">
+      <div class="group-label">Framework</div>
+      <a href="#framework" class="toc-link">Khung 6 bước</a>
+
+      <div class="group-label">Ví dụ minh hoạ</div>
+      <a href="#example-1" class="toc-link">VD1 — Sensor ISR tần số cao</a>
+      <a href="#example-2" class="toc-link">VD2 — Gộp log qua UART</a>
+      <a href="#example-3" class="toc-link">VD3 — Chờ nhiều điều kiện</a>
+
+      <div class="group-label">Trình bày</div>
+      <a href="#interview-template" class="toc-link">Khung trả lời phỏng vấn</a>
+      <a href="#checklist" class="toc-link">Checklist nhanh</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+
+    <div class="eyebrow">RTOS Sync · Problem-Solving Framework</div>
+    <div class="hero">
+      <h1>Phân Tích &amp; Trình Bày Giải Pháp</h1>
+      <p class="hero-lead">
+        Biết cơ chế nào tồn tại là chưa đủ. Phần khó hơn — và phần người phỏng vấn thực sự đánh giá —
+        là quy trình đi từ đề bài đến lựa chọn, và khả năng giải thích rõ ràng
+        <strong>tại sao chọn cơ chế này mà không phải cơ chế khác</strong>.
+        Khung 6 bước dưới đây, áp dụng qua 3 ví dụ thực tế.
+      </p>
+    </div>
+
+    <div class="flow-wrap">
+      <svg viewBox="0 0 640 90" xmlns="http://www.w3.org/2000/svg">
+        <line x1="40" y1="34" x2="600" y2="34" stroke="rgba(255,255,255,.14)" stroke-width="1.5"/>
+        <circle cx="40" cy="34" r="15" fill="#10151d" stroke="#52c7d4" stroke-width="2"/>
+        <text x="40" y="39" text-anchor="middle" font-family="Space Grotesk" font-weight="700" font-size="13" fill="#52c7d4">1</text>
+        <text x="40" y="68" text-anchor="middle" font-family="IBM Plex Mono" font-size="9.5" fill="#93a0af">Actors</text>
+
+        <circle cx="152" cy="34" r="15" fill="#10151d" stroke="#52c7d4" stroke-width="2"/>
+        <text x="152" y="39" text-anchor="middle" font-family="Space Grotesk" font-weight="700" font-size="13" fill="#52c7d4">2</text>
+        <text x="152" y="68" text-anchor="middle" font-family="IBM Plex Mono" font-size="9.5" fill="#93a0af">Phân loại</text>
+
+        <circle cx="264" cy="34" r="15" fill="#10151d" stroke="#52c7d4" stroke-width="2"/>
+        <text x="264" y="39" text-anchor="middle" font-family="Space Grotesk" font-weight="700" font-size="13" fill="#52c7d4">3</text>
+        <text x="264" y="68" text-anchor="middle" font-family="IBM Plex Mono" font-size="9.5" fill="#93a0af">Ràng buộc</text>
+
+        <circle cx="376" cy="34" r="15" fill="#10151d" stroke="#52c7d4" stroke-width="2"/>
+        <text x="376" y="39" text-anchor="middle" font-family="Space Grotesk" font-weight="700" font-size="13" fill="#52c7d4">4</text>
+        <text x="376" y="68" text-anchor="middle" font-family="IBM Plex Mono" font-size="9.5" fill="#93a0af">Ứng viên</text>
+
+        <circle cx="488" cy="34" r="17" fill="#e8a33d" stroke="#e8a33d" stroke-width="2"/>
+        <text x="488" y="39" text-anchor="middle" font-family="Space Grotesk" font-weight="700" font-size="13" fill="#0a0e13">5</text>
+        <text x="488" y="68" text-anchor="middle" font-family="IBM Plex Mono" font-size="9.5" fill="#e8a33d">So sánh</text>
+
+        <circle cx="600" cy="34" r="15" fill="#10151d" stroke="#52c7d4" stroke-width="2"/>
+        <text x="600" y="39" text-anchor="middle" font-family="Space Grotesk" font-weight="700" font-size="13" fill="#52c7d4">6</text>
+        <text x="600" y="68" text-anchor="middle" font-family="IBM Plex Mono" font-size="9.5" fill="#93a0af">Chốt</text>
+      </svg>
+      <div class="flow-caption">Bước 5 (so sánh trade-off) là bước hay bị bỏ qua nhất — nhưng là phần người phỏng vấn thực sự muốn nghe.</div>
+    </div>
+
+    <!-- ================= FRAMEWORK ================= -->
+    <section id="framework">
+      <h2 class="section-title">Khung 6 bước</h2>
+      <p class="section-desc">Áp dụng đúng thứ tự này — kể cả khi đang suy nghĩ thành tiếng trong phỏng vấn.</p>
+
+      <div class="step-card">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Xác định actors &amp; execution context</h3>
+          <div class="step-q"><b>Hỏi:</b> Bao nhiêu task/ISR liên quan? Quan hệ 1:1, 1:N (broadcast), N:1 (funnel), hay N:N?</div>
+          <div class="step-why"><b>Vì sao:</b> Cardinality loại ngay một số ứng viên — Task Notification chỉ dùng được cho đúng 1:1.</div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Phân loại nhu cầu</h3>
+          <div class="step-q"><b>Hỏi:</b> Đang bảo vệ tài nguyên chung, báo hiệu sự kiện, hay truyền dữ liệu? (có thể là hai nhu cầu cùng lúc)</div>
+          <div class="step-why"><b>Vì sao:</b> Bước dễ bị nhảy cóc nhất — vội chọn "dùng semaphore" mà chưa phân biệt signaling hay data transfer.</div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Ràng buộc thời gian thực &amp; tần suất</h3>
+          <div class="step-q"><b>Hỏi:</b> Có deadline cứng? Sự kiện xảy ra một lần / định kỳ / bất định? Có được phép mất dữ liệu không?</div>
+          <div class="step-why"><b>Vì sao:</b> Quyết định độ sâu queue, có cần bản FromISR, và có nên dùng "mailbox" (chỉ giữ giá trị mới nhất) hay không.</div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Liệt kê ứng viên</h3>
+          <div class="step-q"><b>Hỏi:</b> Với nhu cầu và ràng buộc ở trên, những cơ chế nào phù hợp? (thường có ít nhất 2)</div>
+          <div class="step-why"><b>Vì sao:</b> Thể hiện bạn biết nhiều lựa chọn hợp lệ, không chỉ thuộc lòng một công thức cố định.</div>
+        </div>
+      </div>
+
+      <div class="step-card emphasis">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <h3>So sánh trade-off</h3>
+          <div class="step-q"><b>Hỏi:</b> Cơ chế nào tốn RAM/CPU hơn? Cái nào có rủi ro priority inversion hoặc deadlock? Cái nào dễ audit hơn?</div>
+          <div class="step-why"><b>Vì sao:</b> Đây chính là phần "tại sao dùng cái này mà không dùng cái kia" — phần quan trọng nhất khi trình bày.</div>
+        </div>
+      </div>
+
+      <div class="step-card">
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <h3>Chốt lựa chọn + nêu đánh đổi còn lại</h3>
+          <div class="step-q"><b>Hỏi:</b> Lựa chọn cuối cùng là gì? Còn edge case hoặc rủi ro nào chưa xử lý?</div>
+          <div class="step-why"><b>Vì sao:</b> Không giải pháp nào hoàn hảo — chủ động nêu đánh đổi còn lại thể hiện sự chín chắn kỹ thuật.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= EXAMPLE 1 ================= -->
+    <section id="example-1" class="case-card">
+      <div class="case-prompt">
+        <div class="case-prompt-label">Đề bài</div>
+        <div class="case-prompt-text">"Một ISR đọc cảm biến ở tần số 1kHz (mỗi 1ms một mẫu). Một task xử lý cần nhận đủ từng mẫu để tính toán — không được bỏ lỡ mẫu nào."</div>
+      </div>
+      <div class="case-body">
+        <div class="case-section">
+          <div class="case-label">Phân tích nhanh</div>
+          <p>1 ISR → 1 task (1:1). Nhu cầu vừa là báo hiệu ("có mẫu mới") vừa là truyền dữ liệu (giá trị mẫu) — không chỉ là cờ hiệu đơn thuần. Tần suất cao, đều đặn, và ràng buộc rõ: không được mất mẫu.</p>
+        </div>
+        <div class="case-section">
+          <div class="case-label">Ứng viên &amp; so sánh</div>
+          <ul class="case-candidates">
+            <li><b>Task Notification (eSetValueWithOverwrite):</b> nhanh, tốn ít RAM — nhưng chỉ giữ được 1 giá trị tại một thời điểm. Nếu task xử lý trễ dù chỉ một chu kỳ, mẫu trước đó bị ghi đè mất.</li>
+            <li><b>Queue (depth N):</b> mỗi mẫu được giữ nguyên trong hàng đợi tới khi task tiêu thụ. Chọn N đủ lớn để hấp thụ jitter giữa tốc độ ISR đẩy vào và tốc độ task xử lý.</li>
+          </ul>
+        </div>
+        <div class="case-conclusion"><b>Chọn:</b> Queue, depth ví dụ 16–32. Task Notification bị loại vì ngữ nghĩa "ghi đè" mâu thuẫn trực tiếp với ràng buộc "không mất mẫu" trong đề — đây là ví dụ điển hình của việc bám sát một ràng buộc cụ thể để loại ứng viên, thay vì chọn theo "cơ chế nhanh nhất". Đánh đổi còn lại: nếu task xử lý trễ liên tục và queue đầy, cần nêu rõ chính sách xử lý (drop mẫu cũ nhất, hay tăng ưu tiên task xử lý).</div>
+      </div>
+    </section>
+
+    <!-- ================= EXAMPLE 2 ================= -->
+    <section id="example-2" class="case-card">
+      <div class="case-prompt">
+        <div class="case-prompt-label">Đề bài</div>
+        <div class="case-prompt-text">"Nhiều task cùng ghi log ra một UART. Làm sao đảm bảo log không bị xen lẫn giữa các task, và không làm task ưu tiên cao bị trễ đáng kể?"</div>
+      </div>
+      <div class="case-body">
+        <div class="case-section">
+          <div class="case-label">Phân tích nhanh</div>
+          <p>N task → 1 tài nguyên (UART), tức N:1. Nhu cầu chính là loại trừ tương hỗ, nhưng có ràng buộc phụ quan trọng: task ưu tiên cao không được block lâu bởi việc ghi UART (tốc độ chậm, có thể tốn hàng chục ms cho một chuỗi dài).</p>
+        </div>
+        <div class="case-section">
+          <div class="case-label">Ứng viên &amp; so sánh</div>
+          <ul class="case-candidates">
+            <li><b>Mutex quanh lệnh ghi UART:</b> đơn giản, ít code. Nhưng task gọi log phải chờ tới khi UART hiện tại rảnh — nếu task khác đang giữ mutex để ghi chuỗi dài, task ưu tiên cao vẫn phải chờ hết chuỗi đó (priority inheritance chỉ đảm bảo "bounded", không đảm bảo "nhanh").</li>
+            <li><b>Gatekeeper Task:</b> task gọi log chỉ đẩy message vào Queue rồi return gần như ngay lập tức — không chờ UART hoàn tất. Một task riêng tiêu thụ queue và ghi UART tuần tự.</li>
+          </ul>
+        </div>
+        <div class="case-conclusion"><b>Chọn:</b> Gatekeeper Task, vì ràng buộc "không làm task ưu tiên cao bị trễ đáng kể" loại bỏ Mutex — với Mutex, thời gian chờ tỉ lệ thuận với độ dài chuỗi log của task đang giữ lock. Gatekeeper tách hoàn toàn việc "gửi log" (nhanh) khỏi việc "ghi UART" (chậm). Đánh đổi: tốn thêm RAM cho một task và một queue.</div>
+      </div>
+    </section>
+
+    <!-- ================= EXAMPLE 3 ================= -->
+    <section id="example-3" class="case-card">
+      <div class="case-prompt">
+        <div class="case-prompt-label">Đề bài</div>
+        <div class="case-prompt-text">"Task chính chỉ được khởi động pipeline xử lý sau khi CẢ HAI điều kiện xảy ra: (1) nhận được config qua UART, (2) sensor calibrate xong. Hai điều kiện hoàn thành độc lập, từ hai task khác nhau, tại thời điểm bất kỳ."</div>
+      </div>
+      <div class="case-body">
+        <div class="case-section">
+          <div class="case-label">Phân tích nhanh</div>
+          <p>2 nguồn độc lập → 1 task đích, chờ điều kiện AND — cần tổ hợp logic giữa nhiều nguồn, không phải N:1 đơn giản. Mỗi điều kiện chỉ xảy ra một lần.</p>
+        </div>
+        <div class="case-section">
+          <div class="case-label">Ứng viên &amp; so sánh</div>
+          <ul class="case-candidates">
+            <li><b>Tự chế bằng 2 binary semaphore + biến đếm thủ công:</b> hoạt động được, nhưng ngữ nghĩa AND phải tự lắp ráp bằng tay — dễ sai nếu logic phức tạp hơn (vd cần AND/OR hỗn hợp).</li>
+            <li><b>Event Group:</b> <code>xEventGroupWaitBits()</code> với <code>xWaitForAllBits = pdTRUE</code> biểu diễn đúng ngữ nghĩa AND trong một lệnh gọi — code ngắn và rõ ràng hơn hẳn.</li>
+          </ul>
+        </div>
+        <div class="case-conclusion"><b>Chọn:</b> Event Group — vì đây chính xác là bài toán Event Group được thiết kế cho: chờ tổ hợp nhiều điều kiện từ nhiều nguồn độc lập. Nhận ra "công cụ được thiết kế sẵn cho đúng hình dạng bài toán này" là một điểm cộng lớn khi phỏng vấn, thay vì tự lắp ráp một giải pháp tương đương từ các mảnh ghép cấp thấp hơn.</div>
+      </div>
+    </section>
+
+    <!-- ================= INTERVIEW TEMPLATE ================= -->
+    <section id="interview-template">
+      <h2 class="section-title">Khung trả lời khi phỏng vấn</h2>
+      <p class="section-desc">Cấu trúc câu trả lời thành tiếng theo thứ tự này — không cần nghĩ ra đáp án hoàn chỉnh mới bắt đầu nói.</p>
+
+      <ol class="template-list">
+        <li>Diễn đạt lại bài toán bằng lời của mình, hỏi làm rõ nếu thiếu thông tin.</li>
+        <li>Nêu bài toán thuộc nhu cầu nào (loại trừ tương hỗ / báo hiệu / truyền dữ liệu).</li>
+        <li>Đề xuất 1–2 cơ chế ứng viên.</li>
+        <li>So sánh ngắn gọn trade-off (tốc độ, RAM, rủi ro).</li>
+        <li>Chốt lựa chọn + lý do.</li>
+        <li>Nếu còn thời gian: nêu edge case hoặc hướng mở rộng.</li>
+      </ol>
+
+      <div class="clarify-box">
+        <div class="clarify-label">Câu hỏi làm rõ hay dùng</div>
+        <ul>
+          <li>"Tần suất sự kiện khoảng bao nhiêu?"</li>
+          <li>"Có bắt buộc không được mất dữ liệu không?"</li>
+          <li>"Có bao nhiêu task cần biết về sự kiện này — chỉ 1 hay nhiều?"</li>
+          <li>"Có ràng buộc real-time cứng không?"</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ================= CHECKLIST ================= -->
+    <section id="checklist">
+      <h2 class="section-title">Checklist nhanh</h2>
+      <p class="section-desc">Rà lại trước khi chốt câu trả lời — hoặc trước khi bước vào phỏng vấn.</p>
+      <ul class="checklist">
+        <li><input type="checkbox" id="c1"><label for="c1">Đã hỏi rõ tần suất / cardinality / ràng buộc real-time chưa?</label></li>
+        <li><input type="checkbox" id="c2"><label for="c2">Đã xác định đúng nhu cầu (loại trừ tương hỗ / báo hiệu / truyền dữ liệu)?</label></li>
+        <li><input type="checkbox" id="c3"><label for="c3">Đã nêu ít nhất 2 ứng viên, không chỉ 1?</label></li>
+        <li><input type="checkbox" id="c4"><label for="c4">Đã so sánh trade-off cụ thể (không chỉ nói "cái này tốt hơn")?</label></li>
+        <li><input type="checkbox" id="c5"><label for="c5">Đã chốt lựa chọn rõ ràng, kèm lý do?</label></li>
+        <li><input type="checkbox" id="c6"><label for="c6">Đã chủ động nêu một đánh đổi hoặc edge case còn lại?</label></li>
+      </ul>
+    </section>
+
+    <footer>Companion cho reference "Đồng Bộ Hoá Giữa Các Task" — dùng khung này để áp dụng đúng cơ chế trong bối cảnh cụ thể, thay vì tra bảng máy móc.</footer>
+
+  </main>
+</div>
+
+<script>
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc-link'));
+    var sections = links
+      .map(function (l) { return document.querySelector(l.getAttribute('href')); })
+      .filter(Boolean);
+
+    if (!sections.length || !('IntersectionObserver' in window)) return;
+
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        var link = links[sections.indexOf(entry.target)];
+        if (!link) return;
+        if (entry.isIntersecting) {
+          links.forEach(function (l) { l.classList.remove('active'); });
+          link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-15% 0px -75% 0px', threshold: 0 });
+
+    sections.forEach(function (s) { observer.observe(s); });
+  })();
+</script>
+</body>
+</html>
