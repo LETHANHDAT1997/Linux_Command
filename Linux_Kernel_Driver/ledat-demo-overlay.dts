@@ -1,0 +1,70 @@
+/*
+ * Overlay I2C đầy đủ — mỗi loại property trong bảng so sánh trước đó
+ * có ít nhất 1 ví dụ: số, mảng, chuỗi, boolean, gpio, irq, clock,
+ * regulator, phandle tổng quát.
+ *
+ * &gpio và &i2c1 có sẵn trong DT gốc của board (Raspberry Pi).
+ * &clk_osc, &reg_3v3, &aux_ctrl là ví dụ minh hoạ — giả định đã tồn tại
+ * sẵn ở đâu đó trong cây DT gốc; overlay chỉ tham chiếu tới, không tự
+ * định nghĩa lại các node đó.
+ */
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	/* Root compatible: dùng để kiểm tra độ tương thích với board/machine: of_machine_is_compatible("brcm,bcm2835") */
+	compatible = "brcm,bcm2835";
+
+	fragment@0 {
+		target = <&i2c1>;
+		__overlay__ {
+			/* I2C Subsystem đọc để xác định số cell cho address: of_n_addr_cells(np) */
+			#address-cells = <1>;
+			/* I2C Subsystem đọc để xác định số cell cho size: of_n_size_cells(np) */
+			#size-cells = <0>;
+			/* Kernel kiểm tra node có enable không: of_device_is_available(np) */
+			status = "okay";
+
+			demo0: demo-device@50 {
+				/* Khai báo tên thiết bị match với struct of_device_id trong driver (Kernel tự match tự động hoặc kiểm tra bằng of_device_is_compatible(np, "...")) */
+				compatible = "ledat,demo-dev";
+				/* Địa chỉ I2C: I2C core tự parse thành client->addr. Đọc thủ công: of_property_read_u32(np, "reg", &val) */
+				reg = <0x50>;
+				/* Trạng thái node: of_device_is_available(np) -> trả về true nếu "okay" hoặc "ok" */
+				status = "okay";
+
+				/* Số nguyên 32-bit đơn: of_property_read_u32(np, "sample-rate-hz", &val) hoặc device_property_read_u32(dev, "sample-rate-hz", &val) */
+				sample-rate-hz = <1000>;
+
+				/* Mảng số nguyên 32-bit: of_property_read_u32_array(np, "threshold-levels", array, count) hoặc device_property_read_u32_array(...) */
+				threshold-levels = <10 20 30>;
+
+				/* Chuỗi kí tự (string): of_property_read_string(np, "label", &str_ptr) hoặc device_property_read_string(...) */
+				label = "demo-sensor-0";
+
+				/* Cờ boolean (chỉ cần sự tồn tại của prop): of_property_read_bool(np, "wakeup-source") hoặc device_property_read_bool(...) */
+				wakeup-source;
+
+				/* Chân GPIO: devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW) (gpiod framework tự loại bỏ -gpios) hoặc legacy: of_get_named_gpio(np, "reset-gpios", 0) */
+				reset-gpios = <&gpio 17 1>; /* 1 = GPIO_ACTIVE_LOW */
+
+				/* Chỉ định node cha quản lý ngắt (GPIO controller) */
+				interrupt-parent = <&gpio>;
+				/* Cấu hình ngắt: I2C core tự parse vào client->irq. Đọc thủ công: of_irq_get(np, 0) hoặc platform_get_irq(pdev, 0) */
+				interrupts = <27 2>; /* 2 = IRQ_TYPE_EDGE_FALLING */
+
+				/* Khai báo clock: devm_clk_get(dev, "ext-clk") (kết hợp với clock-names) hoặc of_clk_get(np, 0) */
+				clocks = <&clk_osc 0>;
+				/* Định danh tên clock để dùng với devm_clk_get(dev, "ext-clk") */
+				clock-names = "ext-clk";
+
+				/* Nguồn điện (Regulator): devm_regulator_get(dev, "vdd") (Regulator framework tự động nối thêm "-supply") */
+				vdd-supply = <&reg_3v3>;
+
+				/* Phandle trỏ tới 1 node khác: of_parse_phandle(np, "ledat,aux-phandle", 0) -> trả về pointer struct device_node * */
+				ledat,aux-phandle = <&aux_ctrl>;
+			};
+		};
+	};
+};

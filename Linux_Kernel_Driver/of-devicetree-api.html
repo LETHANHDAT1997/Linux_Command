@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>of_* API — đọc Device Tree trong driver kernel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<style>
+:root{
+  --bg:#11141b;
+  --bg-elev:#171b24;
+  --code-bg:#1c2130;
+  --border:#262c3a;
+  --text:#dde1ea;
+  --text-dim:#838da3;
+  --copper:#cf9a5c;
+  --phosphor:#5fae8f;
+  --err:#c9807e;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:'IBM Plex Sans',-apple-system,sans-serif;
+  line-height:1.7;
+  font-size:16px;
+  display:flex;
+  min-height:100vh;
+}
+.tree-nav{
+  width:272px;
+  flex-shrink:0;
+  background:var(--bg-elev);
+  border-right:1px solid var(--border);
+  padding:28px 0;
+  position:sticky;
+  top:0;
+  align-self:flex-start;
+  height:100vh;
+  overflow-y:auto;
+}
+.tree-nav .brand{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:13px;
+  color:var(--copper);
+  padding:0 24px 18px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:14px;
+}
+.tree-nav ul{list-style:none;margin:0;padding:0;font-family:'IBM Plex Mono',monospace;font-size:13px;}
+.tree-nav li{white-space:pre;}
+.tree-glyph{color:var(--text-dim);opacity:.45;white-space:pre;}
+.tree-nav .branch{display:block;padding:5px 24px 5px 4px;color:var(--text-dim);}
+.tree-nav a{
+  display:block;
+  padding:5px 24px 5px 4px;
+  color:var(--text-dim);
+  text-decoration:none;
+  border-left:2px solid transparent;
+  transition:color .15s,border-color .15s;
+}
+.tree-nav a:hover,.tree-nav a.active{color:var(--text);border-left-color:var(--copper);}
+
+main{flex:1;min-width:0;padding:48px 56px 100px;max-width:840px;}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--copper);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;}
+h1{font-weight:600;font-size:27px;margin:0 0 14px;letter-spacing:-.01em;}
+.lede{color:var(--text-dim);font-size:16px;max-width:62ch;margin:0 0 24px;}
+.lede code{}
+
+.dt-frame{background:var(--bg-elev);border:1px solid var(--border);border-left:3px solid var(--copper);border-radius:4px;padding:18px 22px;margin-bottom:40px;}
+.dt-frame pre{margin:0;background:transparent!important;border:none;padding:0;}
+.callout{margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);font-size:13.5px;color:var(--text-dim);}
+
+.lookup{width:100%;border-collapse:collapse;font-size:13.5px;margin:0 0 48px;}
+.lookup caption{text-align:left;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;}
+.lookup th{text-align:left;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;padding:8px 14px 8px 0;border-bottom:1px solid var(--border);}
+.lookup td{padding:8px 14px 8px 0;border-bottom:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--copper);}
+.lookup td:last-child{font-family:'IBM Plex Sans',sans-serif;color:var(--text-dim);}
+
+table.cmp{width:100%;border-collapse:collapse;font-size:13px;margin:0 0 8px;}
+table.cmp th{text-align:left;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;padding:9px 12px;border-bottom:1px solid var(--border);background:var(--bg-elev);}
+table.cmp td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+table.cmp td:first-child{color:var(--text-dim);}
+table.cmp td:last-child{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-dim);white-space:nowrap;}
+table.cmp tr:hover td{background:var(--bg-elev);}
+
+section{margin:52px 0;scroll-margin-top:24px;}
+section h2{font-weight:600;font-size:19px;margin:0 0 8px;display:flex;align-items:baseline;gap:10px;}
+section h2 .tag{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--text-dim);font-weight:400;}
+section > p.desc{color:var(--text-dim);margin:0 0 18px;max-width:64ch;font-size:14.5px;}
+
+.reg-card{background:var(--bg-elev);border:1px solid var(--border);border-radius:4px;margin-bottom:14px;overflow:hidden;}
+.reg-sig{font-family:'IBM Plex Mono',monospace;font-size:12.5px;padding:10px 16px;background:var(--code-bg);border-bottom:1px solid var(--border);color:var(--text);overflow-x:auto;white-space:pre;}
+.reg-body{padding:14px 16px;}
+.reg-body p{font-size:14px;color:var(--text-dim);margin:0 0 10px;}
+.reg-body p:last-child{margin-bottom:0;}
+.ret{font-family:'IBM Plex Mono',monospace;font-size:12px;}
+.ret .ok{color:var(--phosphor);}
+.ret .err{color:var(--err);}
+
+pre{background:var(--code-bg)!important;border:1px solid var(--border);border-radius:4px;padding:13px 16px;overflow-x:auto;font-size:13px;margin:10px 0;}
+pre code.hljs{background:transparent!important;padding:0!important;font-family:'IBM Plex Mono',monospace;}
+code{font-family:'IBM Plex Mono',monospace;font-size:.9em;}
+:not(pre)>code{background:var(--bg-elev);padding:1px 6px;border-radius:3px;color:var(--copper);}
+
+.note{background:var(--bg-elev);border-left:3px solid var(--phosphor);padding:12px 16px;border-radius:0 4px 4px 0;font-size:14px;color:var(--text-dim);margin:14px 0;}
+.note strong{color:var(--text);}
+
+.closing{margin-top:64px;padding-top:20px;border-top:1px solid var(--border);font-size:13.5px;color:var(--text-dim);}
+
+@media (max-width:820px){
+  body{flex-direction:column;}
+  .tree-nav{width:100%;height:auto;position:relative;border-right:none;border-bottom:1px solid var(--border);}
+  main{padding:32px 20px 72px;max-width:100%;}
+}
+</style>
+</head>
+<body>
+
+<nav class="tree-nav">
+  <div class="brand">device_node *np</div>
+  <ul>
+    <li><a href="#compare" data-nav><span class="tree-glyph">├── </span>bảng so sánh</a></li>
+    <li><a href="#of-node" data-nav><span class="tree-glyph">├── </span>of_node</a></li>
+    <li><span class="branch"><span class="tree-glyph">├── </span>property/</span></li>
+    <li><a href="#prop-num" data-nav><span class="tree-glyph">│   ├── </span>số &amp; mảng</a></li>
+    <li><a href="#prop-str" data-nav><span class="tree-glyph">│   ├── </span>chuỗi</a></li>
+    <li><a href="#prop-bool" data-nav><span class="tree-glyph">│   └── </span>boolean</a></li>
+    <li><span class="branch"><span class="tree-glyph">├── </span>tài nguyên/</span></li>
+    <li><a href="#gpio" data-nav><span class="tree-glyph">│   ├── </span>gpio</a></li>
+    <li><a href="#irq" data-nav><span class="tree-glyph">│   ├── </span>irq</a></li>
+    <li><a href="#clock" data-nav><span class="tree-glyph">│   └── </span>clock &amp; power</a></li>
+    <li><a href="#phandle" data-nav><span class="tree-glyph">├── </span>phandle</a></li>
+    <li><a href="#match-data" data-nav><span class="tree-glyph">├── </span>match_data</a></li>
+    <li><a href="#of-platform" data-nav><span class="tree-glyph">├── </span>of_platform_*</a></li>
+    <li><a href="#applied" data-nav><span class="tree-glyph">└── </span>áp dụng: MPU6050</a></li>
+  </ul>
+</nav>
+
+<main>
+  <div class="eyebrow">device tree api reference</div>
+  <h1>Đọc dữ liệu từ Device Tree trong driver kernel</h1>
+  <p class="lede">Họ hàm <code>of_*</code> mà driver dùng để lấy thông tin từ node device tree, gọi bên trong <code>probe()</code> — khác với <code>of_platform_*</code>, chuyện đó nằm ở cuối trang.</p>
+
+  <div class="dt-frame">
+<pre><code>mpu6050@68 {
+    compatible = "ledat,mpu6050";
+    reg = &lt;0x68&gt;;
+    invensense,gyro-range = &lt;500&gt;;
+};</code></pre>
+    <div class="callout">Node này chính là thứ nằm sau <code>np</code> trong mọi ví dụ bên dưới — <code>client-&gt;dev.of_node</code> trỏ thẳng vào đây.</div>
+  </div>
+
+  <section id="compare" style="margin-top:0;">
+    <h2>bảng so sánh <span class="tag">DT khai gì → driver lấy bằng hàm nào</span></h2>
+    <p class="desc">Cột cuối phân biệt driver <strong style="color:var(--text)">lá</strong> (thiết bị cuối như MPU6050) và driver <strong style="color:var(--copper)">bus</strong> (driver đứng vai cha của các node con — I2C mux, MFD, bridge...).</p>
+    <table class="cmp">
+      <tr><th>device tree khai gì</th><th>driver lấy bằng hàm nào</th><th>ai gọi</th></tr>
+      <tr><td><code>compatible = "...";</code></td><td>tự khớp qua <code>of_match_table</code>, không gọi hàm</td><td>lá / bus</td></tr>
+      <tr><td><code>reg = &lt;0x68&gt;;</code> (trên bus I2C)</td><td><code>client-&gt;addr</code> — I2C core tự parse</td><td>lá</td></tr>
+      <tr><td><code>sample-rate = &lt;1000&gt;;</code></td><td><code>of_property_read_u32()</code> (+u8/u16/u64)</td><td>lá</td></tr>
+      <tr><td><code>ranges = &lt;2 4 8&gt;;</code></td><td><code>of_property_read_u32_array()</code> / <code>_index()</code></td><td>lá</td></tr>
+      <tr><td><code>label = "sensor0";</code></td><td><code>of_property_read_string()</code></td><td>lá</td></tr>
+      <tr><td><code>wakeup-source;</code> (cờ, không giá trị)</td><td><code>of_property_read_bool()</code></td><td>lá</td></tr>
+      <tr><td><code>reset-gpios = &lt;&amp;gpio 17 ...&gt;;</code></td><td><code>devm_gpiod_get()</code></td><td>lá</td></tr>
+      <tr><td><code>interrupts = &lt;...&gt;;</code></td><td><code>client-&gt;irq</code> (I2C tự điền) hoặc <code>of_irq_get()</code></td><td>lá</td></tr>
+      <tr><td><code>clocks = &lt;&amp;osc 0&gt;;</code></td><td><code>devm_clk_get()</code></td><td>lá</td></tr>
+      <tr><td><code>vdd-supply = &lt;&amp;reg&gt;;</code></td><td><code>devm_regulator_get()</code></td><td>lá</td></tr>
+      <tr><td><code>xxx = &lt;&amp;other_node&gt;;</code> (phandle bất kỳ)</td><td><code>of_parse_phandle()</code> / <code>_with_args()</code></td><td>lá / bus</td></tr>
+      <tr><td>nhiều <code>compatible</code> cho các biến thể chip</td><td><code>of_device_get_match_data()</code></td><td>lá</td></tr>
+      <tr><td>node con bên trong node của chính driver</td><td><code>of_platform_populate()</code> / <code>_default_populate()</code></td><td><strong style="color:var(--copper)">bus</strong></td></tr>
+      <tr><td>1 node con cụ thể, tạo thủ công không đệ quy</td><td><code>of_platform_device_create()</code></td><td><strong style="color:var(--copper)">bus</strong></td></tr>
+      <tr><td>tìm 1 node bất kỳ trong cả cây theo compatible</td><td><code>of_find_compatible_node()</code></td><td><strong style="color:var(--copper)">bus</strong></td></tr>
+      <tr><td>duyệt tay qua node con, chỉ đọc không tạo device</td><td><code>for_each_child_of_node()</code></td><td><strong style="color:var(--copper)">bus</strong></td></tr>
+    </table>
+  </section>
+
+  <table class="lookup">
+    <caption>tra cứu nhanh — header cần include</caption>
+    <tr><th>họ hàm</th><th>header</th></tr>
+    <tr><td>of_property_read_*</td><td>quá trình đọc property (số, chuỗi, mảng, boolean)</td></tr>
+    <tr><td>&lt;linux/of.h&gt;</td><td>của tất cả of_property_read_* và of_parse_phandle*</td></tr>
+    <tr><td>&lt;linux/gpio/consumer.h&gt;</td><td>devm_gpiod_get (khuyến nghị)</td></tr>
+    <tr><td>&lt;linux/of_gpio.h&gt;</td><td>of_get_named_gpio (cũ, tránh dùng cho code mới)</td></tr>
+    <tr><td>&lt;linux/of_irq.h&gt;</td><td>of_irq_get</td></tr>
+    <tr><td>&lt;linux/clk.h&gt;</td><td>devm_clk_get</td></tr>
+    <tr><td>&lt;linux/regulator/consumer.h&gt;</td><td>devm_regulator_get</td></tr>
+    <tr><td>&lt;linux/of_device.h&gt;</td><td>of_device_get_match_data</td></tr>
+  </table>
+
+  <section id="of-node">
+    <h2>of_node <span class="tag">bắt đầu từ đâu</span></h2>
+    <p class="desc">Với driver I2C client (như MPU6050), <code>device_node</code> không cần tự đi tìm — bus core đã gán sẵn vào <code>client-&gt;dev.of_node</code> lúc match compatible thành công.</p>
+    <pre><code class="language-c">#include &lt;linux/of.h&gt;
+
+static int mpu6050_probe(struct i2c_client *client)
+{
+    struct device_node *np = client-&gt;dev.of_node;
+
+    if (!np)
+        return -ENODEV; /* driver này chỉ hỗ trợ instantiate qua DT */
+    ...
+}</code></pre>
+  </section>
+
+  <section id="prop-num">
+    <h2>property — số &amp; mảng</h2>
+    <p class="desc">Họ hàm phổ biến nhất. Đọc một số nguyên (hoặc mảng số) khai trong DT, có fallback về mặc định nếu property không tồn tại.</p>
+    <div class="reg-card">
+      <div class="reg-sig">int of_property_read_u32(const struct device_node *np, const char *name, u32 *out);</div>
+      <div class="reg-body">
+        <p>Có thêm bản <code>_u8</code> / <code>_u16</code> / <code>_u64</code> cùng chữ ký, khác kiểu dữ liệu ra.</p>
+        <pre><code class="language-c">u32 val;
+int ret = of_property_read_u32(np, "sample-rate-hz", &amp;val);
+if (ret)
+    val = 1000; /* mặc định nếu DT không khai */</code></pre>
+        <p class="ret"><span class="ok">0</span> = thành công &nbsp;·&nbsp; <span class="err">-EINVAL</span> = không có property &nbsp;·&nbsp; <span class="err">-EOVERFLOW</span> = sai kích thước</p>
+      </div>
+    </div>
+    <div class="reg-card">
+      <div class="reg-sig">int of_property_read_u32_array(const struct device_node *np, const char *name, u32 *out, size_t sz);</div>
+      <div class="reg-body">
+        <p>Đọc cả mảng cùng lúc. Nếu chỉ cần một phần tử theo vị trí, dùng <code>of_property_read_u32_index(np, name, index, &amp;out)</code> thay vì đọc hết rồi tự index.</p>
+        <pre><code class="language-c">u32 ranges[3];
+of_property_read_u32_array(np, "accel-ranges", ranges, 3);</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="prop-str">
+    <h2>property — chuỗi</h2>
+    <div class="reg-card">
+      <div class="reg-sig">int of_property_read_string(const struct device_node *np, const char *name, const char **out);</div>
+      <div class="reg-body">
+        <p>Con trỏ <code>out</code> trỏ thẳng vào vùng nhớ của device tree blob — không cần free, nhưng cũng không được sửa.</p>
+        <pre><code class="language-c">const char *mode;
+of_property_read_string(np, "power-mode", &amp;mode);</code></pre>
+        <p>Property kiểu danh sách chuỗi thì dùng <code>of_property_read_string_index()</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="prop-bool">
+    <h2>property — boolean</h2>
+    <div class="reg-card">
+      <div class="reg-sig">bool of_property_read_bool(const struct device_node *np, const char *name);</div>
+      <div class="reg-body">
+        <p>Khác hẳn nhóm trên — trả thẳng <code>bool</code>, không qua tham số ra. Chỉ cần property tồn tại (không cần <code>= &lt;...&gt;</code>) là <code>true</code>, dùng cho property kiểu cờ.</p>
+        <pre><code class="language-c">bool wakeup = of_property_read_bool(np, "wakeup-source");</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="gpio">
+    <h2>tài nguyên — gpio</h2>
+    <div class="reg-card">
+      <div class="reg-sig">struct gpio_desc *devm_gpiod_get(struct device *dev, const char *con_id, enum gpiod_flags flags);</div>
+      <div class="reg-body">
+        <p><code>con_id</code> khớp với tiền tố property trong DT — <code>"reset"</code> ứng với <code>reset-gpios</code>.</p>
+        <pre><code class="language-c">#include &lt;linux/gpio/consumer.h&gt;
+
+struct gpio_desc *rst = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);</code></pre>
+        <p>DT tương ứng: <code>reset-gpios = &lt;&amp;gpio 17 GPIO_ACTIVE_LOW&gt;;</code></p>
+      </div>
+    </div>
+    <div class="note"><strong>Hàm cũ hay gặp trong code cũ:</strong> <code>of_get_named_gpio(np, "reset-gpios", 0)</code> từ <code>&lt;linux/of_gpio.h&gt;</code>, trả về số GPIO thô kiểu <code>int</code>. Đã lỗi thời — driver mới nên dùng <code>gpiod</code> ở trên.</div>
+  </section>
+
+  <section id="irq">
+    <h2>tài nguyên — irq</h2>
+    <div class="reg-card">
+      <div class="reg-sig">int of_irq_get(struct device_node *np, int index);</div>
+      <div class="reg-body">
+        <pre><code class="language-c">#include &lt;linux/of_irq.h&gt;
+
+int irq = of_irq_get(np, 0);
+if (irq == -EPROBE_DEFER)
+    return irq; /* interrupt controller chưa sẵn sàng */</code></pre>
+      </div>
+    </div>
+    <div class="note">Riêng driver I2C: nếu node có <code>interrupts = &lt;...&gt;;</code>, I2C core tự điền sẵn <code>client-&gt;irq</code> — thường chỉ cần dùng thẳng <code>client-&gt;irq</code>, không phải gọi <code>of_irq_get()</code> thủ công. Đây chính là con đường để chuyển driver MPU6050 từ đọc theo chu kỳ (polling) sang đọc khi có ngắt từ chân INT.</div>
+  </section>
+
+  <section id="clock">
+    <h2>tài nguyên — clock &amp; power</h2>
+    <div class="reg-card">
+      <div class="reg-sig">struct clk *devm_clk_get(struct device *dev, const char *id);
+struct regulator *devm_regulator_get(struct device *dev, const char *id);</div>
+      <div class="reg-body">
+        <pre><code class="language-c">#include &lt;linux/clk.h&gt;
+#include &lt;linux/regulator/consumer.h&gt;
+
+struct clk *clk = devm_clk_get(dev, "ext-clk");
+struct regulator *vdd = devm_regulator_get(dev, "vdd");</code></pre>
+        <p>DT tương ứng: <code>clocks = &lt;&amp;osc 0&gt;; clock-names = "ext-clk";</code> và <code>vdd-supply = &lt;&amp;reg_3v3&gt;;</code></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="phandle">
+    <h2>phandle <span class="tag">tham chiếu tới node khác</span></h2>
+    <div class="reg-card">
+      <div class="reg-sig">struct device_node *of_parse_phandle(const struct device_node *np, const char *name, int index);</div>
+      <div class="reg-body">
+        <pre><code class="language-c">struct device_node *tgt = of_parse_phandle(np, "some-ref", 0);</code></pre>
+        <p>Property kiểu tham chiếu <code>&lt;&amp;node&gt;</code> sang node khác trong cây. Nếu phandle có kèm cell tham số (kiểu <code>interrupts-extended</code>, <code>pinctrl</code>), dùng <code>of_parse_phandle_with_args()</code> thay cho bản đơn giản này.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="match-data">
+    <h2>match_data <span class="tag">một driver, nhiều biến thể chip</span></h2>
+    <p class="desc">Gắn một payload <code>.data</code> riêng cho từng compatible string, rồi lấy lại đúng payload đó trong <code>probe()</code> — tránh phải <code>if/else</code> theo compatible thủ công.</p>
+    <pre><code class="language-c">#include &lt;linux/of_device.h&gt;
+
+static const struct of_device_id mpu_of_match[] = {
+    { .compatible = "ledat,mpu6050", .data = &amp;mpu6050_cfg },
+    { .compatible = "ledat,mpu9250", .data = &amp;mpu9250_cfg },
+    { }
+};
+
+const struct mpu_cfg *cfg = of_device_get_match_data(&amp;client-&gt;dev);</code></pre>
+  </section>
+
+  <section id="of-platform">
+    <h2>of_platform_* <span class="tag">driver tầng bus / bridge</span></h2>
+    <p class="desc">Họ này <strong style="color:var(--text)">không đọc property</strong> — nó <em>tạo device</em>. Dùng khi driver của bạn đứng vai cha của các node con trong DT: driver bus/bridge (I2C mux, SPI bridge), MFD (1 chip vật lý expose nhiều chức năng con — PMIC có regulator + RTC + GPIO expander chẳng hạn), hoặc node kiểu <code>simple-bus</code>.</p>
+    <div class="reg-card">
+      <div class="reg-sig">int of_platform_populate(struct device_node *root, const struct of_device_id *matches, const struct of_dev_auxdata *lookup, struct device *parent);</div>
+      <div class="reg-body">
+        <p>Duyệt các node con của <code>root</code>, node nào compatible khớp <code>matches</code> thì tạo <code>platform_device</code> và đăng ký vào driver core — driver của node con đó lại được match &amp; probe() y hệt quy trình MPU6050, chỉ là lồng thêm một tầng.</p>
+        <pre><code class="language-c">of_platform_populate(dev-&gt;of_node, NULL, NULL, dev);</code></pre>
+        <p><code>matches</code> thường truyền <code>of_default_bus_match_table</code>, hoặc <code>NULL</code> nếu chỉ populate đúng node top-level.</p>
+      </div>
+    </div>
+    <div class="reg-card">
+      <div class="reg-sig">int of_platform_default_populate(struct device_node *root, const struct of_dev_auxdata *lookup, struct device *parent);</div>
+      <div class="reg-body"><p>Bản rút gọn của hàm trên, tự dùng sẵn <code>of_default_bus_match_table</code>.</p></div>
+    </div>
+    <div class="reg-card">
+      <div class="reg-sig">struct platform_device *of_platform_device_create(struct device_node *np, const char *bus_id, struct device *parent);</div>
+      <div class="reg-body"><p>Tạo trực tiếp 1 <code>platform_device</code> cho đúng 1 node cụ thể — không duyệt đệ quy như <code>populate</code>, dùng khi biết chính xác node nào cần tạo.</p></div>
+    </div>
+    <div class="reg-card">
+      <div class="reg-sig">void of_platform_depopulate(struct device *parent);</div>
+      <div class="reg-body"><p>Gỡ các device đã tạo bởi <code>populate</code> — gọi trong <code>remove()</code>, đối xứng với <code>populate</code> ở <code>probe()</code>.</p></div>
+    </div>
+    <div class="note"><strong>Riêng bus I2C/SPI:</strong> không cần gọi <code>of_platform_populate()</code> cho các thiết bị con nằm ngay trên chính bus đó — I2C/SPI core tự làm việc này ngầm khi bạn <code>i2c_add_adapter()</code>. <code>of_platform_*</code> chỉ cần khi node con là <code>platform_device</code> (MFD, simple-bus), không phải <code>i2c_client</code>/<code>spi_device</code>.</div>
+    <p class="desc" style="margin-top:22px;">Hai công cụ duyệt cây còn lại, hay dùng chung với nhóm trên:</p>
+    <div class="reg-card">
+      <div class="reg-sig">struct device_node *of_find_compatible_node(struct device_node *from, const char *type, const char *compat);</div>
+      <div class="reg-body"><p>Tìm 1 node bất kỳ trong <em>toàn cây</em> theo compatible — không giới hạn con trực tiếp của node hiện tại.</p></div>
+    </div>
+    <div class="reg-card">
+      <div class="reg-sig">for_each_child_of_node(parent, child) { ... }</div>
+      <div class="reg-body">
+        <p>Macro duyệt qua từng node con để đọc, không tạo device gì cả. Thoát vòng lặp sớm bằng <code>break</code> thì phải tự <code>of_node_put(child)</code> — quên là leak refcount.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="applied">
+    <h2>áp dụng vào MPU6050</h2>
+    <p class="desc">Thêm một property tùy chọn cho dải đo gyro, có fallback về mặc định 250 °/s nếu DT không khai — chỉ 2 dòng chèn vào <code>probe()</code>.</p>
+<pre><code>mpu6050@68 {
+    compatible = "ledat,mpu6050";
+    reg = &lt;0x68&gt;;
+    invensense,gyro-range = &lt;500&gt;;
+};</code></pre>
+    <pre><code class="language-c">u32 gyro_dps = 250; /* mặc định nếu DT không khai */
+of_property_read_u32(client-&gt;dev.of_node, "invensense,gyro-range", &amp;gyro_dps);
+
+u8 gyro_fs;
+switch (gyro_dps) {
+case 500:  gyro_fs = MPU6050_GYRO_FS_500;  break;
+case 1000: gyro_fs = MPU6050_GYRO_FS_1000; break;
+case 2000: gyro_fs = MPU6050_GYRO_FS_2000; break;
+default:   gyro_fs = MPU6050_GYRO_FS_250;  break;
+}
+i2c_smbus_write_byte_data(client, MPU6050_GYRO_CONFIG, gyro_fs);</code></pre>
+    <div class="closing">Quay lại sơ đồ runtime ở lượt trước: hai dòng này chính là phần diễn ra bên trong ô "probe() chạy" — DT chỉ thay đổi <em>đầu vào</em> cấu hình, còn thứ tự khớp compatible → probe → sysfs vẫn giữ nguyên.</div>
+  </section>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/c.min.js"></script>
+<script>
+hljs.highlightAll();
+const links=document.querySelectorAll('.tree-nav a[data-nav]');
+const targets=[...links].map(l=>document.querySelector(l.getAttribute('href')));
+const io=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      links.forEach(l=>l.classList.remove('active'));
+      const idx=targets.indexOf(e.target);
+      if(idx>=0) links[idx].classList.add('active');
+    }
+  });
+},{rootMargin:'-10% 0px -70% 0px'});
+targets.forEach(t=>t&&io.observe(t));
+</script>
+</body>
+</html>
