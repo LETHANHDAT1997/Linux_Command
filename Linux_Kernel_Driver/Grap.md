@@ -38,7 +38,7 @@ Có hai cách chính để biên dịch một driver:
 Bạn có thể tham khảo trực tiếp các ví dụ mã nguồn thực tế trong nhân Linux ở thư mục `drivers/` để hiểu rõ hơn cách các API này được áp dụng (như `drivers/tty/serial/imx.c` hoặc `drivers/net/usb/rtl8150.c`).
 
 
-Trong phát triển Linux kernel driver, hàm `probe()` thường phải cấp phát rất nhiều loại tài nguyên khác nhau như: bộ nhớ, ánh xạ các thanh ghi I/O, đăng ký bộ xử lý ngắt (interrupt handlers), v.v.. Trước đây, lập trình viên phải tự viết các đoạn mã dọn dẹp (giải phóng) các tài nguyên này trong trường hợp hàm `probe()` gặp lỗi giữa chừng, hoặc bên trong hàm `remove()` khi thiết bị bị gỡ bỏ. Điều này dễ dẫn đến rò rỉ bộ nhớ hoặc lỗi logic do mã dọn dẹp hiếm khi được kiểm thử đầy đủ.
+# Trong phát triển Linux kernel driver, hàm `probe()` thường phải cấp phát rất nhiều loại tài nguyên khác nhau như: bộ nhớ, ánh xạ các thanh ghi I/O, đăng ký bộ xử lý ngắt (interrupt handlers), v.v.. Trước đây, lập trình viên phải tự viết các đoạn mã dọn dẹp (giải phóng) các tài nguyên này trong trường hợp hàm `probe()` gặp lỗi giữa chừng, hoặc bên trong hàm `remove()` khi thiết bị bị gỡ bỏ. Điều này dễ dẫn đến rò rỉ bộ nhớ hoặc lỗi logic do mã dọn dẹp hiếm khi được kiểm thử đầy đủ.
 
 Để giải quyết vấn đề này, Linux đã giới thiệu danh mục **Device Managed Allocations** (bao gồm các hàm có tiền tố **`devm_`**). Ý tưởng cốt lõi là **liên kết việc cấp phát tài nguyên với cấu trúc `struct device`** đại diện cho thiết bị. Kernel sẽ **tự động giải phóng** các tài nguyên này khi thiết bị biến mất hoặc khi thiết bị bị tách (unbound) khỏi driver.
 
@@ -73,3 +73,62 @@ Mặc dù rất tiện lợi, các tài liệu cũng cảnh báo một số đi�
 1.  **Dọn dẹp gắn liền với chu kỳ sống của `struct device`:** Không có cơ chế đếm tham chiếu (reference counting) độc lập nào. Tài nguyên bị xóa sạch ngay khi `struct device` bị dọn dẹp.
 2.  **Không dùng cho tài nguyên được truy cập bên ngoài thiết bị:** Nếu vùng nhớ `devm_` được dùng bởi một file thiết bị ở không gian người dùng (userspace), và file này vẫn đang được mở (open) sau khi thiết bị đã bị gỡ bỏ (remove), vùng nhớ đó có thể bị kernel giải phóng mất, dẫn đến lỗi truy cập.
 3.  **Cẩn thận với vòng lặp tham chiếu (circular references):** Việc liên kết chéo các tài nguyên có thể gây ra lỗi khi giải phóng bộ nhớ.
+
+# Dựa trên tài liệu "linux-kernel-slides.pdf", nội dung được chia thành 19 mục chính (không tính các phần thông tin bản quyền hoặc slide phụ), tập trung vào các khái niệm từ cơ bản đến nâng cao trong việc phát triển kernel và driver. Dưới đây là tóm tắt nội dung của từng mục:
+
+**1. Generic course information**
+Giới thiệu tổng quan về khóa học, các thiết bị phần cứng được sử dụng để thực hành (điển hình như BeagleBone Black) và cách thiết lập môi trường cho các bài lab.
+
+**2. Linux Kernel Introduction**
+Trình bày lịch sử hình thành Linux (do Linus Torvalds sáng lập), vai trò của kernel khi tương tác giữa phần cứng và không gian người dùng (user space). Mục này cũng giải thích quy trình phát hành phiên bản, dung lượng, kiến trúc mã nguồn và tính ổn định của Kernel API/ABI.
+
+**3. Kernel configuration**
+Hướng dẫn cách thức cấu hình kernel bằng Kconfig và Makefile. Nó giải thích sự khác biệt giữa tính năng tích hợp trực tiếp (built-in) và tính năng biên dịch rời (module), cùng các công cụ giao diện hỗ trợ cấu hình như `xconfig`.
+
+**4. Booting the kernel**
+Mô tả quá trình khởi động kernel, cách mô tả và truyền thông tin phần cứng cho kernel (thông qua Device Tree đối với thiết bị nhúng hoặc ACPI đối với x86) và cách kiểm tra thông điệp log của hệ thống.
+
+**5. Developing kernel modules**
+Hướng dẫn phát triển một module kernel cơ bản. Nội dung bao gồm cấu trúc hàm khởi tạo (`__init`) và dọn dẹp (`__exit`), các macro khai báo siêu dữ liệu (metadata), khai báo tham số module và cách sử dụng các tiện ích quản lý module như `lsmod`.
+
+**6. Discoverable hardware: USB and PCI**
+Giới thiệu về các chuẩn phần cứng có khả năng tự phát hiện (discoverable) phổ biến nhất như USB và PCI, cùng với cách kernel liệt kê và nhận diện chúng.
+
+**7. Describing hardware devices**
+Đi sâu vào cú pháp và cấu trúc của Device Tree (DT) dùng để mô tả các đặc tính của thiết bị phần cứng không tự phát hiện được. Mục này cũng nói về tính kế thừa giữa các tệp DT (`.dtsi` và `.dts`) và cách dùng Device Tree Bindings để xác thực nội dung.
+
+**8. Linux device and driver model**
+Trình bày mô hình quản lý thiết bị và driver trong Linux. Phần này giải thích các thành phần của hạ tầng bus (`bus_type`), thiết bị (`device`) và trình điều khiển (`device_driver`), kèm theo ví dụ minh họa trên bus USB.
+
+**9. Kernel frameworks for device drivers**
+Giới thiệu các framework giúp kết nối driver với các ứng dụng ở không gian người dùng. Nội dung đi sâu vào Character drivers, các hàm trao đổi dữ liệu an toàn (như `get_user`, `put_user`) và ví dụ về Input subsystem cho thiết bị đầu vào.
+
+**10. Device-managed allocations**
+Giải thích các hàm quản lý và cấp phát tài nguyên gắn liền với vòng đời của thiết bị (sử dụng tiền tố `devm_`), giúp kernel tự động dọn dẹp tài nguyên khi thiết bị bị gỡ bỏ.
+
+**11. Driver data structures and links**
+Mô tả cách tổ chức cấu trúc dữ liệu bên trong một driver, cụ thể là cách liên kết các cấu trúc của bus và của framework lại với nhau.
+
+**12. Memory Management**
+Tổng quan về quản lý bộ nhớ vật lý và ảo, khái niệm MMU, và tổ chức phân chia không gian địa chỉ bộ nhớ trên hệ thống 32-bit và 64-bit. Phần này cũng giới thiệu các công cụ dò lỗi bộ nhớ mạnh mẽ như KASAN, KFENCE, và Kmemleak.
+
+**13. I/O Memory**
+Hướng dẫn về cơ chế truy cập, ánh xạ bộ nhớ I/O và các vấn đề liên quan đến việc quản lý năng lượng hệ thống (Power Management - PM).
+
+**14. The misc subsystem**
+Phân hệ dành cho các thiết bị phần cứng đặc thù hoặc tự chế (như cấu hình qua FPGA) không thể đưa vào các framework tiêu chuẩn. Nó hướng dẫn cách tiếp cận và quản lý chúng thông qua giao diện character driver.
+
+**15. Processes, scheduling and interrupts**
+Giải thích các khái niệm quan trọng về hệ điều hành như tiến trình (process), luồng (thread), các ngữ cảnh thực thi (kernel mode, user mode), cơ chế tạm dừng (sleeping) với wait queues, và cách xử lý ngắt (interrupts).
+
+**16. Concurrent Access to Resources: Locking**
+Phân tích các vấn đề xảy ra khi truy cập đồng thời vào các tài nguyên dùng chung và cách xử lý thông qua các cơ chế khóa (locking) như RCU (Read-Copy-Update), biến nguyên tử (atomic), mutex và spinlock.
+
+**17. Direct Memory Access (DMA)**
+Giải thích về cách truyền dữ liệu trực tiếp thông qua dmaengine API mà không cần CPU can thiệp quá nhiều, bao gồm các cấu hình ánh xạ DMA kiểu coherent và streaming.
+
+**18. Kernel debugging**
+Cung cấp các phương pháp và công cụ gỡ lỗi kernel. Mục này hướng dẫn cách cấu hình loglevel, sử dụng DebugFS, phần mềm GDB, và việc phân tích thông tin khi kernel gặp lỗi (crash).
+
+**19. Kernel Resources & Extra slides**
+Liệt kê các tài liệu và tài nguyên tham khảo giá trị cho lập trình viên như LWN.net, Kernel Newbies, kernel documentation, và các hội nghị quốc tế (Embedded Linux Conference, Linux Plumbers). Cuối cùng là các trang slide bổ sung nói về kỹ thuật ánh xạ `mmap`.
