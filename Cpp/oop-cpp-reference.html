@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4 Trụ Cột OOP trong C++</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.2/styles/github-dark.min.css">
+<style>
+:root{
+  --bg:#0a0e14;
+  --surface:#10151d;
+  --surface-2:#161c26;
+  --border:#232b38;
+  --text:#e6edf3;
+  --text-muted:#8b96a5;
+  --text-dim:#5c6673;
+  --mono: ui-monospace, "Cascadia Code", "Fira Code", "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --c-encap:#e3b341;
+  --c-abstract:#58a6ff;
+  --c-inherit:#3fb950;
+  --c-poly:#f778ba;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto;}
+  *{animation-duration:0.01ms !important; transition-duration:0.01ms !important;}
+}
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  line-height:1.7;
+  font-size:16px;
+}
+a{color:inherit;}
+
+.layout{display:flex; align-items:flex-start; max-width:1400px; margin:0 auto;}
+
+.sidebar{
+  width:272px;
+  flex-shrink:0;
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow-y:auto;
+  padding:32px 22px;
+  border-right:1px solid var(--border);
+}
+.sidebar-brand{
+  font-family:var(--mono);
+  font-size:13px;
+  color:var(--text-dim);
+  letter-spacing:0.06em;
+  margin-bottom:24px;
+  padding-bottom:16px;
+  border-bottom:1px solid var(--border);
+}
+.sidebar-brand strong{ display:block; color:var(--text); font-size:15px; margin-bottom:4px;}
+.nav-group-label{
+  font-family:var(--mono);
+  font-size:11px;
+  color:var(--text-dim);
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  margin:20px 0 8px;
+}
+.nav-link{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:7px 10px;
+  border-radius:6px;
+  color:var(--text-muted);
+  text-decoration:none;
+  font-size:13.5px;
+  font-family:var(--mono);
+  transition:background .15s, color .15s;
+}
+.nav-link:hover{ background:var(--surface-2); color:var(--text); }
+.nav-link.active{ background:var(--surface-2); color:var(--text); }
+.nav-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; background:var(--text-dim);}
+.nav-link.active .nav-dot, .nav-link:hover .nav-dot{ background:var(--dot,var(--text-dim)); }
+
+.main{ flex:1; min-width:0; padding:56px 56px 120px; }
+
+.hero{ margin-bottom:56px; }
+.hero-comment{
+  font-family:var(--mono);
+  font-size:14px;
+  color:var(--text-muted);
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:20px 24px;
+  white-space:pre;
+  overflow-x:auto;
+  margin-bottom:28px;
+}
+.hero p.lead{
+  font-size:16.5px;
+  color:var(--text-muted);
+  max-width:64ch;
+  margin:0 0 32px;
+}
+.thesis-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:32px; }
+.thesis-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-top:3px solid var(--card-color);
+  border-radius:10px;
+  padding:18px 16px;
+  text-decoration:none;
+  color:var(--text);
+  display:block;
+  transition:transform .15s, border-color .15s;
+}
+.thesis-card:hover{ transform:translateY(-2px); }
+.thesis-card .tag{ font-family:var(--mono); font-size:11px; color:var(--card-color); letter-spacing:.05em; margin-bottom:10px; }
+.thesis-card .q{ font-size:14px; font-weight:600; line-height:1.4; }
+
+section.pillar{
+  border-left:3px solid var(--accent);
+  padding-left:28px;
+  margin-bottom:72px;
+  scroll-margin-top:24px;
+}
+.section-index{ font-family:var(--mono); font-size:12px; color:var(--accent); letter-spacing:.08em; margin-bottom:10px; }
+.section-title{ font-family:var(--mono); font-size:26px; font-weight:700; margin:0 0 18px; color:var(--text); }
+.section-title .en{ color:var(--text-dim); font-weight:500; font-size:16px; margin-left:10px;}
+
+.question-box{
+  font-family:var(--mono);
+  font-size:14px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-left:3px solid var(--accent);
+  border-radius:0 8px 8px 0;
+  padding:12px 16px;
+  margin-bottom:20px;
+  color:var(--text);
+}
+.question-box .prompt{ color:var(--accent); }
+
+.prose{ color:var(--text-muted); max-width:72ch; margin-bottom:22px; font-size:15.5px;}
+.prose strong{ color:var(--text); font-weight:600; }
+.prose code{ font-family:var(--mono); background:var(--surface); padding:1px 6px; border-radius:4px; font-size:.9em; color:var(--text);}
+
+.code-block{ border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:16px; }
+.code-header{ display:flex; align-items:center; justify-content:space-between; background:var(--surface-2); padding:9px 14px; border-bottom:1px solid var(--border);}
+.code-header .fname{ font-family:var(--mono); font-size:12.5px; color:var(--text-muted); display:flex; align-items:center; gap:8px;}
+.code-header .fname .dot{ width:9px; height:9px; border-radius:50%; background:var(--accent); }
+.copy-btn{ font-family:var(--mono); font-size:11.5px; color:var(--text-muted); background:transparent; border:1px solid var(--border); border-radius:5px; padding:4px 9px; cursor:pointer; transition:.15s;}
+.copy-btn:hover{ color:var(--text); border-color:var(--text-dim); }
+.code-block pre{ margin:0; padding:18px 20px; overflow-x:auto; font-size:13.5px; }
+.code-block pre, .code-block code{ font-family:var(--mono); }
+
+.output-block{ font-family:var(--mono); font-size:13px; white-space:pre-line; background:#05070a; border:1px solid var(--border); border-radius:8px; padding:12px 16px; margin-bottom:22px; color:#7ee787; }
+.output-block .label{ color:var(--text-dim); display:block; margin-bottom:6px; font-size:11px; text-transform:uppercase; letter-spacing:.06em;}
+
+.note-box{ background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--text-dim); border-radius:0 8px 8px 0; padding:14px 18px; font-size:14.5px; color:var(--text-muted); margin-bottom:8px;}
+.note-box .flag{ font-family:var(--mono); font-size:11.5px; color:var(--text-dim); letter-spacing:.05em; display:block; margin-bottom:6px;}
+.note-box code{ font-family:var(--mono); background:var(--surface-2); padding:1px 6px; border-radius:4px; font-size:.9em; color:var(--text);}
+
+.aside-note{ font-size:14px; color:var(--text-muted); margin:18px 0 8px;}
+.aside-note code{ font-family:var(--mono); background:var(--surface); padding:1px 6px; border-radius:4px; font-size:.9em; color:var(--text);}
+
+.combined-note{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:18px;}
+.combined-note div{ font-size:13px; padding:10px 12px; border-radius:8px; background:var(--surface); border-left:3px solid var(--tag-color); color:var(--text-muted);}
+.combined-note b{ display:block; color:var(--tag-color); font-family:var(--mono); font-size:11px; margin-bottom:4px; letter-spacing:.05em;}
+.combined-note code{ font-family:var(--mono); color:var(--text); }
+
+.compare-wrap{ overflow-x:auto; margin-bottom:32px; border:1px solid var(--border); border-radius:10px;}
+table.compare{ width:100%; border-collapse:collapse; font-size:14px; }
+table.compare th{ text-align:left; font-family:var(--mono); font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); background:var(--surface-2); padding:12px 16px; border-bottom:1px solid var(--border);}
+table.compare td{ padding:14px 16px; border-bottom:1px solid var(--border); color:var(--text-muted); vertical-align:top;}
+table.compare tr:last-child td{ border-bottom:none;}
+table.compare td:first-child{ font-family:var(--mono); font-weight:700; border-left:3px solid var(--row-color); color:var(--text);}
+table.compare code{ font-family:var(--mono); background:var(--surface); padding:1px 6px; border-radius:4px; font-size:.92em;}
+
+.confusion-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:8px;}
+.confusion-card{ background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px 22px;}
+.confusion-card h4{ font-family:var(--mono); margin:0 0 12px; font-size:15px; }
+.confusion-card p{ color:var(--text-muted); font-size:14px; margin:0 0 10px;}
+.confusion-card p:last-child{ margin-bottom:0;}
+.confusion-card .verdict{ color:var(--text); }
+.confusion-card code{ font-family:var(--mono); background:var(--surface-2); padding:1px 6px; border-radius:4px; font-size:.9em; color:var(--text);}
+
+footer.page-footer{ color:var(--text-dim); font-size:12.5px; font-family:var(--mono); padding-top:24px; border-top:1px solid var(--border);}
+
+@media (max-width: 980px){
+  .thesis-grid{ grid-template-columns:repeat(2,1fr); }
+  .combined-note{ grid-template-columns:repeat(2,1fr); }
+  .confusion-grid{ grid-template-columns:1fr; }
+}
+@media (max-width: 760px){
+  .layout{ flex-direction:column; }
+  .sidebar{ width:100%; height:auto; position:relative; border-right:none; border-bottom:1px solid var(--border); overflow-x:auto;}
+  .main{ padding:32px 20px 80px; }
+  .thesis-grid{ grid-template-columns:1fr; }
+  .section-title{ font-size:21px;}
+}
+:focus-visible{ outline:2px solid var(--text-muted); outline-offset:2px; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" aria-label="Mục lục">
+    <div class="sidebar-brand">
+      <strong>4 Trụ Cột OOP</strong>
+      Ví dụ C++ — phân biệt rõ ràng
+    </div>
+    <div class="nav-group-label">Bắt đầu</div>
+    <a class="nav-link" href="#overview"><span class="nav-dot"></span>Tổng quan</a>
+    <div class="nav-group-label">4 tính chất</div>
+    <a class="nav-link" href="#encapsulation" style="--dot:var(--c-encap)"><span class="nav-dot"></span>01 · Đóng gói</a>
+    <a class="nav-link" href="#abstraction" style="--dot:var(--c-abstract)"><span class="nav-dot"></span>02 · Trừu tượng</a>
+    <a class="nav-link" href="#inheritance" style="--dot:var(--c-inherit)"><span class="nav-dot"></span>03 · Kế thừa</a>
+    <a class="nav-link" href="#polymorphism" style="--dot:var(--c-poly)"><span class="nav-dot"></span>04 · Đa hình</a>
+    <div class="nav-group-label">Tổng hợp</div>
+    <a class="nav-link" href="#combined"><span class="nav-dot"></span>Ví dụ kết hợp</a>
+    <a class="nav-link" href="#compare"><span class="nav-dot"></span>So sánh &amp; nhầm lẫn</a>
+  </nav>
+
+  <main class="main">
+
+    <section class="hero" id="overview">
+      <div class="hero-comment">/**
+ * 4 tru cot cua lap trinh huong doi tuong (OOP)
+ * Phan biet ro rang bang vi du C++ chay duoc that - da bien dich kiem tra
+ *
+ * @domain  he thong doc cam bien ngoai vi (I2C/SPI)
+ * @compile g++ -std=c++17 file.cpp -o demo &amp;&amp; ./demo
+ */</div>
+      <p class="lead">Bốn tính chất này hay được dạy trong cùng một khuôn nên rất dễ nhòe vào nhau. Cách tách bạch nhanh nhất: <strong>mỗi tính chất trả lời một câu hỏi khác nhau</strong>. Toàn bộ ví dụ dưới đây dùng chung một hệ thống đọc cảm biến, để thấy rõ 4 lăng kính khác nhau trên cùng một bối cảnh — mọi đoạn code đều đã được biên dịch và chạy thật để lấy output.</p>
+
+      <div class="thesis-grid">
+        <a class="thesis-card" href="#encapsulation" style="--card-color:var(--c-encap)">
+          <div class="tag">01 · ĐÓNG GÓI</div>
+          <div class="q">Ai được đụng vào dữ liệu?</div>
+        </a>
+        <a class="thesis-card" href="#abstraction" style="--card-color:var(--c-abstract)">
+          <div class="tag">02 · TRỪU TƯỢNG</div>
+          <div class="q">Lộ ra gì, giấu đi gì?</div>
+        </a>
+        <a class="thesis-card" href="#inheritance" style="--card-color:var(--c-inherit)">
+          <div class="tag">03 · KẾ THỪA</div>
+          <div class="q">Tái sử dụng code có sẵn thế nào?</div>
+        </a>
+        <a class="thesis-card" href="#polymorphism" style="--card-color:var(--c-poly)">
+          <div class="tag">04 · ĐA HÌNH</div>
+          <div class="q">Sao cùng 1 lời gọi lại ra kết quả khác nhau?</div>
+        </a>
+      </div>
+    </section>
+
+    <section class="pillar" id="encapsulation" style="--accent:var(--c-encap)">
+      <div class="section-index">01 / 04 · ENCAPSULATION</div>
+      <h2 class="section-title">Đóng gói <span class="en">Encapsulation</span></h2>
+      <div class="question-box"><span class="prompt">&gt;</span> Câu hỏi cốt lõi: <strong>Ai được phép đọc/ghi dữ liệu bên trong object?</strong></div>
+      <p class="prose">Đóng gói là gói dữ liệu và hành vi vào chung một class, rồi khóa quyền truy cập trực tiếp vào dữ liệu bằng <code>private</code>/<code>protected</code>. Mọi thao tác buộc phải đi qua method công khai — nơi có thể kiểm tra tính hợp lệ. <code>TemperatureSensor</code> dưới đây không cho ai đọc/ghi thẳng <code>rawADCValue</code>; muốn cập nhật, bắt buộc gọi <code>updateReading()</code>, nơi giá trị được kiểm tra nằm trong dải 12-bit hợp lệ.</p>
+
+      <div class="code-block">
+        <div class="code-header"><span class="fname"><span class="dot"></span>encapsulation.cpp</span><button class="copy-btn">Sao chép</button></div>
+        <pre><code class="language-cpp">#include &lt;iostream&gt;
+#include &lt;stdexcept&gt;
+
+class TemperatureSensor {
+private:
+    int rawADCValue;
+    float calibrationOffset;
+    static constexpr float ADC_TO_CELSIUS = 0.125f;
+
+public:
+    TemperatureSensor(float offset) : rawADCValue(0), calibrationOffset(offset) {}
+
+    void updateReading(int adcValue) {
+        if (adcValue &lt; 0 || adcValue &gt; 4095) {
+            throw std::out_of_range("ADC value ngoai dai 12-bit");
+        }
+        rawADCValue = adcValue;
+    }
+
+    float readCelsius() const {
+        return rawADCValue * ADC_TO_CELSIUS + calibrationOffset;
+    }
+};
+
+int main() {
+    TemperatureSensor sensor(-2.0f);
+    sensor.updateReading(1600);
+    std::cout &lt;&lt; "Nhiet do: " &lt;&lt; sensor.readCelsius() &lt;&lt; " C\n";
+    // sensor.rawADCValue = 9999;  // LOI BIEN DICH - khong the truy cap truc tiep
+    return 0;
+}</code></pre>
+      </div>
+      <div class="output-block"><span class="label">Output</span>Nhiet do: 198 C</div>
+
+      <div class="note-box">
+        <span class="flag">⊘ KHÔNG PHẢI Trừu tượng (mục 02)</span>
+        Đóng gói không phải là "thiết kế giao diện chỉ lộ ra điều cần thiết" — đó là Trừu tượng. Đóng gói thuần túy là <strong>cơ chế truy cập</strong> (private/public) bên trong một class. Ví dụ trên chưa hề có kế thừa hay lớp trừu tượng nào.
+      </div>
+    </section>
+
+    <section class="pillar" id="abstraction" style="--accent:var(--c-abstract)">
+      <div class="section-index">02 / 04 · ABSTRACTION</div>
+      <h2 class="section-title">Trừu tượng <span class="en">Abstraction</span></h2>
+      <div class="question-box"><span class="prompt">&gt;</span> Câu hỏi cốt lõi: <strong>Nên lộ ra hành vi gì, giấu đi chi tiết nào?</strong></div>
+      <p class="prose">Trừu tượng là quyết định <strong>thiết kế</strong>. Cách phổ biến nhất trong C++ là dùng pure virtual function để định nghĩa một "hợp đồng" (contract). <code>ISensor</code> dưới đây không có bất kỳ dữ liệu hay dòng code hiện thực nào — nó chỉ tuyên bố: "một sensor thì đọc được giá trị và có tên". Hàm <code>logSensor()</code> chỉ biết đến <code>ISensor</code>, không hề biết <code>BMP280</code> giao tiếp I2C ra sao bên dưới.</p>
+
+      <div class="code-block">
+        <div class="code-header"><span class="fname"><span class="dot"></span>abstraction.cpp</span><button class="copy-btn">Sao chép</button></div>
+        <pre><code class="language-cpp">#include &lt;iostream&gt;
+
+// ISensor la HOP DONG thuan tuy: chi khai bao "lam duoc gi", khong co "lam nhu the nao"
+class ISensor {
+public:
+    virtual float read() = 0;
+    virtual const char* name() const = 0;
+    virtual ~ISensor() = default;
+};
+
+// Mot cach hien thuc cu the - giao tiep I2C that su phuc tap hon nhieu
+class BMP280 : public ISensor {
+    float simulatedPressure = 1013.25f;
+public:
+    float read() override { return simulatedPressure; }
+    const char* name() const override { return "BMP280"; }
+};
+
+// Ham nay CHI phu thuoc vao giao dien ISensor, khong biet gi ve BMP280
+void logSensor(ISensor&amp; sensor) {
+    std::cout &lt;&lt; sensor.name() &lt;&lt; " = " &lt;&lt; sensor.read() &lt;&lt; "\n";
+}
+
+int main() {
+    BMP280 bmp;
+    logSensor(bmp);
+    return 0;
+}</code></pre>
+      </div>
+      <div class="output-block"><span class="label">Output</span>BMP280 = 1013.25</div>
+
+      <div class="note-box">
+        <span class="flag">⊘ KHÔNG PHẢI Đóng gói (mục 01)</span>
+        <code>ISensor</code> thậm chí chẳng có biến private nào để giấu — nó trả lời câu hỏi khác hẳn: "người dùng class cần biết gì để dùng được nó", chứ không phải "ai được đụng vào dữ liệu bên trong". Vì <code>ISensor</code> không thể tạo object trực tiếp, ví dụ cần một lớp cụ thể (<code>BMP280</code>) để chạy được — nhưng trọng tâm ở đây là bản thân hợp đồng <code>ISensor</code>, còn cơ chế kế thừa nó thuộc về mục 03.
+      </div>
+    </section>
+
+    <section class="pillar" id="inheritance" style="--accent:var(--c-inherit)">
+      <div class="section-index">03 / 04 · INHERITANCE</div>
+      <h2 class="section-title">Kế thừa <span class="en">Inheritance</span></h2>
+      <div class="question-box"><span class="prompt">&gt;</span> Câu hỏi cốt lõi: <strong>Làm sao tái sử dụng &amp; mở rộng code có sẵn?</strong></div>
+      <p class="prose">Kế thừa là việc một class con dùng lại toàn bộ dữ liệu/method của class cha, và bổ sung thêm cái riêng. Đây thuần túy là chuyện tái sử dụng code, xác định lúc <strong>biên dịch</strong> — chưa liên quan gì đến gọi hàm ảo hay quyết định lúc runtime. <code>SensorBase</code> dưới đây là một class bình thường, không hề trừu tượng, không có <code>virtual</code> nào cả.</p>
+
+      <div class="code-block">
+        <div class="code-header"><span class="fname"><span class="dot"></span>inheritance.cpp</span><button class="copy-btn">Sao chép</button></div>
+        <pre><code class="language-cpp">#include &lt;iostream&gt;
+#include &lt;string&gt;
+
+// SensorBase la lop CU THE - khong truu tuong, khong virtual
+class SensorBase {
+protected:
+    std::string deviceName;
+    int errorCount = 0;
+
+public:
+    SensorBase(const std::string&amp; name) : deviceName(name) {}
+
+    void logError() {                 // hanh vi dung chung cho MOI sensor
+        errorCount++;
+        std::cout &lt;&lt; "[" &lt;&lt; deviceName &lt;&lt; "] Loi thu " &lt;&lt; errorCount &lt;&lt; "\n";
+    }
+
+    std::string getName() const { return deviceName; }
+};
+
+// HumiditySensor KE THUA toan bo hanh vi tren, khong can viet lai
+class HumiditySensor : public SensorBase {
+public:
+    HumiditySensor() : SensorBase("HumiditySensor-SHT31") {}
+
+    float readRaw() {                 // ham RIENG cua HumiditySensor
+        return 65.5f;
+    }
+};
+
+int main() {
+    HumiditySensor h;
+    std::cout &lt;&lt; h.getName() &lt;&lt; ": " &lt;&lt; h.readRaw() &lt;&lt; "%\n";  // dung lai method ke thua
+    h.logError();                     // dung lai method ke thua, KHONG override gi ca
+    return 0;
+}</code></pre>
+      </div>
+      <div class="output-block"><span class="label">Output</span>HumiditySensor-SHT31: 65.5%
+[HumiditySensor-SHT31] Loi thu 1</div>
+
+      <div class="note-box">
+        <span class="flag">⊘ KHÔNG PHẢI Đa hình (mục 04)</span>
+        Không có con trỏ/tham chiếu lớp cha nào được dùng ở đây, cũng không có <code>virtual</code>. Gọi <code>h.logError()</code> luôn chạy đúng một hàm <code>SensorBase::logError()</code> — trình biên dịch biết chính xác điều đó từ trước, không cần đợi chương trình chạy.
+      </div>
+    </section>
+
+    <section class="pillar" id="polymorphism" style="--accent:var(--c-poly)">
+      <div class="section-index">04 / 04 · POLYMORPHISM</div>
+      <h2 class="section-title">Đa hình <span class="en">Polymorphism</span></h2>
+      <div class="question-box"><span class="prompt">&gt;</span> Câu hỏi cốt lõi: <strong>Sao cùng một lời gọi lại ra hành vi khác nhau?</strong></div>
+      <p class="prose">Đa hình là khi <strong>cùng một lời gọi hàm</strong> chạy ra hành vi khác nhau, tùy kiểu thực sự của object lúc runtime — không phải kiểu khai báo. Điều kiện: hàm phải là <code>virtual</code>, và phải gọi qua con trỏ/tham chiếu của lớp cha. So với mục 03, <code>SensorBase</code> giờ được bổ sung <code>virtual float read() = 0;</code>.</p>
+
+      <div class="code-block">
+        <div class="code-header"><span class="fname"><span class="dot"></span>polymorphism.cpp</span><button class="copy-btn">Sao chép</button></div>
+        <pre><code class="language-cpp">#include &lt;iostream&gt;
+#include &lt;vector&gt;
+#include &lt;memory&gt;
+#include &lt;string&gt;
+
+class SensorBase {
+protected:
+    std::string deviceName;
+public:
+    SensorBase(const std::string&amp; name) : deviceName(name) {}
+    virtual float read() = 0;      // moi them so voi muc 03
+    virtual ~SensorBase() = default;
+};
+
+class HumiditySensor : public SensorBase {
+public:
+    HumiditySensor() : SensorBase("Humidity") {}
+    float read() override { return 65.5f; }
+};
+
+class PressureSensor : public SensorBase {
+public:
+    PressureSensor() : SensorBase("Pressure") {}
+    float read() override { return 1013.25f; }
+};
+
+int main() {
+    std::vector&lt;std::unique_ptr&lt;SensorBase&gt;&gt; sensors;
+    sensors.push_back(std::make_unique&lt;HumiditySensor&gt;());
+    sensors.push_back(std::make_unique&lt;PressureSensor&gt;());
+
+    // CUNG MOT dong "s-&gt;read()", nhung ket qua khac nhau tuy loai sensor THUC SU
+    for (auto&amp; s : sensors) {
+        std::cout &lt;&lt; s-&gt;read() &lt;&lt; "\n";
+    }
+    return 0;
+}</code></pre>
+      </div>
+      <div class="output-block"><span class="label">Output</span>65.5
+1013.25</div>
+
+      <div class="note-box">
+        <span class="flag">⊘ Ranh giới với Kế thừa (mục 03)</span>
+        Ở mục 03, <code>h.logError()</code> gọi trực tiếp qua kiểu cụ thể <code>HumiditySensor</code> — trình biên dịch biết trước hàm nào chạy. Ở đây, ta gọi qua <code>SensorBase*</code> — trình biên dịch KHÔNG biết trước, việc chọn hàm nào chạy được quyết định lúc chương trình thực thi (qua vtable). Đây chính là ranh giới giữa hai tính chất.
+      </div>
+
+      <p class="aside-note">Ghi chú: đây là đa hình <strong>động</strong> (runtime, qua <code>virtual</code>). C++ còn có đa hình <strong>tĩnh</strong> (compile-time) qua nạp chồng hàm — trình biên dịch chọn đúng hàm ngay lúc biên dịch, không cần vtable, không cần kế thừa:</p>
+      <div class="code-block">
+        <div class="code-header"><span class="fname"><span class="dot"></span>static_overload.cpp</span><button class="copy-btn">Sao chép</button></div>
+        <pre><code class="language-cpp">void show(int x)   { std::cout &lt;&lt; "int: "   &lt;&lt; x &lt;&lt; "\n"; }
+void show(float x) { std::cout &lt;&lt; "float: " &lt;&lt; x &lt;&lt; "\n"; }
+
+show(5);      // chon ban int   - quyet dinh LUC BIEN DICH
+show(5.0f);   // chon ban float - quyet dinh LUC BIEN DICH</code></pre>
+      </div>
+    </section>
+
+    <section class="pillar" id="combined" style="--accent:#8b96a5">
+      <div class="section-index">TỔNG HỢP</div>
+      <h2 class="section-title">Cả 4 tính chất trong một hệ thống nhỏ</h2>
+      <p class="prose">Trong code thực tế, cả 4 tính chất thường xuất hiện cùng lúc. Đoạn dưới đánh dấu rõ phần nào thuộc tính chất nào — dùng lại đúng ý tưởng của 4 ví dụ trên:</p>
+
+      <div class="code-block">
+        <div class="code-header"><span class="fname"><span class="dot"></span>combined.cpp</span><button class="copy-btn">Sao chép</button></div>
+        <pre><code class="language-cpp">#include &lt;iostream&gt;
+#include &lt;vector&gt;
+#include &lt;memory&gt;
+#include &lt;string&gt;
+#include &lt;cstdint&gt;
+
+// TRUU TUONG: hop dong chung "sensor doc duoc gia tri va co ten"
+class ISensor {
+public:
+    virtual float read() const = 0;
+    virtual std::string name() const = 0;
+    virtual ~ISensor() = default;
+};
+
+// KE THUA: I2CSensorBase dung lai logic dia chi I2C cho moi sensor con
+class I2CSensorBase : public ISensor {
+protected:
+    // DONG GOI: dia chi I2C la chi tiet noi bo, chi lop con duoc dung, ben ngoai khong dung duoc
+    uint8_t i2cAddress;
+    std::string deviceName;
+
+public:
+    I2CSensorBase(uint8_t addr, const std::string&amp; name)
+        : i2cAddress(addr), deviceName(name) {}
+
+    std::string name() const override { return deviceName; }
+};
+
+class HumiditySensor : public I2CSensorBase {
+public:
+    HumiditySensor() : I2CSensorBase(0x44, "SHT31-Humidity") {}
+    float read() const override { return 65.5f; }
+};
+
+class PressureSensor : public I2CSensorBase {
+public:
+    PressureSensor() : I2CSensorBase(0x76, "BMP280-Pressure") {}
+    float read() const override { return 1013.25f; }
+};
+
+int main() {
+    std::vector&lt;std::unique_ptr&lt;ISensor&gt;&gt; sensors;
+    sensors.push_back(std::make_unique&lt;HumiditySensor&gt;());
+    sensors.push_back(std::make_unique&lt;PressureSensor&gt;());
+
+    // DA HINH: cung mot dong "s-&gt;read()", ket qua khac nhau tuy loai sensor
+    for (const auto&amp; s : sensors) {
+        std::cout &lt;&lt; s-&gt;name() &lt;&lt; " = " &lt;&lt; s-&gt;read() &lt;&lt; "\n";
+    }
+    return 0;
+}</code></pre>
+      </div>
+      <div class="output-block"><span class="label">Output</span>SHT31-Humidity = 65.5
+BMP280-Pressure = 1013.25</div>
+
+      <div class="combined-note">
+        <div style="--tag-color:var(--c-abstract)"><b>TRỪU TƯỢNG</b><code>ISensor</code> — hợp đồng, không data.</div>
+        <div style="--tag-color:var(--c-inherit)"><b>KẾ THỪA</b><code>I2CSensorBase</code> dùng lại cho mọi sensor con.</div>
+        <div style="--tag-color:var(--c-encap)"><b>ĐÓNG GÓI</b><code>i2cAddress</code> là <code>protected</code>, giấu khỏi bên ngoài.</div>
+        <div style="--tag-color:var(--c-poly)"><b>ĐA HÌNH</b>Vòng lặp cuối gọi qua <code>ISensor*</code>.</div>
+      </div>
+    </section>
+
+    <section class="pillar" id="compare" style="--accent:#8b96a5">
+      <div class="section-index">THAM KHẢO NHANH</div>
+      <h2 class="section-title">So sánh &amp; nhầm lẫn thường gặp</h2>
+
+      <div class="compare-wrap">
+        <table class="compare">
+          <thead>
+            <tr><th>Tính chất</th><th>Câu hỏi cốt lõi</th><th>Cơ chế trong C++</th><th>Phạm vi</th></tr>
+          </thead>
+          <tbody>
+            <tr style="--row-color:var(--c-encap)"><td>Đóng gói</td><td>Ai được đụng vào dữ liệu?</td><td><code>private</code>/<code>protected</code> + method <code>public</code></td><td>Bên trong 1 class</td></tr>
+            <tr style="--row-color:var(--c-abstract)"><td>Trừu tượng</td><td>Lộ ra gì, giấu đi gì?</td><td>abstract class, pure virtual, interface</td><td>Hợp đồng giữa các class</td></tr>
+            <tr style="--row-color:var(--c-inherit)"><td>Kế thừa</td><td>Tái sử dụng code thế nào?</td><td><code>class Derived : public Base</code></td><td>Quan hệ cha → con</td></tr>
+            <tr style="--row-color:var(--c-poly)"><td>Đa hình</td><td>Sao cùng 1 lời gọi lại ra kết quả khác?</td><td><code>virtual</code> + gọi qua <code>Base*</code>/<code>Base&amp;</code></td><td>1 con trỏ cha, nhiều kiểu con</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="confusion-grid">
+        <div class="confusion-card">
+          <h4 style="color:var(--c-inherit)">Kế thừa vs Đa hình</h4>
+          <p>Kế thừa là bạn <span class="verdict">có</span> một class con dùng lại code cha — quan hệ cố định, biết trước lúc biên dịch. Đa hình là khi bạn <span class="verdict">gọi</span> qua con trỏ/tham chiếu lớp cha và hành vi chạy thật được quyết định lúc runtime.</p>
+          <p>→ Có Kế thừa mà không có Đa hình là bình thường (mục 03). Nhưng Đa hình runtime trong C++ luôn cần Kế thừa + <code>virtual</code> làm nền.</p>
+        </div>
+        <div class="confusion-card">
+          <h4 style="color:var(--c-abstract)">Trừu tượng vs Đóng gói</h4>
+          <p>Đóng gói là <span class="verdict">kỹ thuật</span>: giấu biến, chỉ cho truy cập qua method. Trừu tượng là <span class="verdict">mức thiết kế</span>: quyết định hành vi nào lộ ra qua interface, giấu đi chi tiết "làm sao".</p>
+          <p>→ Một class có thể đóng gói cực tốt (toàn bộ dữ liệu private) mà chẳng trừu tượng chút nào — tức là không hề có interface chung nào cả.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="page-footer">4 trụ cột OOP · C++17 · mọi ví dụ đã biên dịch bằng g++ 13 · số liệu cảm biến là giả lập</footer>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.2/highlight.min.js"></script>
+<script>
+if (typeof hljs !== 'undefined') { hljs.highlightAll(); }
+
+document.querySelectorAll('.copy-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var block = btn.closest('.code-block').querySelector('code');
+    var text = block.textContent;
+    var original = btn.textContent;
+    navigator.clipboard.writeText(text).then(function(){
+      btn.textContent = 'Đã chép!';
+      setTimeout(function(){ btn.textContent = original; }, 1500);
+    });
+  });
+});
+
+var sections = document.querySelectorAll('section[id]');
+var navLinks = document.querySelectorAll('.nav-link');
+if ('IntersectionObserver' in window) {
+  var obs = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if (entry.isIntersecting) {
+        navLinks.forEach(function(l){ l.classList.remove('active'); });
+        var match = document.querySelector('.nav-link[href="#' + entry.target.id + '"]');
+        if (match) match.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-15% 0px -70% 0px' });
+  sections.forEach(function(s){ obs.observe(s); });
+}
+</script>
+</body>
+</html>

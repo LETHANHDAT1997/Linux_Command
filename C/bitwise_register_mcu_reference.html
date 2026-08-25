@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Bitwise &amp; Thanh Ghi MCU — Tài liệu tham khảo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/c.min.js"></script>
+<style>
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  :root {
+    --bg: #0b0e13;
+    --surface: #10151c;
+    --surface-2: #171e28;
+    --border: #232b38;
+    --text: #dde3ec;
+    --text-muted: #8a93a4;
+    --accent: #d9a441;
+    --accent-dim: #6b5228;
+    --accent2: #5fb0b0;
+    --accent2-dim: #2f5a5a;
+    --danger: #d9705f;
+    --danger-dim: #6b3830;
+    --good: #7fb069;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
+    --sidebar-w: 276px;
+    --content-max: 800px;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 16px; line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--accent-dim); color: var(--text); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+  * { scrollbar-color: var(--border) var(--bg); scrollbar-width: thin; }
+
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+
+  .layout { display: flex; align-items: flex-start; }
+
+  #sidebar {
+    position: sticky; top: 0; align-self: flex-start;
+    height: 100vh; width: var(--sidebar-w); flex-shrink: 0;
+    border-right: 1px solid var(--border); background: var(--surface);
+    padding: 30px 20px 40px; overflow-y: auto; z-index: 20;
+  }
+  .brand-eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .07em; color: var(--accent); text-transform: uppercase; margin-bottom: 4px; }
+  .brand-sub { font-size: 12.5px; color: var(--text-muted); margin-bottom: 26px; line-height: 1.55; }
+  #sidebar nav { display: flex; flex-direction: column; gap: 2px; }
+  #sidebar a {
+    display: flex; align-items: baseline; gap: 8px;
+    color: var(--text-muted); font-size: 13.5px; padding: 7px 10px; border-radius: 5px;
+    border-left: 2px solid transparent;
+  }
+  #sidebar a:hover { color: var(--text); text-decoration: none; background: var(--surface-2); }
+  #sidebar a.active { color: var(--accent); border-left-color: var(--accent); background: var(--surface-2); font-weight: 500; }
+  #sidebar .toc-num { font-family: var(--mono); font-size: 11px; opacity: .65; flex-shrink: 0; width: 16px; }
+
+  .nav-toggle { display: none; }
+  #navOverlay { display: none; }
+
+  main { flex: 1; min-width: 0; }
+  .content-wrap { max-width: var(--content-max); padding: 64px clamp(20px, 5vw, 64px) 100px; margin: 0 auto; }
+
+  .hero { max-width: 760px; margin-bottom: 60px; }
+  .eyebrow { font-family: var(--mono); font-size: 12.5px; letter-spacing: .08em; color: var(--accent2); text-transform: uppercase; margin-bottom: 16px; }
+  h1.title { font-family: var(--mono); font-size: clamp(26px, 4vw, 38px); line-height: 1.3; margin: 0 0 18px; font-weight: 700; color: var(--text); }
+  .tagline { font-size: 17px; color: var(--text-muted); max-width: 620px; margin: 0 0 8px; }
+
+  .regmap-block { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 22px 22px 20px; margin: 26px 0 4px; overflow-x: auto; }
+  .regmap-title { font-family: var(--mono); font-size: 12.5px; color: var(--text-muted); margin-bottom: 16px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .regmap-title b { color: var(--text); font-weight: 600; letter-spacing: .02em; }
+  .regmap-row { display: flex; gap: 3px; margin-bottom: 3px; min-width: max-content; }
+  .bit-cell {
+    width: 32px; height: 38px; border-radius: 4px; background: var(--surface-2);
+    border: 1px solid var(--border);
+    display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px;
+    font-family: var(--mono); font-size: 10px; color: var(--text-muted);
+    transition: filter .15s ease;
+  }
+  .bit-cell--accent { background: var(--accent-dim); border-color: var(--accent); color: var(--text); }
+  .bit-cell--accent2 { background: var(--accent2-dim); border-color: var(--accent2); color: var(--text); }
+  .bit-cell--danger { background: var(--danger-dim); border-color: var(--danger); color: var(--text); }
+  .bit-cell:hover { filter: brightness(1.3); }
+  .regmap-legend { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 16px; font-size: 12.5px; color: var(--text-muted); }
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+  .legend-dot--accent { background: var(--accent); }
+  .legend-dot--accent2 { background: var(--accent2); }
+  .legend-dot--danger { background: var(--danger); }
+  .legend-item code { color: var(--text); }
+
+  section, header.hero { scroll-margin-top: 20px; }
+  section { margin-bottom: 72px; }
+  section:last-of-type { margin-bottom: 40px; }
+  .sec-eyebrow { font-family: var(--mono); font-size: 12px; color: var(--text-muted); letter-spacing: .06em; margin-bottom: 10px; text-transform: uppercase; }
+  .sec-eyebrow b { color: var(--accent); font-weight: 700; }
+  h2 { font-family: var(--mono); font-size: 23px; margin: 0 0 20px; font-weight: 700; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  h3 { font-family: var(--mono); font-size: 16px; margin: 30px 0 12px; font-weight: 600; color: var(--text); }
+  p { margin: 0 0 16px; color: var(--text); }
+  ul, ol { margin: 0 0 16px; padding-left: 22px; }
+  li { margin-bottom: 9px; }
+  strong { color: var(--text); font-weight: 600; }
+  code:not(pre code) {
+    font-family: var(--mono); background: var(--surface-2); padding: 2px 6px;
+    border-radius: 4px; font-size: .87em; color: var(--accent); white-space: nowrap;
+  }
+
+  .code-block { position: relative; margin: 18px 0 26px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+  .code-block-header { display: flex; justify-content: space-between; align-items: center; background: var(--surface-2); padding: 8px 14px; font-family: var(--mono); font-size: 11px; color: var(--text-muted); letter-spacing: .04em; text-transform: uppercase; }
+  .copy-btn { background: transparent; border: 1px solid var(--border); color: var(--text-muted); font-family: var(--mono); font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer; text-transform: none; letter-spacing: 0; }
+  .copy-btn:hover { color: var(--text); border-color: var(--accent2); }
+  pre { margin: 0; padding: 18px 20px; overflow-x: auto; background: var(--surface); }
+  pre code {
+    font-family: var(--mono) !important; font-size: 13px; line-height: 1.65;
+    background: none; padding: 0; color: var(--text); white-space: pre;
+  }
+
+  .hljs-comment, .hljs-quote { color: var(--text-muted); font-style: italic; }
+  .hljs-keyword, .hljs-selector-tag { color: var(--accent2); }
+  .hljs-string, .hljs-meta-string { color: var(--good); }
+  .hljs-number, .hljs-literal { color: var(--accent); }
+  .hljs-type, .hljs-class .hljs-title { color: var(--accent2); }
+  .hljs-built_in, .hljs-builtin-name { color: var(--accent2); }
+  .hljs-title.function_, .hljs-function .hljs-title { color: var(--accent); }
+  .hljs-params { color: var(--text); }
+  .hljs-meta { color: var(--text-muted); }
+  .hljs-attr, .hljs-variable { color: var(--text); }
+  .hljs-operator, .hljs-punctuation { color: var(--text-muted); }
+
+  .callout { border-left: 3px solid var(--border); background: var(--surface); border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 20px 0; }
+  .callout-label { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; font-weight: 700; margin-bottom: 6px; display: block; text-transform: uppercase; }
+  .callout--warn { border-left-color: var(--danger); }
+  .callout--warn .callout-label { color: var(--danger); }
+  .callout--tip { border-left-color: var(--good); }
+  .callout--tip .callout-label { color: var(--good); }
+  .callout--note { border-left-color: var(--accent2); }
+  .callout--note .callout-label { color: var(--accent2); }
+  .callout p:last-child { margin-bottom: 0; }
+
+  table { width: 100%; border-collapse: collapse; margin: 20px 0 24px; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); font-weight: 600; }
+  tr:hover td { background: var(--surface); }
+
+  .checklist-item { display: flex; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .checklist-item:last-child { border-bottom: none; }
+  .checklist-num { font-family: var(--mono); font-size: 13px; color: var(--danger); flex-shrink: 0; width: 22px; padding-top: 2px; }
+  .checklist-body p { margin-bottom: 6px; }
+  .checklist-body .fix { color: var(--good); }
+
+  footer { border-top: 1px solid var(--border); padding-top: 24px; margin-top: 20px; font-size: 12.5px; color: var(--text-muted); font-family: var(--mono); }
+
+  @media (max-width: 900px) {
+    #sidebar {
+      position: fixed; left: 0; top: 0; bottom: 0; z-index: 40;
+      transform: translateX(-100%); transition: transform .25s ease;
+      box-shadow: 0 0 40px rgba(0,0,0,.5);
+    }
+    #sidebar.open { transform: translateX(0); }
+    .nav-toggle {
+      display: flex; position: fixed; top: 16px; left: 16px; z-index: 50;
+      width: 40px; height: 40px; align-items: center; justify-content: center;
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); font-size: 18px; cursor: pointer;
+    }
+    #navOverlay.show { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 30; }
+    .content-wrap { padding-top: 88px; }
+    .bit-cell { width: 22px; height: 32px; font-size: 8.5px; }
+  }
+</style>
+</head>
+<body>
+
+<button id="navToggle" class="nav-toggle" aria-label="Đóng, mở mục lục" aria-expanded="false">☰</button>
+<div id="navOverlay"></div>
+
+<div class="layout">
+  <nav id="sidebar">
+    <div class="brand-eyebrow">Tài liệu tham khảo</div>
+    <div class="brand-sub">Bitwise &amp; Thanh ghi MCU trong C</div>
+    <nav>
+      <a href="#top"><span class="toc-num">—</span>Giới thiệu</a>
+      <a href="#s1"><span class="toc-num">01</span>Vì sao cần bitwise</a>
+      <a href="#s2"><span class="toc-num">02</span>Toán tử và bẫy ưu tiên</a>
+      <a href="#s3"><span class="toc-num">03</span>Set / Clear / Toggle / Test</a>
+      <a href="#s4"><span class="toc-num">04</span>volatile</a>
+      <a href="#s5"><span class="toc-num">05</span>Ánh xạ thanh ghi</a>
+      <a href="#s6"><span class="toc-num">06</span>Atomic set/reset</a>
+      <a href="#s7"><span class="toc-num">07</span>Vì sao tránh bitfield</a>
+      <a href="#s8"><span class="toc-num">08</span>Macro chuẩn hóa</a>
+      <a href="#s9"><span class="toc-num">09</span>Bare-metal → kernel</a>
+      <a href="#s10"><span class="toc-num">10</span>Checklist lỗi</a>
+      <a href="#s11"><span class="toc-num">11</span>Ví dụ chạy được</a>
+      <a href="#cheatsheet"><span class="toc-num">12</span>Tra cứu nhanh</a>
+    </nav>
+  </nav>
+
+  <main>
+    <div class="content-wrap">
+
+      <header class="hero" id="top">
+        <div class="eyebrow">Embedded C · Register Access</div>
+        <h1 class="title">Bitwise &amp; Thanh Ghi MCU</h1>
+        <p class="tagline">Từ <code>|=</code> một bit đơn giản đến vì sao <code>BSRR</code> tồn tại: cách thao tác thanh ghi phần cứng bằng C chính xác, an toàn với ngắt, và không phụ thuộc vào "may mắn" của compiler.</p>
+
+        <div class="regmap-block">
+          <div class="regmap-title"><b>CTRL_REG</b><span>ví dụ minh họa · 32-bit</span></div>
+          <div id="regmap-hero"></div>
+        </div>
+      </header>
+
+      <section id="s1">
+        <div class="sec-eyebrow"><b>01</b> · TẠI SAO</div>
+        <h2>Vì sao không thể chỉ gán nguyên giá trị</h2>
+        <p>Hầu hết thanh ghi ngoại vi là memory-mapped: đọc/ghi một địa chỉ vật lý tương đương đọc/ghi trực tiếp thanh ghi phần cứng. Nhưng khác với biến C thông thường, một thanh ghi 32-bit gần như luôn đóng gói <strong>nhiều field độc lập</strong> — enable bit, mode 2-bit, prescaler 4-bit, interrupt flag... Ví dụ kinh điển: <code>GPIOx_MODER</code> trên STM32 dùng 2 bit cho mỗi chân GPIO, 16 chân × 2 bit = 32 bit vừa khít một thanh ghi.</p>
+
+        <div class="code-block" data-lang="c">
+          <div class="code-block-header"><span>c</span><button class="copy-btn">Copy</button></div>
+          <pre><code class="language-c" id="code-s1-bad"></code></pre>
+        </div>
+
+        <p>Dòng trên xoá sạch cấu hình MODE của toàn bộ 15 chân còn lại về 0 — một side effect gần như chắc chắn không phải điều bạn muốn. Cách đúng là chỉ chạm vào đúng 2 bit của PA5, giữ nguyên 30 bit còn lại. Đó là lý do bitwise operator tồn tại trong ngữ cảnh lập trình thanh ghi.</p>
+
+        <div class="regmap-block">
+          <div class="regmap-title"><b>GPIOx_MODER</b><span>2 bit / chân · đang chỉnh PA4, PA5, PA6</span></div>
+          <div id="regmap-moder"></div>
+        </div>
+
+        <div class="callout callout--note">
+          <span class="callout-label">Lưu ý</span>
+          <p>Các ô không tô màu ở trên không phải "reserved" — đó là MODE của các chân khác (PA0-PA3, PA7-PA15), vẫn đang mang cấu hình sống. Ghi đè nguyên thanh ghi sẽ phá hỏng chúng dù bạn chỉ định thay đổi PA5.</p>
+        </div>
+
+        <p>Nguyên lý này áp dụng cho hầu hết MCU — STM32, ESP32, AVR, PIC, RISC-V — vì memory-mapped I/O với thanh ghi đa-field là mô hình phổ biến, không riêng gì kiến trúc ARM.</p>
+      </section>
+
+      <section id="s2">
+        <div class="sec-eyebrow"><b>02</b> · NỀN TẢNG</div>
+        <h2>Toán tử bitwise và hai bẫy kinh điển</h2>
+
+        <table>
+          <thead><tr><th>Toán tử</th><th>Ý nghĩa</th><th>Dùng để</th></tr></thead>
+          <tbody>
+            <tr><td><code>&amp;</code></td><td>AND theo bit</td><td>Đọc/test bit, tạo mask</td></tr>
+            <tr><td><code>|</code></td><td>OR theo bit</td><td>Set bit</td></tr>
+            <tr><td><code>^</code></td><td>XOR theo bit</td><td>Toggle bit</td></tr>
+            <tr><td><code>~</code></td><td>NOT (đảo bit)</td><td>Tạo mask phủ định</td></tr>
+            <tr><td><code>&lt;&lt;</code> <code>&gt;&gt;</code></td><td>Dịch trái / phải</td><td>Định vị bit vào đúng offset</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Bẫy #1 — độ ưu tiên toán tử</h3>
+        <p>Trong C, <code>&amp;</code>, <code>|</code>, <code>^</code> có độ ưu tiên <strong>thấp hơn</strong> các toán tử so sánh. Nghĩa là dòng dưới không làm điều bạn nghĩ:</p>
+        <div class="code-block" data-lang="c">
+          <div class="code-block-header"><span>c</span><button class="copy-btn">Copy</button></div>
+          <pre><code class="language-c" id="code-s2-precedence"></code></pre>
+        </div>
+        <p>Dòng đầu bị parse thành <code>REG &amp; (MASK == VALUE)</code> — gần như chắc chắn không phải ý bạn. Luôn bọc ngoặc tường minh quanh phần bitwise.</p>
+
+        <h3>Bẫy #2 — undefined behavior khi dịch vào sign bit</h3>
+        <p><code>1 &lt;&lt; 31</code> trên kiểu <code>int</code> 32-bit là <strong>undefined behavior</strong> theo chuẩn C: <code>1</code> là số có dấu, và kết quả 2³¹ vượt quá <code>INT_MAX</code> nên không biểu diễn được trong kiểu kết quả có dấu.</p>
+        <div class="code-block" data-lang="c">
+          <div class="code-block-header"><span>c</span><button class="copy-btn">Copy</button></div>
+          <pre><code class="language-c" id="code-s2-ub"></code></pre>
+        </div>
+        <div class="callout callout--warn">
+          <span class="callout-label">Cảnh báo</span>
+          <p>Đây không phải lý thuyết suông — các mức tối ưu hóa khác nhau có thể sinh mã khác nhau cho hai dòng trên. Luôn viết hậu tố <code>U</code>/<code>UL</code> khi thao tác thanh ghi 32-bit.</p>
+        </div>
+      </section>
+
+      <section id="s3">
+        <div class="sec-eyebrow"><b>03</b> · THAO TÁC CƠ BẢN</div>
+        <h2>Set / Clear / Toggle / Test</h2>
+        <p>Bốn thao tác bạn sẽ viết hàng nghìn lần trong sự nghiệp bare-metal:</p>
+
+        <div class="code-block" data-lang="c">
+          <div class="code-block-header"><span>c</span><button class="copy-btn">Copy</button></div>
+          <pre><code class="language-c" id="code-s3-four-ops"></code></pre>
+        </div>
+
+        <h3>Field nhiều bit — pattern mask + shift</h3>
+        <p>Khi field rộng hơn 1 bit (ví dụ MODE 2-bit), pattern chuẩn là: xoá field cũ bằng mask phủ định, rồi OR giá trị mới đã dịch đúng vị trí vào:</p>
+        <div class="code-block" data-lang="c">
+          <div class="code-block-header"><span>c</span><button class="copy-btn">Copy</button></div>
+          <pre><code class="language-c" id="code-s3-field"></code></pre>
+        </div>
+        <div class="callout callout--tip">
+          <span class="callout-label">Mẹo</span>
+          <p>Luôn AND giá trị mới với mask trước khi OR — phòng trường hợp giá trị truyền vào lỡ tràn field (ví dụ truyền <code>0x7</code> cho field 2-bit), tránh giẫm sang bit của field kế bên.</p>
+        </div>
+      </section>
+
+      <section id="s4">
+        <div class="sec-eyebrow"><b>04</b> · VOLATILE</div>
+        <h2><code>volatile</code> — ranh giới giữa biến C và thanh ghi phần cứng</h2>
+        <p>Compiler mặc định giả định giá trị một biến chỉ đổi khi <em>chính code của bạn</em> ghi vào nó. Với thanh ghi phần cứng, giả định này sai — giá trị có thể đổi bởi phần cứng (DMA, ngoại vi tự cập nhật flag) mà compiler không hề biết. Thiếu <code>volatile</code>, compiler được phép cache giá trị trong CPU register và loại bỏ các lần đọc/ghi mà nó cho là "thừa".</p>
+
+        <div class="code-block" data-lang="c">
+          <div class="code-block-header"><span>c · không volatile</span><button class="copy-btn">Copy</button></div>
+          <pre><code class="language-c" id="code-s4-novolatile"></code></pre>
+        </div>
+        <div class="code-block" data-lang="c">
+          <div class="code-block-header"><span>c · có volatile</span><button class="copy-btn">Copy</button></div>
+          <pre><code class="language-c" id="code-s4-volatile"></code></pre>
+        </div>
+
+        <div class="callout callout--warn">
+          <span class="callout-label">Hiểu đúng, không chỉ nhớ đúng</span>
+          <p><code>volatile</code> <strong>không phải</strong> memory barrier. Nó chỉ ngăn compiler tối ưu/reorder truy cập ở mức source code — không đảm bảo thứ tự thực thi ở mức CPU pipeline hay store buffer. Khi thứ tự giữa nhiều ngoại vi thực sự quan trọng, trên Cortex-M cần chỉ thị barrier tường minh như <code>__DSB()</code> / <code>__DMB()</code>, không phải chỉ dựa vào volatile.</p>
+        </div>
+      </section>
+
+      <section id="s5">
+        <div class="sec-eyebrow"><b>05</b> · ÁNH XẠ THANH GHI</div>
+        <h2>Macro con trỏ thô vs struct overlay (kiểu CMSIS)</h2>
+
+        <h3>Cách 1 — macro con trỏ thô</h3>
+        <div class="code-block" data-lang="c">
+          <div class="code-block-header"><span>c</span><button class="copy-btn">Copy</button></div>
+          <pre><code class="language-c" id="code-s5-macro"></code></pre>
+        </div>
+        <p>Đơn giản, không phụ thuộc layout struct nào — nhưng dễ gõ sai offset khi có hàng chục thanh ghi, và IDE không gợi ý được tên field.</p>
+
+        <h3>Cách 2 — struct overlay (CMSIS-style)</h3>
+        <div class="code-block" data-lang="c">
+          <div class="code-block-header"><span>c</span><button class="copy-btn">Copy</button></div>
+          <pre><code class="language-c" id="code-s5-struct"></code></pre>
+        </div>
+        <p>Đây chính xác là cách các header CMSIS (<code>stm32f4xx.h</code>) được tạo ra — struct field đúng thứ tự offset thật theo datasheet. Ưu điểm: tên field rõ ràng, autocomplete, type-checked. Đánh đổi: phải giữ đúng thứ tự và kích thước từng field theo đúng datasheet, kể cả khoảng trống — chèn <code>uint32_t RESERVEDx[n];</code> đúng offset, nếu không toàn bộ struct sau điểm sai sẽ lệch địa chỉ.</p>
+
+        <div class="callout callout--note">
+          <span class="callout-label">Liên hệ thực tế</span>
+          <p>Nếu bạn đang xây layer thấp nhất (Platform layer) trong kiến trúc firmware nhiều lớp, đây thường là nơi hai cách này sống chung: macro thô cho vài thanh ghi rời rạc (RCC, SYSCFG...), struct overlay cho các block ngoại vi lặp lại nhiều instance (GPIOA..GPIOK, SPI1..SPI3...).</p>
+        </div>
+      </section>
+
+      <section id="s6">
+        <div class="sec-eyebrow"><b>06</b> · RACE CONDITION</div>
+        <h2>Vì sao <code>|=</code> không an toàn với ngắt</h2>
+        <p><code>GPIOA->ODR |= (1U &lt;&lt; 5);</code> trông như một thao tác, nhưng ở cấp lệnh máy nó là 3 bước: LOAD ODR → OR với mask → STORE lại ODR. Nếu một ISR chen vào đúng lúc giữa LOAD và STORE, và ISR đó cũng ghi ODR, thay đổi của ISR sẽ bị ghi đè mất khi context chính STORE giá trị ODR cũ (đã lỗi thời) cộng thêm bit mới của nó — một <strong>lost update</strong> kinh điển.</p>
+
+        <p>Hai hướng giải quyết: (1) tắt ngắt quanh đoạn RMW — an toàn nhưng tăng độ trễ ngắt, không mở rộng tốt; (2) dùng thanh ghi atomic set/reset chuyên dụng nếu MCU hỗ trợ.</p>
+
+        <p>STM32 GPIO có sẵn <code>BSRR</code>: ghi 1 vào bit <code>BSy</code> (nửa thấp, y=0..15) set <code>ODRy</code>; ghi 1 vào bit <code>BRy</code> (nửa cao, bit 16+y) reset <code>ODRy</code>; ghi 0 ở bất kỳ bit nào không ảnh hưởng gì. Vì đây là một lệnh STORE duy nhất — không có bước LOAD, không có gì để ISR "chen vào giữa" — an toàn tuyệt đối trước preemption.</p>
+
+        <div class="regmap-block">
+          <div class="regmap-title"><b>GPIOx_BSRR</b><span>set/reset PA5</span></div>
+          <div id="regmap-bsrr"></div>
+        </div>
+
+        <div class="code-block" data-lang="c">
+          <div class="code-block-header"><span>c</span><button class="copy-btn">Copy</button></div>
+          <pre><code class="language-c" id="code-s6-bsrr"></code></pre>
+        </div>
+
+        <div class="callout callout--tip">
+          <span class="callout-label">Mẹo nhận diện</span>
+          <p>Tư duy "atomic set/clear qua thanh ghi riêng thay vì RMW" xuất hiện ở nhiều họ MCU dưới tên khác nhau (SET/CLR alias registers, bit-banding trên Cortex-M3/M4...). Khi thấy field tên có hậu tố kiểu <code>_SET</code> / <code>_CLR</code> / <code>BSRR</code> / <code>IFCR</code> trong reference manual, đó thường là datasheet đang chủ động giải quyết đúng vấn đề này.</p>
+        </div>
+      </section>
+
+      <section id="s7">
+        <div class="sec-eyebrow"><b>07</b> · BITFIELD</div>
+        <h2>Vì sao tránh C bitfield cho MMIO</h2>
+        <p>C cho phép khai báo bit-field ngay trong struct, trông rất gọn:</p>
+        <div class="code-block" data-lang="c">
+          <div class="code-block-header"><span>c</span><button class="copy-btn">Copy</button></div>
+          <pre><code class="language-c" id="code-s7-bitfield"></code></pre>
+        </div>
+        <p>Nhưng chuẩn C11 (§6.7.2.1) để ngỏ — tức <strong>implementation-defined</strong> — ít nhất ba điều: thứ tự phân bổ bit trong storage unit (cao xuống thấp hay ngược lại), bit-field có được phép nằm vắt qua ranh giới storage unit hay không, và kích thước/alignment thật sự của storage unit chứa các field.</p>
+        <p>Hệ quả thực tế: compiler được toàn quyền chọn access width (byte/half-word/word) khi đọc-sửa-ghi một field bit. Với bus ngoại vi (AHB/APB) thường yêu cầu đúng 32-bit aligned access, một dòng tưởng vô hại như gán giá trị cho field <code>MODE</code> có thể sinh ra truy cập sai width, hoặc vô tình RMW luôn field lân cận theo cách bạn không kiểm soát được — và hành vi này có thể khác nhau giữa GCC, Clang, IAR, hay giữa các version của cùng một compiler.</p>
+
+        <div class="callout callout--warn">
+          <span class="callout-label">Nguyên tắc thực dụng</span>
+          <p>Bitfield chỉ nên dùng cho dữ liệu nằm trong RAM (không phải MMIO), khi toolchain và target đã cố định và layout thực tế đã được kiểm chứng. Với thanh ghi phần cứng, luôn ưu tiên macro shift-mask tường minh ở Mục 03 — chậm hơn để viết, nhưng hành vi hoàn toàn nằm trong tay bạn.</p>
+        </div>
+      </section>
+
+      <section id="s8">
+        <div class="sec-eyebrow"><b>08</b> · MACRO TIỆN ÍCH</div>
+        <h2>Chuẩn hóa: BIT / GENMASK / FIELD_PREP / FIELD_GET</h2>
+        <p>Thay vì viết <code>(1U &lt;&lt; n)</code> và các biểu thức mask/shift rải rác khắp nơi, đóng gói thành bộ macro dùng lại được. Đây gần như là bản rút gọn của <code>&lt;linux/bitops.h&gt;</code> và <code>&lt;linux/bitfield.h&gt;</code> trong Linux kernel:</p>
+
+        <div class="code-block" data-lang="c">
+          <div class="code-block-header"><span>bit_ops.h</span><button class="copy-btn">Copy</button></div>
+          <pre><code class="language-c" id="code-s8-bitops"></code></pre>
+        </div>
+        <div class="code-block" data-lang="c">
+          <div class="code-block-header"><span>c · sử dụng</span><button class="copy-btn">Copy</button></div>
+          <pre><code class="language-c" id="code-s8-usage"></code></pre>
+        </div>
+
+        <div class="callout callout--note">
+          <span class="callout-label">Lưu ý</span>
+          <p>Đây là bản minh họa để hiểu nguyên lý — bản thật trong kernel xử lý thêm các edge case (kiểm tra mask là hằng số liên tục lúc compile-time, độ rộng theo kiến trúc...). Khi viết kernel driver, luôn <code>#include &lt;linux/bitfield.h&gt;</code> thay vì tự viết lại.</p>
+        </div>
+      </section>
+
+      <section id="s9">
+        <div class="sec-eyebrow"><b>09</b> · MỞ RỘNG</div>
+        <h2>Bare-metal MCU vs Linux kernel driver</h2>
+        <p>Nếu bạn đang song song tìm hiểu viết platform driver cho Linux, tin tốt là toàn bộ tư duy shift-mask ở trên không đổi — chỉ đổi lớp bọc quanh việc đọc/ghi.</p>
+
+        <table>
+          <thead><tr><th></th><th>Bare-metal (STM32, không MMU)</th><th>Linux kernel driver (có MMU)</th></tr></thead>
+          <tbody>
+            <tr><td>Địa chỉ</td><td>Physical = địa chỉ CPU thấy trực tiếp</td><td>Physical phải qua <code>ioremap()</code> để lấy virtual address</td></tr>
+            <tr><td>Đọc/ghi</td><td>Deref con trỏ <code>volatile</code> trực tiếp</td><td><code>readl()</code>/<code>writel()</code> (có barrier ngầm) hoặc <code>_relaxed</code> (không barrier, nhanh hơn)</td></tr>
+            <tr><td>Field</td><td>Macro/<code>GENMASK</code> tự viết</td><td><code>GENMASK</code> + <code>FIELD_GET</code>/<code>FIELD_PREP</code> chuẩn kernel</td></tr>
+            <tr><td>Atomic bit</td><td>Thanh ghi riêng (BSRR...) hoặc tắt ngắt</td><td><code>spinlock</code> quanh RMW, hoặc thanh ghi SET/CLR riêng nếu có</td></tr>
+          </tbody>
+        </table>
+
+        <p>Ví dụ driver I2C controller (MMIO + interrupt + clock) là minh họa rất trực tiếp — status register, control register, clock divider field trong loại driver đó dùng đúng pattern <code>readl()</code> cộng <code>FIELD_GET</code>/<code>FIELD_PREP</code> như ở Mục 08, chỉ khác là địa chỉ đến từ Device Tree qua <code>platform_get_resource()</code> và <code>devm_ioremap_resource()</code> thay vì một macro <code>#define</code> cố định như bên bare-metal.</p>
+      </section>
+
+      <section id="s10">
+        <div class="sec-eyebrow"><b>10</b> · CẢNH BÁO</div>
+        <h2>Checklist lỗi thường gặp</h2>
+
+        <div class="checklist-item">
+          <div class="checklist-num">01</div>
+          <div class="checklist-body">
+            <p>Quên <code>volatile</code> trên con trỏ thanh ghi — compiler cache giá trị, vòng lặp poll không bao giờ thoát hoặc bị tối ưu mất.</p>
+            <p class="fix">Sửa: luôn khai báo con trỏ thanh ghi là <code>volatile</code>.</p>
+          </div>
+        </div>
+        <div class="checklist-item">
+          <div class="checklist-num">02</div>
+          <div class="checklist-body">
+            <p><code>1 &lt;&lt; 31</code> thay vì <code>1U &lt;&lt; 31</code> — undefined behavior trên kiểu có dấu.</p>
+            <p class="fix">Sửa: luôn dùng hậu tố <code>U</code>/<code>UL</code>.</p>
+          </div>
+        </div>
+        <div class="checklist-item">
+          <div class="checklist-num">03</div>
+          <div class="checklist-body">
+            <p>So sánh bitwise thiếu ngoặc — độ ưu tiên thấp hơn <code>==</code> khiến biểu thức bị parse sai.</p>
+            <p class="fix">Sửa: luôn bọc ngoặc quanh phần AND/OR trước khi so sánh.</p>
+          </div>
+        </div>
+        <div class="checklist-item">
+          <div class="checklist-num">04</div>
+          <div class="checklist-body">
+            <p>RMW (<code>|=</code>) trên thanh ghi có thể bị ISR chen ngang — lost update.</p>
+            <p class="fix">Sửa: dùng thanh ghi atomic set/reset, hoặc critical section.</p>
+          </div>
+        </div>
+        <div class="checklist-item">
+          <div class="checklist-num">05</div>
+          <div class="checklist-body">
+            <p>Dùng bitfield cho MMIO — access width và bit order implementation-defined, không portable giữa compiler.</p>
+            <p class="fix">Sửa: dùng macro shift-mask tường minh.</p>
+          </div>
+        </div>
+        <div class="checklist-item">
+          <div class="checklist-num">06</div>
+          <div class="checklist-body">
+            <p>RMW trên cờ "write-1-to-clear" (W1C) — ví dụ cờ ngắt USART/SPI/DMA. Đọc rồi ghi lại nguyên giá trị có thể vô tình ghi 1 vào các flag <em>khác</em> đang chờ xử lý, xoá mất ngắt chưa được service.</p>
+            <p class="fix">Sửa: chỉ ghi đúng mask của bit muốn clear, các bit còn lại ghi 0 — không ghi lại giá trị vừa đọc.</p>
+          </div>
+        </div>
+
+        <div class="regmap-block">
+          <div class="regmap-title"><b>STATUS_REG</b><span>ví dụ cờ ngắt kiểu write-1-to-clear</span></div>
+          <div id="regmap-w1c"></div>
+        </div>
+
+        <div class="code-block" data-lang="c">
+          <div class="code-block-header"><span>c</span><button class="copy-btn">Copy</button></div>
+          <pre><code class="language-c" id="code-s10-w1c"></code></pre>
+        </div>
+      </section>
+
+      <section id="s11">
+        <div class="sec-eyebrow"><b>11</b> · VÍ DỤ</div>
+        <h2>Hai ví dụ chạy được ngay</h2>
+
+        <h3>A — mô phỏng thanh ghi trên host, build bằng gcc (không cần board)</h3>
+        <p>Copy toàn bộ đoạn dưới vào <code>demo.c</code>, build bằng <code>gcc -std=c11 -Wall -Wextra -o demo demo.c &amp;&amp; ./demo</code> để thấy trực tiếp từng bước bit thay đổi qua output nhị phân, không cần cắm board.</p>
+        <div class="code-block" data-lang="c">
+          <div class="code-block-header"><span>demo.c</span><button class="copy-btn">Copy</button></div>
+          <pre><code class="language-c" id="code-s11-demo"></code></pre>
+        </div>
+
+        <h3>B — bare-metal thật: set/reset PA5 an toàn với ISR (STM32F4, CMSIS)</h3>
+        <div class="code-block" data-lang="c">
+          <div class="code-block-header"><span>c</span><button class="copy-btn">Copy</button></div>
+          <pre><code class="language-c" id="code-s11-baremetal"></code></pre>
+        </div>
+        <div class="callout callout--note">
+          <span class="callout-label">Lưu ý về toggle</span>
+          <p><code>led_toggle()</code> đọc <code>ODR</code> để quyết định set hay reset, rồi ghi qua <code>BSRR</code> — bước ghi cuối atomic, nhưng bước đọc-quyết định thì không. Nếu hai context (main và ISR) cùng gọi <code>led_toggle()</code> trên cùng một pin đồng thời, vẫn có thể race ở bước đọc. Hàm này an toàn khi chỉ một context điều khiển pin đó; nếu nhiều context cùng toggle một pin, cần bọc thêm critical section quanh cả ba bước.</p>
+        </div>
+      </section>
+
+      <section id="cheatsheet">
+        <div class="sec-eyebrow"><b>12</b> · TRA CỨU NHANH</div>
+        <h2>Bảng tra cứu nhanh</h2>
+        <table>
+          <thead><tr><th>Thao tác</th><th>Code</th><th>Ghi chú</th></tr></thead>
+          <tbody>
+            <tr><td>Set bit n</td><td><code id="cs-1"></code></td><td>RMW, không atomic</td></tr>
+            <tr><td>Clear bit n</td><td><code id="cs-2"></code></td><td>RMW, không atomic</td></tr>
+            <tr><td>Toggle bit n</td><td><code id="cs-3"></code></td><td>RMW, không atomic</td></tr>
+            <tr><td>Test bit n</td><td><code id="cs-4"></code></td><td>Chỉ đọc</td></tr>
+            <tr><td>Set field</td><td><code id="cs-5"></code></td><td>Luôn AND với mask trước khi OR</td></tr>
+            <tr><td>Atomic set (STM32 GPIO)</td><td><code id="cs-6"></code></td><td>1 lệnh STORE, an toàn ISR</td></tr>
+            <tr><td>Atomic reset (STM32 GPIO)</td><td><code id="cs-7"></code></td><td>1 lệnh STORE, an toàn ISR</td></tr>
+            <tr><td>Clear cờ W1C</td><td><code id="cs-8"></code></td><td>Không dùng <code>|=</code> — chỉ ghi đúng bit</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <footer>
+        Tài liệu tham khảo nội bộ · Bitwise &amp; Register Access trong C · toàn bộ code trong trang này copy được trực tiếp
+      </footer>
+
+    </div>
+  </main>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var CODE_BLOCKS = {
+    'code-s1-bad': 'GPIOA->MODER = 0x1 << 10;   // SAI: xoa MODE cua toan bo 15 pin con lai',
+
+    'code-s2-precedence':
+      'if (REG & MASK == VALUE)     // SAI - parse thanh REG & (MASK == VALUE)\n\n' +
+      'if ((REG & MASK) == VALUE)   // DUNG',
+
+    'code-s2-ub':
+      'uint32_t mask = 1U << 31;   // DUNG - well-defined\n' +
+      'uint32_t mask = 1  << 31;   // SAI - undefined behavior (dich vao sign bit cua int)',
+
+    'code-s3-four-ops':
+      '#define BIT_N(n)        (1U << (n))\n\n' +
+      '/* SET bit n - giu nguyen cac bit khac */\n' +
+      'REG |=  BIT_N(n);\n\n' +
+      '/* CLEAR bit n */\n' +
+      'REG &= ~BIT_N(n);\n\n' +
+      '/* TOGGLE bit n */\n' +
+      'REG ^=  BIT_N(n);\n\n' +
+      '/* TEST bit n (doc) */\n' +
+      'if (REG & BIT_N(n)) {\n' +
+      '    /* bit dang set */\n' +
+      '}',
+
+    'code-s3-field':
+      '#define FIELD_MASK   (0x3U << 10)   /* MODE5[1:0] tai bit 11:10 */\n' +
+      '#define FIELD_SHIFT  10U\n\n' +
+      '/* set PA5 = mode 0b10 (Alternate Function) */\n' +
+      'GPIOA->MODER = (GPIOA->MODER & ~FIELD_MASK)\n' +
+      '             | ((0x2U << FIELD_SHIFT) & FIELD_MASK);',
+
+    'code-s4-novolatile':
+      '/* KHONG co volatile - nguy hiem */\n' +
+      'uint32_t *status = (uint32_t *)0x40013800UL;\n\n' +
+      'while ((*status & 0x1U) == 0U) {\n' +
+      '    /* cho flag len 1 */\n' +
+      '}\n' +
+      '/* O -O2, compiler thay: trong than vong lap khong co gi (theo no biet)\n' +
+      '   lam thay doi *status -> duoc phep chi doc MOT lan truoc vong lap\n' +
+      '   roi suy ra ket qua mai mai. Neu lan doc dau flag = 0\n' +
+      '   -> vong lap treo vinh vien, du phan cung da set flag that sau do. */',
+
+    'code-s4-volatile':
+      '/* CO volatile - dung */\n' +
+      'volatile uint32_t *status = (volatile uint32_t *)0x40013800UL;\n\n' +
+      'while ((*status & 0x1U) == 0U) {\n' +
+      '    /* compiler bat buoc doc lai *status moi vong lap */\n' +
+      '}',
+
+    'code-s5-macro':
+      '#define RCC_AHB1ENR  (*(volatile uint32_t *)0x40023830UL)\n\n' +
+      'RCC_AHB1ENR |= (1U << 0);   /* enable GPIOA clock */',
+
+    'code-s5-struct':
+      'typedef struct {\n' +
+      '    volatile uint32_t MODER;\n' +
+      '    volatile uint32_t OTYPER;\n' +
+      '    volatile uint32_t OSPEEDR;\n' +
+      '    volatile uint32_t PUPDR;\n' +
+      '    volatile uint32_t IDR;\n' +
+      '    volatile uint32_t ODR;\n' +
+      '    volatile uint32_t BSRR;\n' +
+      '    volatile uint32_t LCKR;\n' +
+      '    volatile uint32_t AFR[2];\n' +
+      '} GPIO_TypeDef;\n\n' +
+      '#define GPIOA_BASE   0x40020000UL\n' +
+      '#define GPIOA        ((GPIO_TypeDef *)GPIOA_BASE)\n\n' +
+      'GPIOA->MODER |= (0x1U << 10);',
+
+    'code-s6-bsrr':
+      '/* Set PA5 - atomic, an toan voi ISR */\n' +
+      'GPIOA->BSRR = (1U << 5);\n\n' +
+      '/* Reset PA5 - atomic */\n' +
+      'GPIOA->BSRR = (1U << (5 + 16));',
+
+    'code-s7-bitfield':
+      'typedef struct {\n' +
+      '    uint32_t EN    : 1;\n' +
+      '    uint32_t MODE  : 2;\n' +
+      '    uint32_t IE    : 1;\n' +
+      '    uint32_t       : 4;   /* reserved */\n' +
+      '    uint32_t PRESC : 4;\n' +
+      '} CTRL_REG_Bits;',
+
+    'code-s8-bitops':
+      '/* bit_ops.h - ban minh hoa, don gian hoa de de doc */\n' +
+      '#define BIT(n)              (1UL << (n))\n\n' +
+      '#define GENMASK(hi, lo) \\\n' +
+      '    (((0xFFFFFFFFUL) << (lo)) & (0xFFFFFFFFUL >> (31U - (hi))))\n\n' +
+      '#define FIELD_GET(mask, val) \\\n' +
+      '    (((val) & (mask)) >> __builtin_ctz(mask))\n\n' +
+      '#define FIELD_PREP(mask, val) \\\n' +
+      '    (((uint32_t)(val) << __builtin_ctz(mask)) & (mask))',
+
+    'code-s8-usage':
+      '#define CTRL_MODE_MASK   GENMASK(2, 1)   /* bit 2:1 */\n\n' +
+      'CTRL_REG = (CTRL_REG & ~CTRL_MODE_MASK)\n' +
+      '         | FIELD_PREP(CTRL_MODE_MASK, 0x2U);\n\n' +
+      'uint32_t mode = FIELD_GET(CTRL_MODE_MASK, CTRL_REG);',
+
+    'code-s10-w1c':
+      '/* SAI - co the vo tinh clear cac flag khac dang cho xu ly */\n' +
+      'SPI1->SR = SPI1->SR | SPI_SR_OVR;\n\n' +
+      '/* DUNG - chi ghi dung bit muon clear, cac bit khac ghi 0 */\n' +
+      'SPI1->SR = SPI_SR_OVR;',
+
+    'code-s11-demo':
+      '#include <stdio.h>\n' +
+      '#include <stdint.h>\n\n' +
+      '/* Gia lap mot thanh ghi 32-bit cua "phan cung" */\n' +
+      'static uint32_t fake_ctrl_reg = 0x00000000U;\n\n' +
+      '#define EN_BIT       0U\n' +
+      '#define MODE_MASK    (0x3U << 1)\n' +
+      '#define MODE_SHIFT   1U\n\n' +
+      'static void print_bin(const char *label, uint32_t v) {\n' +
+      '    printf("%-16s: 0b", label);\n' +
+      '    for (int i = 31; i >= 0; i--) {\n' +
+      '        putchar((v & (1U << (uint32_t)i)) ? \'1\' : \'0\');\n' +
+      '        if (i % 4 == 0 && i != 0) putchar(\'_\');\n' +
+      '    }\n' +
+      '    printf("  (0x%08X)\\n", v);\n' +
+      '}\n\n' +
+      'int main(void) {\n' +
+      '    print_bin("initial", fake_ctrl_reg);\n\n' +
+      '    fake_ctrl_reg |= (1U << EN_BIT);\n' +
+      '    print_bin("after EN=1", fake_ctrl_reg);\n\n' +
+      '    fake_ctrl_reg = (fake_ctrl_reg & ~MODE_MASK)\n' +
+      '                  | ((0x2U << MODE_SHIFT) & MODE_MASK);\n' +
+      '    print_bin("after MODE=2", fake_ctrl_reg);\n\n' +
+      '    fake_ctrl_reg ^= (1U << EN_BIT);\n' +
+      '    print_bin("after toggle EN", fake_ctrl_reg);\n\n' +
+      '    if (fake_ctrl_reg & (1U << EN_BIT)) {\n' +
+      '        printf("EN dang bat\\n");\n' +
+      '    } else {\n' +
+      '        printf("EN dang tat\\n");\n' +
+      '    }\n\n' +
+      '    return 0;\n' +
+      '}\n\n' +
+      '/* Build & chay:\n' +
+      '   gcc -std=c11 -Wall -Wextra -o demo demo.c && ./demo */',
+
+    'code-s11-baremetal':
+      '#include "stm32f4xx.h"   /* header CMSIS that cua ban */\n\n' +
+      'void led_init(void) {\n' +
+      '    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;                 /* bat clock GPIOA */\n' +
+      '    GPIOA->MODER  = (GPIOA->MODER & ~(0x3U << (5U * 2U)))\n' +
+      '                  |  (0x1U << (5U * 2U));                /* PA5 = output */\n' +
+      '}\n\n' +
+      'void led_on(void)  { GPIOA->BSRR = (1U << 5); }          /* atomic set   */\n' +
+      'void led_off(void) { GPIOA->BSRR = (1U << (5U + 16U)); } /* atomic reset */\n\n' +
+      'void led_toggle(void) {\n' +
+      '    if (GPIOA->ODR & (1U << 5)) led_off(); else led_on();\n' +
+      '}',
+
+    'cs-1': 'REG |= (1U << n);',
+    'cs-2': 'REG &= ~(1U << n);',
+    'cs-3': 'REG ^= (1U << n);',
+    'cs-4': 'if (REG & (1U << n))',
+    'cs-5': 'REG = (REG & ~MASK) | ((v << shift) & MASK);',
+    'cs-6': 'GPIOx->BSRR = (1U << n);',
+    'cs-7': 'GPIOx->BSRR = (1U << (n + 16));',
+    'cs-8': 'REG = FLAG_BIT;'
+  };
+
+  Object.keys(CODE_BLOCKS).forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = CODE_BLOCKS[id];
+  });
+
+  if (window.hljs) {
+    document.querySelectorAll('pre code').forEach(function (block) {
+      hljs.highlightElement(block);
+    });
+  }
+
+  var REGMAPS = {
+    'regmap-hero': [
+      { label: 'EN', hi: 0, lo: 0, color: 'accent' },
+      { label: 'MODE[1:0]', hi: 2, lo: 1, color: 'accent2' },
+      { label: 'IE', hi: 3, lo: 3, color: 'accent' },
+      { label: 'PRESC[3:0]', hi: 7, lo: 4, color: 'accent2' }
+    ],
+    'regmap-moder': [
+      { label: 'MODE4[1:0] (PA4)', hi: 9, lo: 8, color: 'accent2' },
+      { label: 'MODE5[1:0] (PA5)', hi: 11, lo: 10, color: 'accent' },
+      { label: 'MODE6[1:0] (PA6)', hi: 13, lo: 12, color: 'accent2' }
+    ],
+    'regmap-bsrr': [
+      { label: 'BS5 (set PA5)', hi: 5, lo: 5, color: 'accent' },
+      { label: 'BR5 (reset PA5)', hi: 21, lo: 21, color: 'accent2' }
+    ],
+    'regmap-w1c': [
+      { label: 'IRQ_FLAG (W1C)', hi: 2, lo: 2, color: 'danger' }
+    ]
+  };
+
+  function renderRegMap(id, fields) {
+    var container = document.getElementById(id);
+    if (!container) return;
+    [[31, 16], [15, 0]].forEach(function (range) {
+      var hi = range[0], lo = range[1];
+      var row = document.createElement('div');
+      row.className = 'regmap-row';
+      for (var b = hi; b >= lo; b--) {
+        (function (bit) {
+          var f = fields.find(function (fd) { return bit <= fd.hi && bit >= fd.lo; });
+          var cell = document.createElement('div');
+          cell.className = 'bit-cell' + (f ? ' bit-cell--' + f.color : '');
+          cell.title = f ? (f.label + ' \u2014 bit ' + bit) : ('bit ' + bit);
+          cell.textContent = String(bit);
+          row.appendChild(cell);
+        })(b);
+      }
+      container.appendChild(row);
+    });
+    var legend = document.createElement('div');
+    legend.className = 'regmap-legend';
+    fields.forEach(function (f) {
+      var item = document.createElement('div');
+      item.className = 'legend-item';
+      var dot = document.createElement('span');
+      dot.className = 'legend-dot legend-dot--' + f.color;
+      var codeEl = document.createElement('code');
+      codeEl.textContent = f.label;
+      var range = f.hi === f.lo ? ('bit ' + f.hi) : ('bits ' + f.hi + ':' + f.lo);
+      item.appendChild(dot);
+      item.appendChild(codeEl);
+      item.appendChild(document.createTextNode(' \u2014 ' + range));
+      legend.appendChild(item);
+    });
+    container.appendChild(legend);
+  }
+
+  Object.keys(REGMAPS).forEach(function (id) {
+    renderRegMap(id, REGMAPS[id]);
+  });
+
+  document.querySelectorAll('.copy-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var block = btn.closest('.code-block');
+      var codeEl = block ? block.querySelector('code') : null;
+      var text = codeEl ? codeEl.textContent : '';
+      var original = btn.textContent;
+      function flash(msg) {
+        btn.textContent = msg;
+        setTimeout(function () { btn.textContent = original; }, 1400);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+          flash('Đã copy');
+        }, function () {
+          flash('Không copy được');
+        });
+      } else {
+        flash('Không copy được');
+      }
+    });
+  });
+
+  var sidebar = document.getElementById('sidebar');
+  var navToggle = document.getElementById('navToggle');
+  var navOverlay = document.getElementById('navOverlay');
+
+  function openNav() {
+    sidebar.classList.add('open');
+    navOverlay.classList.add('show');
+    navToggle.setAttribute('aria-expanded', 'true');
+  }
+  function closeNav() {
+    sidebar.classList.remove('open');
+    navOverlay.classList.remove('show');
+    navToggle.setAttribute('aria-expanded', 'false');
+  }
+  if (navToggle) {
+    navToggle.addEventListener('click', function () {
+      if (sidebar.classList.contains('open')) closeNav(); else openNav();
+    });
+  }
+  if (navOverlay) navOverlay.addEventListener('click', closeNav);
+  document.querySelectorAll('#sidebar a').forEach(function (a) {
+    a.addEventListener('click', closeNav);
+  });
+
+  var sections = document.querySelectorAll('main section[id], main header[id]');
+  var links = document.querySelectorAll('#sidebar a');
+  if ('IntersectionObserver' in window && sections.length) {
+    var spy = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var link = document.querySelector('#sidebar a[href="#' + entry.target.id + '"]');
+        if (!link) return;
+        links.forEach(function (l) { l.classList.remove('active'); });
+        link.classList.add('active');
+      });
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    sections.forEach(function (s) { spy.observe(s); });
+  }
+})();
+</script>
+</body>
+</html>

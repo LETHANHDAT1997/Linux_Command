@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Pointer trong C++ — Tài liệu tham khảo cho lập trình nhúng</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<style>
+  :root{
+    --bg: #0B0D12;
+    --bg-elevated: #12151C;
+    --bg-code: #0A0C10;
+    --bg-inline-code: #1A1E28;
+    --border: #232733;
+    --border-soft: #1B1E27;
+    --text-primary: #E7E6E2;
+    --text-secondary: #9497A6;
+    --text-tertiary: #63677A;
+    --accent-unique: #E8A33D;
+    --accent-unique-dim: #E8A33D22;
+    --accent-shared: #4FC3C0;
+    --accent-shared-dim: #4FC3C022;
+    --accent-weak: #9B95D9;
+    --accent-weak-dim: #9B95D922;
+    --accent-danger: #E0685F;
+    --accent-danger-dim: #E0685F1c;
+    --font-display: 'Be Vietnam Pro', -apple-system, sans-serif;
+    --font-body: 'Be Vietnam Pro', -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    --sidebar-w: 300px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text-primary);
+    font-family:var(--font-body);
+    font-size:16px;
+    line-height:1.75;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--accent-unique-dim); color:var(--text-primary); }
+
+  a{ color:inherit; }
+
+  /* ---------- Layout ---------- */
+  .shell{ display:flex; min-height:100vh; }
+
+  .sidebar{
+    width:var(--sidebar-w);
+    flex-shrink:0;
+    position:sticky;
+    top:0;
+    align-self:flex-start;
+    height:100vh;
+    overflow-y:auto;
+    background:var(--bg-elevated);
+    border-right:1px solid var(--border-soft);
+    padding:28px 0 40px;
+  }
+  .sidebar::-webkit-scrollbar{ width:8px; }
+  .sidebar::-webkit-scrollbar-thumb{ background:var(--border); border-radius:4px; }
+
+  .brand{
+    padding:0 28px 22px;
+    border-bottom:1px solid var(--border-soft);
+    margin-bottom:18px;
+  }
+  .brand-kicker{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--accent-unique);
+    display:block;
+    margin-bottom:8px;
+  }
+  .brand-title{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:19px;
+    line-height:1.3;
+    margin:0;
+    color:var(--text-primary);
+  }
+  .brand-sub{
+    font-size:13px;
+    color:var(--text-tertiary);
+    margin-top:8px;
+    line-height:1.5;
+  }
+
+  .nav-group-label{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--text-tertiary);
+    padding:4px 28px;
+    margin-top:14px;
+  }
+  .navlink{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    padding:8px 28px;
+    font-size:14px;
+    color:var(--text-secondary);
+    text-decoration:none;
+    border-left:2px solid transparent;
+    transition:color .15s ease, border-color .15s ease, background .15s ease;
+  }
+  .navlink:hover{ color:var(--text-primary); background:#ffffff06; }
+  .navlink.active{
+    color:var(--text-primary);
+    border-left-color:var(--accent-unique);
+    background:#ffffff08;
+  }
+  .navlink .n{
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--text-tertiary);
+    min-width:16px;
+  }
+  .navlink.active .n{ color:var(--accent-unique); }
+
+  .main{
+    flex:1;
+    min-width:0;
+    padding:64px 48px 120px;
+    max-width:900px;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero{ margin-bottom:64px; }
+  .hero-kicker{
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--accent-shared);
+    margin-bottom:14px;
+    display:block;
+  }
+  .hero h1{
+    font-family:var(--font-display);
+    font-weight:800;
+    font-size:44px;
+    line-height:1.15;
+    margin:0 0 18px;
+    letter-spacing:-0.01em;
+  }
+  .hero h1 .hl{ color:var(--accent-unique); }
+  .hero p.lede{
+    font-size:17px;
+    color:var(--text-secondary);
+    max-width:640px;
+    line-height:1.7;
+    margin:0 0 26px;
+  }
+  .badges{ display:flex; gap:8px; flex-wrap:wrap; }
+  .badge{
+    font-family:var(--font-mono);
+    font-size:12px;
+    padding:5px 11px;
+    border-radius:5px;
+    border:1px solid var(--border);
+    color:var(--text-secondary);
+    background:var(--bg-elevated);
+  }
+
+  /* ---------- Ownership legend (signature element) ---------- */
+  .legend{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:1px;
+    background:var(--border-soft);
+    border:1px solid var(--border-soft);
+    border-radius:10px;
+    overflow:hidden;
+    margin-top:32px;
+  }
+  .legend-item{ background:var(--bg-elevated); padding:16px 18px; }
+  .legend-item .dot{ width:9px; height:9px; border-radius:50%; display:inline-block; margin-right:8px; }
+  .legend-item .name{ font-family:var(--font-mono); font-size:13px; font-weight:500; }
+  .legend-item .desc{ font-size:12.5px; color:var(--text-tertiary); margin-top:6px; line-height:1.5; }
+  .legend-item.u .dot{ background:var(--accent-unique); } .legend-item.u .name{ color:var(--accent-unique); }
+  .legend-item.s .dot{ background:var(--accent-shared); } .legend-item.s .name{ color:var(--accent-shared); }
+  .legend-item.w .dot{ background:var(--accent-weak); } .legend-item.w .name{ color:var(--accent-weak); }
+
+  /* ---------- Sections ---------- */
+  section{ padding-top:56px; margin-top:-56px; }
+  .section-block{ margin-bottom:76px; }
+  .section-head{ display:flex; align-items:baseline; gap:14px; margin-bottom:22px; }
+  .section-num{
+    font-family:var(--font-mono);
+    font-size:14px;
+    color:var(--accent-unique);
+    border:1px solid var(--accent-unique-dim);
+    background:var(--accent-unique-dim);
+    border-radius:6px;
+    padding:3px 9px;
+  }
+  h2{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:27px;
+    margin:0;
+    letter-spacing:-0.005em;
+  }
+  h3{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:19px;
+    margin:34px 0 14px;
+    color:var(--text-primary);
+  }
+  p{ margin:0 0 16px; color:var(--text-primary); }
+  .section-block > p:first-of-type{ font-size:16.5px; }
+  strong{ color:var(--text-primary); font-weight:600; }
+  code{
+    font-family:var(--font-mono);
+    font-size:.87em;
+    background:var(--bg-inline-code);
+    padding:2px 6px;
+    border-radius:4px;
+    color:#F0C88A;
+  }
+  ul,ol{ padding-left:22px; margin:0 0 16px; color:var(--text-primary); }
+  li{ margin-bottom:8px; line-height:1.65; }
+  li::marker{ color:var(--text-tertiary); }
+
+  /* ---------- Code blocks ---------- */
+  .code-block{
+    background:var(--bg-code);
+    border:1px solid var(--border-soft);
+    border-radius:10px;
+    margin:18px 0 26px;
+    overflow:hidden;
+  }
+  .code-block-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:9px 16px;
+    border-bottom:1px solid var(--border-soft);
+    background:#ffffff03;
+  }
+  .code-block-label{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-tertiary);
+  }
+  .copy-btn{
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    color:var(--text-tertiary);
+    background:transparent;
+    border:1px solid var(--border);
+    border-radius:5px;
+    padding:4px 9px;
+    cursor:pointer;
+    transition:color .15s, border-color .15s;
+  }
+  .copy-btn:hover{ color:var(--text-primary); border-color:var(--text-tertiary); }
+  .copy-btn.copied{ color:var(--accent-shared); border-color:var(--accent-shared); }
+  pre{ margin:0; padding:16px 18px; overflow-x:auto; }
+  pre, code[class*="language-"]{
+    font-family:var(--font-mono) !important;
+    font-size:13.2px !important;
+    line-height:1.65 !important;
+    background:none !important;
+  }
+  .token.comment{ color:var(--text-tertiary) !important; font-style:italic; }
+  .token.keyword{ color:var(--accent-shared) !important; }
+  .token.string{ color:#B8CC7A !important; }
+  .token.function{ color:#7AB0E0 !important; }
+  .token.number{ color:var(--accent-unique) !important; }
+  .token.class-name{ color:#F0C88A !important; }
+  .token.operator{ color:var(--text-secondary) !important; }
+  .token.punctuation{ color:var(--text-tertiary) !important; }
+  .token.macro, .token.property{ color:var(--accent-weak) !important; }
+  .token.boolean{ color:var(--accent-unique) !important; }
+
+  /* ---------- Callouts ---------- */
+  .callout{
+    border:1px solid var(--border);
+    border-left:3px solid var(--text-tertiary);
+    background:var(--bg-elevated);
+    border-radius:8px;
+    padding:16px 20px;
+    margin:22px 0;
+  }
+  .callout p:last-child{ margin-bottom:0; }
+  .callout-label{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    margin-bottom:8px;
+    display:block;
+  }
+  .callout--pitfall{ border-left-color:var(--accent-danger); }
+  .callout--pitfall .callout-label{ color:var(--accent-danger); }
+  .callout--embedded{ border-left-color:var(--accent-unique); }
+  .callout--embedded .callout-label{ color:var(--accent-unique); }
+  .callout--note{ border-left-color:var(--accent-shared); }
+  .callout--note .callout-label{ color:var(--accent-shared); }
+
+  /* ---------- Diagrams ---------- */
+  .diagram{
+    border:1px solid var(--border-soft);
+    background:var(--bg-elevated);
+    border-radius:10px;
+    padding:26px 24px;
+    margin:24px 0 28px;
+  }
+  .diagram-caption{ font-size:12.5px; color:var(--text-tertiary); margin-top:16px; text-align:center; }
+  .dbox{
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    border-radius:7px;
+    padding:10px 14px;
+    display:inline-block;
+    border:1px solid;
+  }
+  .dbox.stack{ background:var(--accent-shared-dim); border-color:var(--accent-shared); color:var(--accent-shared); }
+  .dbox.heap{ background:var(--accent-unique-dim); border-color:var(--accent-unique); color:var(--accent-unique); }
+  .dbox.ctrl{ background:var(--accent-weak-dim); border-color:var(--accent-weak); color:var(--accent-weak); }
+  .diagram-row{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; justify-content:center; }
+  .diagram-arrow{ color:var(--text-tertiary); font-size:18px; }
+
+  /* ---------- Tables ---------- */
+  .table-wrap{ overflow-x:auto; margin:20px 0 28px; border:1px solid var(--border-soft); border-radius:10px; }
+  table{ border-collapse:collapse; width:100%; font-size:13.5px; }
+  th{
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    text-align:left;
+    color:var(--text-tertiary);
+    background:var(--bg-elevated);
+    padding:12px 16px;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+  }
+  td{
+    padding:12px 16px;
+    border-bottom:1px solid var(--border-soft);
+    color:var(--text-secondary);
+    vertical-align:top;
+  }
+  tr:last-child td{ border-bottom:none; }
+  td code, th code{ white-space:nowrap; }
+  td.hl, th.hl{ color:var(--text-primary); }
+
+  /* ---------- misc ---------- */
+  .divider{ height:1px; background:var(--border-soft); margin:0 0 40px; }
+  hr.rule{ border:none; border-top:1px solid var(--border-soft); margin:48px 0; }
+  @media (max-width: 880px){
+    .sidebar{ display:none; }
+    .main{ padding:40px 22px 100px; max-width:100%; }
+    .hero h1{ font-size:32px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <nav class="sidebar" id="sidebar">
+    <div class="brand">
+      <span class="brand-kicker">C++ cho lập trình nhúng</span>
+      <p class="brand-title">Smart Pointer &amp; Quản Lý Vòng Đời Đối Tượng</p>
+      <p class="brand-sub">Tài liệu tham khảo — RAII, unique_ptr, shared_ptr, weak_ptr và chi phí thực tế trên hệ thống nhúng</p>
+    </div>
+    <div class="nav-group-label">Nội dung</div>
+    <a class="navlink" href="#raii"><span class="n">01</span>RAII &amp; Nguồn gốc</a>
+    <a class="navlink" href="#unique-ptr"><span class="n">02</span>unique_ptr</a>
+    <a class="navlink" href="#custom-deleter"><span class="n">03</span>Custom Deleter</a>
+    <a class="navlink" href="#shared-ptr"><span class="n">04</span>shared_ptr</a>
+    <a class="navlink" href="#weak-ptr"><span class="n">05</span>weak_ptr</a>
+    <a class="navlink" href="#cost"><span class="n">06</span>Chi phí hiệu năng</a>
+    <a class="navlink" href="#baremetal"><span class="n">07</span>Bare-metal vs Linux</a>
+    <a class="navlink" href="#polymorphism"><span class="n">08</span>Đa hình &amp; Factory</a>
+    <a class="navlink" href="#interop"><span class="n">09</span>Tương tác C API</a>
+    <a class="navlink" href="#pitfalls"><span class="n">10</span>Lỗi thường gặp</a>
+    <a class="navlink" href="#diy"><span class="n">11</span>Tự cài đặt unique_ptr</a>
+    <a class="navlink" href="#practices"><span class="n">12</span>Quy tắc truyền tham số</a>
+    <a class="navlink" href="#summary"><span class="n">13</span>Tổng hợp</a>
+  </nav>
+
+  <main class="main">
+
+    <div class="hero">
+      <span class="hero-kicker">Phần tiếp theo của chuỗi tài liệu C++ nhúng</span>
+      <h1>Smart Pointer trong <span class="hl">C++</span> — Ai sở hữu gì, và với giá nào</h1>
+      <p class="lede">Smart pointer giải quyết bài toán vòng đời đối tượng bằng RAII, nhưng trên hệ thống nhúng — nơi từng byte và từng chu kỳ CPU đều có giá — việc chọn đúng loại smart pointer, hiểu đúng chi phí, và biết khi nào <em>không nên</em> dùng chúng quan trọng không kém việc biết cú pháp.</p>
+      <div class="badges">
+        <span class="badge">C++11 / C++14 / C++17 / C++20</span>
+        <span class="badge">STM32 bare-metal</span>
+        <span class="badge">Embedded Linux</span>
+        <span class="badge">RAII</span>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item u">
+          <span class="dot"></span><span class="name">unique_ptr</span>
+          <div class="desc">Sở hữu độc quyền. Không thể copy, chỉ có thể move. Không chi phí runtime so với raw pointer.</div>
+        </div>
+        <div class="legend-item s">
+          <span class="dot"></span><span class="name">shared_ptr</span>
+          <div class="desc">Sở hữu chia sẻ qua đếm tham chiếu nguyên tử. Nhiều owner, người cuối cùng giải phóng tài nguyên.</div>
+        </div>
+        <div class="legend-item w">
+          <span class="dot"></span><span class="name">weak_ptr</span>
+          <div class="desc">Quan sát không sở hữu. Không giữ đối tượng sống, dùng để phá vỡ chu trình tham chiếu.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block">
+    <section id="raii">
+      <div class="section-head"><span class="section-num">01</span><h2>RAII &amp; Nguồn gốc của Smart Pointer</h2></div>
+
+      <p>Trước khi có smart pointer, quản lý bộ nhớ động trong C++ dựa hoàn toàn vào kỷ luật của lập trình viên: mỗi <code>new</code> phải có đúng một <code>delete</code> tương ứng, trên mọi nhánh thực thi — kể cả những nhánh thoát sớm vì exception. Trong một hàm có nhiều điểm return, nhiều khối try/catch, việc đảm bảo điều này bằng tay gần như chắc chắn sẽ có lúc sai sót: quên giải phóng (leak), giải phóng hai lần (double-free), hoặc dùng con trỏ sau khi đã giải phóng (use-after-free).</p>
+
+      <p><strong>RAII (Resource Acquisition Is Initialization)</strong> là nguyên lý nền tảng giải quyết vấn đề này: gắn vòng đời của tài nguyên (bộ nhớ, file handle, mutex, kết nối D-Bus, chân GPIO...) vào vòng đời của một đối tượng. Constructor giành lấy tài nguyên, destructor giải phóng nó. Vì C++ đảm bảo destructor của biến cục bộ luôn được gọi khi ra khỏi scope — kể cả khi exception được ném ra và stack đang unwind — tài nguyên được gắn theo kiểu RAII sẽ không bao giờ bị rò rỉ do quên giải phóng thủ công.</p>
+
+      <p>Smart pointer chính là RAII áp dụng cho con trỏ: một lớp mỏng bọc quanh raw pointer, có destructor gọi <code>delete</code> (hoặc một deleter tùy biến) đúng một lần, đúng thời điểm.</p>
+
+      <div class="callout callout--note">
+        <span class="callout-label">Vì sao không phải auto_ptr</span>
+        <p>C++98 từng có <code>std::auto_ptr</code> — smart pointer sở hữu độc quyền đầu tiên trong chuẩn. Vấn đề nằm ở chỗ nó cố mô phỏng "move" bằng cú pháp copy: <code>auto_ptr&lt;T&gt; b = a;</code> âm thầm chuyển quyền sở hữu từ <code>a</code> sang <code>b</code> và đặt <code>a</code> về null — vi phạm ngữ nghĩa copy mà lập trình viên mong đợi, dẫn đến các con trỏ null bất ngờ khi <code>auto_ptr</code> bị copy vào container hoặc truyền qua giá trị. C++11 định nghĩa lại đúng khái niệm "move-only" bằng move semantics thực sự, cho ra đời <code>unique_ptr</code>. <code>auto_ptr</code> bị deprecated từ C++11 và gỡ bỏ hoàn toàn khỏi chuẩn từ C++17.</p>
+      </div>
+
+      <p>Ba loại smart pointer chuẩn từ C++11 mã hoá ba mô hình sở hữu khác nhau, và phần còn lại của tài liệu này đi sâu vào từng loại — cùng với chi phí thực sự của chúng khi chạy trên MCU không có heap dồi dào hay hệ điều hành bảo vệ bộ nhớ.</p>
+    </section>
+    </div>
+
+    <div class="section-block">
+    <section id="unique-ptr">
+      <div class="section-head"><span class="section-num">02</span><h2>std::unique_ptr — Sở hữu độc quyền</h2></div>
+
+      <p><code>std::unique_ptr&lt;T&gt;</code> biểu diễn quyền sở hữu độc quyền: tại một thời điểm, chỉ một <code>unique_ptr</code> có thể trỏ đến một đối tượng. Copy constructor và copy assignment bị xoá (<code>= delete</code>) — chỉ move được. Khi <code>unique_ptr</code> ra khỏi scope, destructor của nó gọi deleter (mặc định là <code>delete</code>) trên con trỏ đang giữ, trừ khi con trỏ đó đã là <code>nullptr</code> (ví dụ sau khi bị move-from).</p>
+
+      <div class="code-block">
+        <div class="code-block-head"><span class="code-block-label">tao_va_chuyen_quyen_so_huu.cpp</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-cpp">// Nên dùng make_unique thay vì new trực tiếp (từ C++14)
+auto uart = std::make_unique&lt;UartDriver&gt;(USART2, 115200);
+
+// Không thể copy — dòng dưới đây không biên dịch được:
+// auto uart2 = uart;              // lỗi: copy constructor bị xoá
+
+// Chỉ có thể move — chuyển quyền sở hữu tường minh
+std::unique_ptr&lt;UartDriver&gt; owner = std::move(uart);
+// Sau dòng trên: uart == nullptr, owner giữ đối tượng
+
+if (!uart) {
+    // uart đã "rỗng" sau khi bị move-from — đây là hành vi được định nghĩa rõ,
+    // không phải undefined behavior, nhưng gọi phương thức qua uart lúc này là lỗi logic.
+}</code></pre>
+      </div>
+
+      <p>Vì sao ưu tiên <code>std::make_unique</code> hơn <code>new</code> trực tiếp? Ngoài việc gọn hơn, nó tránh một lỗ hổng an toàn ngoại lệ tinh vi: khi gọi <code>f(std::unique_ptr&lt;T&gt;(new T()), g())</code>, chuẩn C++ trước C++17 không đảm bảo thứ tự evaluate giữa <code>new T()</code> và <code>g()</code> — nếu <code>g()</code> ném exception sau khi <code>new T()</code> đã cấp phát nhưng trước khi con trỏ kịp được bọc vào <code>unique_ptr</code>, bộ nhớ đó rò rỉ. <code>make_unique</code> gộp việc cấp phát và bọc vào một lời gọi hàm duy nhất nên không có khoảng hở này. Lưu ý: <code>make_unique</code> chỉ có từ <strong>C++14</strong> — bản thân <code>unique_ptr</code> có từ C++11, nhưng <code>make_unique</code> bị bỏ sót và được bổ sung một chuẩn sau đó (khác với <code>make_shared</code>, vốn có ngay từ C++11).</p>
+
+      <div class="callout callout--embedded">
+        <span class="callout-label">Góc nhìn nhúng</span>
+        <p>Điểm quan trọng nhất với embedded: <code>unique_ptr&lt;T&gt;</code> với deleter mặc định (hoặc một stateless deleter, ví dụ lambda không capture gì) có <code>sizeof</code> đúng bằng <code>sizeof(T*)</code> — không có control block, không có reference count, không có chi phí runtime nào so với raw pointer. Chi phí duy nhất là kiểm tra null trong destructor. Đây là lý do <code>unique_ptr</code> gần như luôn là lựa chọn mặc định hợp lý, kể cả trong code nhúng khắt khe về hiệu năng.</p>
+      </div>
+
+      <h3>Deleter tuỳ biến làm thay đổi kiểu</h3>
+      <p>Khác với <code>shared_ptr</code> (deleter bị type-erase, không xuất hiện trong kiểu), deleter của <code>unique_ptr</code> là một phần của chữ ký kiểu: <code>unique_ptr&lt;T, D&gt;</code>. Điều này có nghĩa hai <code>unique_ptr&lt;T&gt;</code> dùng deleter khác nhau là hai kiểu khác nhau, không thể gán qua lại hay lưu chung trong một container mà không type-erase thủ công (ví dụ bọc trong <code>std::function</code> hoặc dùng <code>unique_ptr&lt;T, void(*)(T*)&gt;</code>).</p>
+
+      <div class="code-block">
+        <div class="code-block-head"><span class="code-block-label">deleter_va_sizeof.cpp</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-cpp">// Deleter là function pointer → tốn thêm sizeof(void*)
+using PinDeleter = void(*)(GpioPin*);
+std::unique_ptr&lt;GpioPin, PinDeleter&gt; pinA(new GpioPin(PC13), &amp;release_pin);
+static_assert(sizeof(pinA) == 2 * sizeof(void*));
+
+// Deleter là stateless lambda → Empty Base Optimization giữ sizeof == sizeof(T*)
+auto pinDeleter = [](GpioPin* p){ release_pin(p); };
+std::unique_ptr&lt;GpioPin, decltype(pinDeleter)&gt; pinB(new GpioPin(PC14), pinDeleter);
+static_assert(sizeof(pinB) == sizeof(void*));</code></pre>
+      </div>
+
+      <p>Với firmware nhạy cảm về kích thước struct (ví dụ một mảng handle ngoại vi cố định trong RAM), ưu tiên lambda không capture thay vì function pointer khi viết custom deleter, để giữ <code>unique_ptr</code> gọn bằng đúng một con trỏ.</p>
+
+      <h3>Mảng: unique_ptr&lt;T[]&gt;</h3>
+      <p>Khi quản lý một mảng cấp phát động, dùng đặc biệt hoá <code>unique_ptr&lt;T[]&gt;</code> thay vì <code>unique_ptr&lt;T&gt;</code>: nó cung cấp <code>operator[]</code> và gọi <code>delete[]</code> thay vì <code>delete</code> khi huỷ. Tuy vậy, trong phần lớn code nhúng hiện đại, <code>std::array</code> (kích thước cố định, biết tại compile-time, không cấp phát heap) hoặc <code>std::span</code> (view không sở hữu) thường là lựa chọn phù hợp hơn — <code>unique_ptr&lt;T[]&gt;</code> chỉ thực sự cần khi kích thước mảng chỉ biết tại runtime.</p>
+    </section>
+    </div>
+
+    <div class="section-block">
+    <section id="custom-deleter">
+      <div class="section-head"><span class="section-num">03</span><h2>Custom Deleter &amp; Quản lý tài nguyên</h2></div>
+
+      <p>Deleter mặc định của <code>unique_ptr</code> chỉ gọi <code>delete</code>. Nhưng bản chất của RAII không giới hạn ở bộ nhớ — bất kỳ tài nguyên nào có cặp "acquire/release" đều có thể gắn vào vòng đời một <code>unique_ptr</code> bằng cách truyền một deleter tuỳ biến: function pointer, functor, hoặc lambda.</p>
+
+      <div class="callout callout--note">
+        <span class="callout-label">Giới hạn cần biết</span>
+        <p><code>unique_ptr</code> yêu cầu kiểu quản lý phải có ngữ nghĩa giống con trỏ (nullable, so sánh được với <code>nullptr</code>). Với tài nguyên không phải con trỏ — ví dụ file descriptor kiểu <code>int</code> trên Linux — không thể nhét thẳng vào <code>unique_ptr&lt;int, Deleter&gt;</code> một cách tự nhiên. Cách đúng là viết một RAII class nhỏ chuyên dụng (một "Guard" hoặc "Handle"), hoặc dùng tiện ích kiểu <code>unique_resource</code> (Library Fundamentals TS / GSL) được thiết kế riêng cho tài nguyên non-pointer. Đừng ép <code>unique_ptr</code> làm việc nó không được thiết kế cho.</p>
+      </div>
+
+      <p>Ngược lại, phần lớn API phần cứng và hệ thống mà firmware nhúng gọi tới — HAL handle, con trỏ kết nối D-Bus của sdbus-cpp, <code>FILE*</code> — đều thực sự là con trỏ, nên chúng là ứng viên tự nhiên cho <code>unique_ptr</code> với custom deleter.</p>
+
+      <div class="code-block">
+        <div class="code-block-head"><span class="code-block-label">raii_wrapper_hal_peripheral.cpp</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-cpp">// Bọc một peripheral handle kiểu C (STM32 HAL) bằng custom deleter
+struct HalUartDeleter {
+    void operator()(UART_HandleTypeDef* h) const {
+        HAL_UART_DeInit(h);   // trả ngoại vi về trạng thái reset
+        delete h;
+    }
+};
+using UartHandle = std::unique_ptr&lt;UART_HandleTypeDef, HalUartDeleter&gt;;
+
+UartHandle make_uart(USART_TypeDef* instance, uint32_t baud) {
+    auto h = std::make_unique&lt;UART_HandleTypeDef&gt;();
+    h-&gt;Instance = instance;
+    h-&gt;Init.BaudRate = baud;
+    HAL_UART_Init(h.get());
+    return UartHandle(h.release(), HalUartDeleter{});
+}
+
+// Dùng trong code nghiệp vụ: không có nhánh nào quên gọi HAL_UART_DeInit,
+// kể cả khi hàm return sớm hoặc exception được ném ra ở giữa.
+void run() {
+    UartHandle uart = make_uart(USART2, 115200);
+    // ... dùng uart.get() để gọi các hàm HAL nhận UART_HandleTypeDef* ...
+} // HAL_UART_DeInit() được gọi tự động tại đây</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-block-head"><span class="code-block-label">raii_wrapper_sdbus_connection.cpp</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-cpp">// Trong ngữ cảnh daemon D-Bus (kiểu JKC): bọc một sdbus-cpp proxy
+// để đảm bảo proxy luôn được huỷ đúng thứ tự trước khi connection đóng
+auto deleter = [](sdbus::IProxy* p){ delete p; };
+std::unique_ptr&lt;sdbus::IProxy, decltype(deleter)&gt; proxy(
+    sdbus::createProxy(connection, destination, objectPath).release(),
+    deleter
+);</code></pre>
+      </div>
+
+      <p>Ba cách viết deleter đều tương đương về mặt hành vi, khác nhau ở chi phí và độ linh hoạt:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Dạng deleter</th><th class="hl">Ảnh hưởng sizeof</th><th>Khi nào dùng</th></tr></thead>
+          <tbody>
+            <tr><td>Function pointer</td><td>+<code>sizeof(void*)</code></td><td>Deleter chọn tại runtime, cần gán lại được</td></tr>
+            <tr><td>Functor (struct có <code>operator()</code>)</td><td>+0 nếu stateless</td><td>Deleter cố định tại compile-time, tái sử dụng nhiều nơi</td></tr>
+            <tr><td>Lambda không capture</td><td>+0 (EBO)</td><td>Deleter dùng một lần, viết tại chỗ — phổ biến nhất</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    </div>
+
+    <div class="section-block">
+    <section id="shared-ptr">
+      <div class="section-head"><span class="section-num">04</span><h2>std::shared_ptr — Sở hữu chia sẻ &amp; Control Block</h2></div>
+
+      <p><code>std::shared_ptr&lt;T&gt;</code> cho phép nhiều owner cùng giữ một đối tượng. Mỗi lần một <code>shared_ptr</code> mới được tạo ra từ một <code>shared_ptr</code> đã có (qua copy), một bộ đếm tham chiếu tăng lên; mỗi lần một <code>shared_ptr</code> bị huỷ, bộ đếm giảm xuống. Khi bộ đếm chạm 0, đối tượng được giải phóng — không ai owner cụ thể nào chịu trách nhiệm, người giữ bản sao cuối cùng sẽ là người kích hoạt việc giải phóng.</p>
+
+      <p>Bộ đếm này không nằm trong <code>shared_ptr</code> hay trong đối tượng được quản lý — nó nằm trong một cấu trúc riêng gọi là <strong>control block</strong>, được cấp phát trên heap và chia sẻ giữa mọi <code>shared_ptr</code> trỏ đến cùng một đối tượng.</p>
+
+      <div class="diagram">
+        <div class="diagram-row">
+          <span class="dbox stack">shared_ptr sp1<br>(stack)</span>
+          <span class="diagram-arrow">──┐</span>
+        </div>
+        <div class="diagram-row" style="margin-top:10px;">
+          <span class="dbox stack">shared_ptr sp2<br>(stack, copy của sp1)</span>
+          <span class="diagram-arrow">──┤</span>
+        </div>
+        <div class="diagram-row" style="margin-top:18px;">
+          <span class="diagram-arrow">└──▶</span>
+          <span class="dbox ctrl">Control Block (heap)<br>strong_count: atomic&lt;int&gt;<br>weak_count: atomic&lt;int&gt;<br>deleter (type-erased)<br>allocator (type-erased)</span>
+          <span class="diagram-arrow">──▶</span>
+          <span class="dbox heap">Object T (heap)</span>
+        </div>
+        <p class="diagram-caption">Mọi shared_ptr trỏ đến cùng một đối tượng đều chia sẻ chung một control block. Đây là nguồn gốc chi phí: một lần cấp phát heap thêm, cộng chi phí đồng bộ hoá nguyên tử trên mỗi lần copy/huỷ.</p>
+      </div>
+
+      <h3>make_shared vs shared_ptr(new T)</h3>
+      <p>Có hai cách tạo <code>shared_ptr</code>, và chúng không tương đương về mặt cấp phát bộ nhớ:</p>
+
+      <div class="code-block">
+        <div class="code-block-head"><span class="code-block-label">make_shared_vs_new.cpp</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-cpp">// Hai lần cấp phát heap riêng biệt: một cho Object T, một cho control block
+std::shared_ptr&lt;SensorReading&gt; a(new SensorReading());
+
+// Một lần cấp phát duy nhất: control block và Object T nằm chung một khối bộ nhớ
+auto b = std::make_shared&lt;SensorReading&gt;();</code></pre>
+      </div>
+
+      <p><code>make_shared</code> thường được khuyến nghị vì gộp hai lần cấp phát thành một — ít áp lực lên heap allocator hơn, tốt hơn cho cache locality, và tránh một lỗ hổng an toàn ngoại lệ tương tự đã nêu ở phần <code>unique_ptr</code>. Tuy nhiên có một đánh đổi đáng chú ý trên hệ thống nhớ hạn chế: vì object và control block dùng chung một khối cấp phát, <strong>bộ nhớ chỉ thực sự được trả về hệ thống khi cả strong_count lẫn weak_count đều về 0</strong> — không phải chỉ strong_count. Nếu code của bạn giữ một <code>weak_ptr</code> sống lâu sau khi mọi <code>shared_ptr</code> đã biến mất (destructor của object đã chạy), toàn bộ khối bộ nhớ — bao gồm phần dành cho object đã bị huỷ — vẫn bị giữ lại cho đến khi <code>weak_ptr</code> cuối cùng cũng biến mất. Với <code>shared_ptr(new T)</code>, object và control block tách rời nên object được giải phóng ngay khi strong_count về 0, bất kể weak_ptr còn sống hay không.</p>
+
+      <div class="callout callout--embedded">
+        <span class="callout-label">Góc nhìn nhúng</span>
+        <p>Trên hệ thống nhiều lõi như Raspberry Pi 5 hay các SoC ARM đa nhân dùng cho daemon Linux nhúng, việc tăng/giảm strong_count là thao tác <strong>nguyên tử</strong> (atomic increment/decrement) — an toàn giữa các luồng, nhưng không miễn phí: trên bus bộ nhớ chia sẻ, nhiều lõi cùng copy/huỷ <code>shared_ptr</code> trỏ đến cùng control block sẽ tranh chấp cùng một cache line, gây cache-line bouncing. Nếu một cấu trúc dữ liệu (ví dụ hàng đợi sự kiện giữa các thread D-Bus) copy <code>shared_ptr</code> ở tần suất cao, chi phí đồng bộ hoá nguyên tử này có thể trở thành điểm nghẽn thực sự — thường bị đánh giá thấp vì "chỉ là một con trỏ".</p>
+      </div>
+
+      <h3>Thread-safety: control block khác object</h3>
+      <p>Một hiểu lầm phổ biến: <code>shared_ptr</code> "thread-safe" không có nghĩa là <em>đối tượng được trỏ đến</em> an toàn khi truy cập đa luồng. Chuẩn C++ chỉ đảm bảo thao tác trên chính control block (tăng/giảm reference count) là atomic. Việc đọc/ghi vào object thông qua <code>operator*</code> hay <code>operator-&gt;</code> hoàn toàn không có đồng bộ hoá tự động — hai luồng cùng gọi một phương thức ghi dữ liệu lên cùng object qua hai <code>shared_ptr</code> khác nhau vẫn là race condition, cần mutex hoặc cơ chế đồng bộ riêng như bình thường. C++20 bổ sung <code>std::atomic&lt;std::shared_ptr&lt;T&gt;&gt;</code> để cho phép thao tác nguyên tử trên chính biến <code>shared_ptr</code> (ví dụ so sánh-và-hoán-đổi con trỏ đang trỏ tới), nhưng đây vẫn là một khái niệm khác với đồng bộ hoá nội dung object.</p>
+    </section>
+    </div>
+
+    <div class="section-block">
+    <section id="weak-ptr">
+      <div class="section-head"><span class="section-num">05</span><h2>std::weak_ptr — Quan sát không sở hữu</h2></div>
+
+      <p><code>std::weak_ptr&lt;T&gt;</code> trỏ đến một đối tượng được quản lý bởi <code>shared_ptr</code>, nhưng <strong>không</strong> tăng strong_count — nó không giữ đối tượng sống. Nếu mọi <code>shared_ptr</code> biến mất, đối tượng bị huỷ bình thường bất kể còn bao nhiêu <code>weak_ptr</code> đang "trỏ" đến nó (chúng chỉ đơn giản trở thành "expired").</p>
+
+      <p>Lý do <code>weak_ptr</code> tồn tại: phá vỡ <strong>chu trình tham chiếu</strong> (reference cycle). Nếu A giữ <code>shared_ptr</code> đến B, và B giữ <code>shared_ptr</code> ngược lại đến A, strong_count của cả hai không bao giờ về 0 — kể cả khi không còn ai bên ngoài giữ tham chiếu đến A hoặc B nữa. Đây là rò rỉ bộ nhớ kinh điển của reference counting, và là lý do garbage collector thế hệ cũ cũng từng vật lộn với vấn đề tương tự.</p>
+
+      <div class="callout callout--note">
+        <span class="callout-label">Liên hệ với chuỗi tài liệu trước</span>
+        <p>Đây chính xác là tình huống nảy sinh trong pattern <strong>Observer</strong>: nếu Subject giữ <code>shared_ptr</code> đến từng Observer đã đăng ký, và một Observer nào đó lại giữ <code>shared_ptr</code> ngược về Subject để hủy đăng ký sau này, ta có một chu trình. Giải pháp chuẩn: Subject giữ <code>shared_ptr</code> đến Observer (sở hữu), Observer giữ <code>weak_ptr</code> về Subject (chỉ quan sát). Tương tự, trong một state machine (FSM) nơi mỗi State giữ tham chiếu ngược về Context để truy cập dữ liệu chia sẻ, tham chiếu ngược đó nên là <code>weak_ptr</code> hoặc raw pointer chứ không phải <code>shared_ptr</code>, vì State không sở hữu Context — Context sở hữu State.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-block-head"><span class="code-block-label">weak_ptr_lock_pattern.cpp</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-cpp">class Observer {
+    std::weak_ptr&lt;Subject&gt; subject_;   // không sở hữu — chỉ quan sát
+public:
+    explicit Observer(std::shared_ptr&lt;Subject&gt; s) : subject_(s) {}
+
+    void notify() {
+        // lock() trả về một shared_ptr tạm thời — an toàn kể cả khi
+        // Subject đã bị huỷ ở luồng khác giữa lúc kiểm tra và lúc dùng
+        if (std::shared_ptr&lt;Subject&gt; s = subject_.lock()) {
+            s-&gt;onObserverReady();
+        } else {
+            // Subject đã bị huỷ — không truy cập, không crash
+        }
+    }
+
+    bool subjectAlive() const { return !subject_.expired(); }
+};</code></pre>
+      </div>
+
+      <p>Luôn ưu tiên <code>.lock()</code> hơn kiểm tra <code>.expired()</code> rồi mới truy cập riêng biệt: giữa hai bước đó, ở một chương trình đa luồng, đối tượng hoàn toàn có thể bị huỷ — <code>.lock()</code> đóng gói việc kiểm tra và "giữ sống tạm thời" thành một thao tác nguyên tử duy nhất, không có khoảng hở race condition.</p>
+    </section>
+    </div>
+
+    <div class="section-block">
+    <section id="cost">
+      <div class="section-head"><span class="section-num">06</span><h2>Chi phí hiệu năng trên hệ thống nhúng</h2></div>
+
+      <p>Bảng dưới tổng hợp chi phí thực tế — không phải lý thuyết — của từng loại con trỏ, so với raw pointer làm mốc:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tiêu chí</th><th>Raw pointer</th><th class="hl">unique_ptr</th><th class="hl">shared_ptr</th><th class="hl">weak_ptr</th></tr></thead>
+          <tbody>
+            <tr><td>sizeof</td><td><code>1×</code> con trỏ</td><td><code>1×</code> con trỏ (deleter stateless)</td><td><code>2×</code> con trỏ</td><td><code>2×</code> con trỏ</td></tr>
+            <tr><td>Cấp phát heap</td><td>Không (tự quản lý)</td><td>Không thêm (chỉ object, nếu có)</td><td>Có — control block riêng, trừ khi dùng make_shared</td><td>Không thêm (dùng chung control block)</td></tr>
+            <tr><td>Thao tác nguyên tử</td><td>Không</td><td>Không</td><td>Có — inc/dec mỗi lần copy/huỷ</td><td>Có — mỗi lần lock/huỷ</td></tr>
+            <tr><td>An toàn ngoại lệ</td><td>Thủ công</td><td>Tự động</td><td>Tự động</td><td>Tự động</td></tr>
+            <tr><td>An toàn trong ISR</td><td>Có, nếu tự quản lý đúng</td><td>Cẩn trọng — destructor cuối có thể gọi delete</td><td>Tránh — cấp phát/giải phóng + atomic trong ngữ cảnh ngắt</td><td>Cùng mức cẩn trọng như shared_ptr</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout--pitfall">
+        <span class="callout-label">Không chỉ cấp phát — giải phóng cũng nguy hiểm trong ISR</span>
+        <p>Một hiểu lầm thường gặp: chỉ tránh gọi <code>new</code>/<code>make_shared</code> bên trong ISR là đủ. Thực tế, <code>shared_ptr</code> cuối cùng bị huỷ bên trong một ISR sẽ kích hoạt việc gọi destructor của object <em>và</em> giải phóng control block — tức là gọi <code>free()</code> ngầm bên trong ngữ cảnh ngắt. Trên phần lớn RTOS, heap allocator không reentrant và không an toàn khi gọi từ ISR, dù là cấp phát hay giải phóng. Quy tắc an toàn: đừng để bản sao <code>shared_ptr</code>/<code>unique_ptr</code> cuối cùng của một đối tượng có khả năng bị huỷ bên trong ISR — chuyển việc giải phóng ra một task nền (ví dụ đẩy con trỏ vào một queue để một task dọn dẹp).</p>
+      </div>
+    </section>
+    </div>
+
+    <div class="section-block">
+    <section id="baremetal">
+      <div class="section-head"><span class="section-num">07</span><h2>Bare-metal STM32 vs Embedded Linux: khi nào dùng?</h2></div>
+
+      <p>Câu trả lời không giống nhau giữa hai môi trường, vì tiền đề về heap và hệ điều hành hoàn toàn khác nhau.</p>
+
+      <h3>Bare-metal (STM32 HAL/FreeRTOS, không MMU)</h3>
+      <p>Nhiều codebase firmware an toàn (đặc biệt trong automotive, y tế, công nghiệp) áp dụng chính sách "no dynamic allocation after init" — cấm hoàn toàn <code>new</code>/<code>malloc</code> sau khi hệ thống khởi động xong, để loại bỏ rủi ro phân mảnh heap và thời gian cấp phát không xác định (non-deterministic). Trong ngữ cảnh này:</p>
+      <ul>
+        <li><code>shared_ptr</code> thường bị cấm hoàn toàn hoặc hạn chế nghiêm ngặt — control block luôn cần một lần cấp phát heap.</li>
+        <li><code>unique_ptr</code> vẫn có thể dùng được <em>nếu</em> đối tượng được cấp phát bằng placement-new vào một buffer tĩnh đã dành sẵn, thay vì gọi <code>new</code> thật sự — giữ được lợi ích RAII (huỷ tự động, an toàn ngoại lệ) mà không chạm heap allocator.</li>
+      </ul>
+
+      <div class="code-block">
+        <div class="code-block-head"><span class="code-block-label">unique_ptr_static_storage.cpp</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-cpp">// Buffer tĩnh, cấp phát tại compile-time — không chạm heap
+alignas(SensorDriver) static std::byte storage[sizeof(SensorDriver)];
+
+struct StaticDeleter {
+    void operator()(SensorDriver* p) const { p-&gt;~SensorDriver(); } // chỉ gọi destructor, không delete
+};
+
+std::unique_ptr&lt;SensorDriver, StaticDeleter&gt; driver(
+    new (storage) SensorDriver(I2C1, 0x68),  // placement new vào buffer tĩnh
+    StaticDeleter{}
+);
+// Khi driver ra khỏi scope: destructor của SensorDriver chạy, nhưng
+// không có free() nào được gọi — bộ nhớ vẫn thuộc về `storage`, tái sử dụng được</code></pre>
+      </div>
+
+      <p>Với chính sách nghiêm ngặt hơn nữa, một kỹ thuật khác là <strong>intrusive reference counting</strong>: thay vì control block tách rời (như <code>shared_ptr</code>), bộ đếm tham chiếu nằm ngay trong chính đối tượng (thường qua một base class hoặc hai hàm free <code>intrusive_ptr_add_ref</code>/<code>intrusive_ptr_release</code>, theo mô hình <code>boost::intrusive_ptr</code>). Ưu điểm: chỉ một lần cấp phát (chính object), phù hợp khi object đã được cấp phát tĩnh hoặc qua memory pool riêng. Nhược điểm: mất khả năng chia sẻ ownership cho đối tượng không tự chứa bộ đếm (ví dụ kiểu built-in hoặc third-party không sửa được).</p>
+
+      <h3>Embedded Linux (Buildroot, có MMU, có heap thật)</h3>
+      <p>Trên nền Linux nhúng — như một daemon D-Bus chạy trên SoC Sigmastar hay Raspberry Pi — heap được hệ điều hành quản lý đầy đủ, glibc allocator (hoặc jemalloc/tcmalloc nếu build vào) đã được kiểm chứng ở quy mô lớn, và <code>shared_ptr</code> là lựa chọn hợp lý hơn nhiều so với bare-metal. Điều cần cẩn trọng chuyển từ "có được dùng heap không" sang "chi phí đồng bộ hoá đa luồng có chấp nhận được không" — như đã nêu ở phần chi phí hiệu năng, nếu nhiều thread daemon copy cùng một <code>shared_ptr</code> ở tần suất cao, cân nhắc thiết kế lại để giảm số lần copy (truyền <code>const shared_ptr&amp;</code> thay vì by-value khi không cần giữ ownership riêng) trước khi kết luận đó là điểm nghẽn.</p>
+
+      <div class="callout callout--embedded">
+        <span class="callout-label">Tiêu chuẩn an toàn</span>
+        <p>Các bộ quy tắc coding an toàn hiện đại hướng tới C++ (ví dụ AUTOSAR C++14, ra đời sau MISRA C++ 2008 và tính đến các tính năng C++11/14) nhìn chung khuyến khích dùng smart pointer để biểu diễn ownership thay vì raw pointer sở hữu trực tiếp, và khuyến khích dùng <code>make_unique</code>/<code>make_shared</code> thay vì gọi <code>new</code> trần — đúng với tinh thần của mọi ví dụ trong tài liệu này. Nếu dự án của bạn cần tuân thủ một bộ quy tắc coding cụ thể, luôn đối chiếu với văn bản chính thức mới nhất thay vì suy diễn từ tài liệu tổng quát.</p>
+      </div>
+    </section>
+    </div>
+
+    <div class="section-block">
+    <section id="polymorphism">
+      <div class="section-head"><span class="section-num">08</span><h2>Đa hình &amp; Factory Function</h2></div>
+
+      <p>Khi một <code>unique_ptr&lt;Base&gt;</code> thực chất đang giữ một đối tượng <code>Derived</code>, việc huỷ phải gọi đúng destructor của <code>Derived</code> — điều này chỉ xảy ra nếu <code>Base</code> có <strong>destructor ảo</strong> (<code>virtual ~Base()</code>). Nếu không, gọi <code>delete</code> qua con trỏ <code>Base*</code> chỉ chạy destructor của <code>Base</code>, bỏ qua phần dọn dẹp riêng của <code>Derived</code> — undefined behavior, và trên thực tế thường biểu hiện thành rò rỉ tài nguyên của phần <code>Derived</code>.</p>
+
+      <div class="callout callout--pitfall">
+        <span class="callout-label">Quy tắc bắt buộc</span>
+        <p>Bất kỳ class nào dự định làm base cho polymorphism và có thể bị huỷ qua con trỏ đến base — kể cả khi được bọc trong smart pointer — <strong>phải</strong> có destructor ảo. Smart pointer không thay thế được quy tắc ngôn ngữ này, nó chỉ đảm bảo destructor (dù đúng hay sai) được gọi tự động.</p>
+      </div>
+
+      <p>Pattern phổ biến nhất kết hợp đa hình và <code>unique_ptr</code> là <strong>factory function</strong>: một hàm nhận thông tin loại tại runtime, trả về <code>unique_ptr&lt;Base&gt;</code> trỏ đến một trong nhiều <code>Derived</code> cụ thể.</p>
+
+      <div class="code-block">
+        <div class="code-block-head"><span class="code-block-label">factory_function.cpp</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-cpp">class SensorDriver {
+public:
+    virtual ~SensorDriver() = default;   // bắt buộc — SensorDriver là polymorphic base
+    virtual float read() = 0;
+};
+class Bmp280Driver : public SensorDriver { /* ... */ float read() override; };
+class Mpu6050Driver : public SensorDriver { /* ... */ float read() override; };
+
+std::unique_ptr&lt;SensorDriver&gt; createSensorDriver(SensorType type) {
+    switch (type) {
+        case SensorType::Bmp280:  return std::make_unique&lt;Bmp280Driver&gt;();
+        case SensorType::Mpu6050: return std::make_unique&lt;Mpu6050Driver&gt;();
+        default: return nullptr;
+    }
+}</code></pre>
+      </div>
+
+      <p>Đây là nền tảng của pattern Factory Method khi triển khai bằng C++ hiện đại — ownership của đối tượng vừa được tạo được chuyển giao tường minh cho caller thông qua kiểu trả về, không cần tài liệu chú thích "caller phải tự delete" như khi trả raw pointer.</p>
+
+      <div class="callout callout--note">
+        <span class="callout-label">Gotcha ít người để ý: covariant return không hoạt động qua smart pointer</span>
+        <p>Với raw pointer, C++ cho phép <strong>covariant return type</strong>: một override có thể trả về <code>Derived*</code> dù hàm ảo gốc khai báo trả về <code>Base*</code>. Điều này <strong>không</strong> áp dụng được cho <code>unique_ptr&lt;Derived&gt;</code> khi override một hàm ảo khai báo trả <code>unique_ptr&lt;Base&gt;</code> — với trình biên dịch, <code>unique_ptr&lt;Derived&gt;</code> và <code>unique_ptr&lt;Base&gt;</code> là hai kiểu độc lập, không có quan hệ kế thừa nào giữa hai instantiation của template, nên không thoả điều kiện covariant. Override bắt buộc phải khai báo đúng kiểu trả về <code>unique_ptr&lt;Base&gt;</code>, dù bên trong tạo ra một <code>Derived</code>.</p>
+      </div>
+    </section>
+    </div>
+
+    <div class="section-block">
+    <section id="interop">
+      <div class="section-head"><span class="section-num">09</span><h2>Tương tác với C API (HAL, POSIX, D-Bus)</h2></div>
+
+      <p>Phần lớn API hệ thống mà firmware và daemon nhúng gọi tới đều là C API kiểu cũ: một hàm tạo trả về con trỏ opaque, một hàm huỷ riêng nhận con trỏ đó. Có thể tổng quát hoá việc bọc chúng bằng một alias template, tránh viết lặp lại struct deleter cho từng loại handle:</p>
+
+      <div class="code-block">
+        <div class="code-block-head"><span class="code-block-label">c_handle_wrapper.hpp</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-cpp">template &lt;typename T, auto DeleteFn&gt;
+struct FnDeleter {
+    void operator()(T* p) const { if (p) DeleteFn(p); }
+};
+template &lt;typename T, auto DeleteFn&gt;
+using CHandle = std::unique_ptr&lt;T, FnDeleter&lt;T, DeleteFn&gt;&gt;;
+
+// Áp dụng cho FILE* (fopen/fclose)
+using FileHandle = CHandle&lt;FILE, &amp;fclose&gt;;
+FileHandle log(fopen("/var/log/jkc.log", "a"), {});
+
+// Áp dụng cho sdbus-cpp connection
+using DbusConnHandle = CHandle&lt;sdbus::IConnection, /* hàm huỷ tương ứng */ nullptr&gt;;</code></pre>
+      </div>
+
+      <p>Khi cần truyền con trỏ thô cho một hàm C khác mà <em>không</em> chuyển giao quyền sở hữu, dùng <code>.get()</code> — nó trả về con trỏ bên dưới mà không ảnh hưởng gì đến ownership hay reference count:</p>
+
+      <div class="code-block">
+        <div class="code-block-head"><span class="code-block-label">get_vs_release.cpp</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-cpp">FileHandle log = FileHandle(fopen("/var/log/jkc.log", "a"), {});
+
+// .get() — chỉ "mượn" con trỏ, log vẫn sở hữu, vẫn tự đóng khi ra scope
+fwrite(data, 1, len, log.get());
+
+// .release() — TỪ BỎ quyền sở hữu, trả về raw pointer, log trở thành nullptr
+// Từ giờ CALLER (không phải log) chịu trách nhiệm giải phóng
+FILE* raw = log.release();
+// log.get() == nullptr ở đây; nếu quên gọi fclose(raw), đây là leak thật sự</code></pre>
+      </div>
+
+      <p>Nhầm lẫn giữa hai hàm này — đặc biệt gọi <code>.get()</code> rồi tự ý <code>delete</code>/<code>free</code> con trỏ trả về — là nguồn double-free phổ biến bậc nhất khi smart pointer được trộn với code C kiểu cũ. Xem thêm ở phần lỗi thường gặp ngay sau đây.</p>
+    </section>
+    </div>
+
+    <div class="section-block">
+    <section id="pitfalls">
+      <div class="section-head"><span class="section-num">10</span><h2>Lỗi thường gặp</h2></div>
+
+      <h3>1. Hai smart pointer độc lập từ cùng một raw pointer</h3>
+      <div class="code-block">
+        <div class="code-block-head"><span class="code-block-label">loi_double_free.cpp</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-cpp">Sensor* raw = new Sensor();
+std::shared_ptr&lt;Sensor&gt; a(raw);
+std::shared_ptr&lt;Sensor&gt; b(raw);   // KHÔNG copy từ a — tạo control block THỨ HAI
+// a và b không hề biết về nhau. Cả hai đều nghĩ mình là owner duy nhất.
+// Khi cả hai ra khỏi scope: delete raw bị gọi HAI LẦN → undefined behavior</code></pre>
+      </div>
+      <p>Quy tắc: một raw pointer chỉ nên được "nạp" vào đúng một smart pointer đúng một lần duy nhất. Mọi owner khác phải đến từ việc copy (<code>shared_ptr</code>) hoặc move (<code>unique_ptr</code>) smart pointer đó, không bao giờ từ raw pointer gốc lần nữa.</p>
+
+      <h3>2. shared_from_this khi chưa được shared_ptr sở hữu</h3>
+      <div class="code-block">
+        <div class="code-block-head"><span class="code-block-label">loi_shared_from_this.cpp</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-cpp">class Session : public std::enable_shared_from_this&lt;Session&gt; {
+public:
+    void registerCallback() {
+        // AN TOÀN chỉ khi `this` đang thực sự được sở hữu bởi một shared_ptr có sẵn
+        callbacks.push_back(shared_from_this());
+    }
+};
+
+Session s;                 // biến cục bộ trên stack — KHÔNG có shared_ptr nào sở hữu
+s.registerCallback();      // ném std::bad_weak_ptr tại runtime
+
+auto sp = std::make_shared&lt;Session&gt;();
+sp-&gt;registerCallback();    // an toàn — sp đã sở hữu đối tượng trước đó</code></pre>
+      </div>
+      <p>Một biến thể nguy hiểm hơn vì không ném exception rõ ràng: nếu <code>Session</code> <em>không</em> kế thừa <code>enable_shared_from_this</code> mà một hàm thành viên tự viết <code>std::shared_ptr&lt;Session&gt;(this)</code> để "tạo" một shared_ptr mới, nó sẽ tạo ra một <strong>control block độc lập thứ hai</strong> cho cùng một đối tượng — về bản chất là lỗi giống hệt mục 1, chỉ khác nguồn gốc.</p>
+
+      <h3>3. Chu trình tham chiếu không dùng weak_ptr</h3>
+      <p>Đã trình bày chi tiết ở phần <a href="#weak-ptr" style="color:var(--accent-weak);">weak_ptr</a> — hai <code>shared_ptr</code> trỏ vòng vào nhau khiến strong_count không bao giờ về 0. Đây là dạng leak khó phát hiện nhất vì không có crash, không có sanitizer nào tự động cảnh báo (bộ nhớ "vẫn còn được tham chiếu tới" một cách hợp lệ theo góc nhìn của reference counting).</p>
+
+      <h3>4. Giải phóng smart pointer cuối cùng trong ISR</h3>
+      <p>Đã trình bày ở phần <a href="#cost" style="color:var(--accent-weak);">chi phí hiệu năng</a> — cả cấp phát lẫn giải phóng đều rủi ro trong ngữ cảnh ngắt.</p>
+
+      <h3>5. Nhận unique_ptr theo giá trị khi không cần chuyển ownership</h3>
+      <div class="code-block">
+        <div class="code-block-head"><span class="code-block-label">loi_tham_so_khong_can_thiet.cpp</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-cpp">// Sai ý định: buộc caller phải move vào, dù hàm chỉ ĐỌC dữ liệu
+void logReading(std::unique_ptr&lt;SensorReading&gt; r) { print(r-&gt;value); }
+
+// Đúng ý định: hàm chỉ quan sát, không ảnh hưởng ownership
+void logReading(const SensorReading&amp; r) { print(r.value); }</code></pre>
+      </div>
+      <p>Nhận <code>unique_ptr</code> theo giá trị là một tuyên bố rõ ràng "hàm này lấy quyền sở hữu". Nếu hàm chỉ cần đọc, tham số nên là con trỏ/tham chiếu thường — ép caller phải <code>std::move</code> một cách không cần thiết vừa gây khó chịu khi dùng API, vừa xoá bỏ khả năng caller tiếp tục dùng đối tượng sau lời gọi.</p>
+    </section>
+    </div>
+
+    <div class="section-block">
+    <section id="diy">
+      <div class="section-head"><span class="section-num">11</span><h2>Tự cài đặt unique_ptr tối giản</h2></div>
+
+      <p>Hiểu <code>unique_ptr</code> hoạt động thế nào ở tầng dưới là cách tốt nhất để nhớ chính xác nó làm gì — và đây cũng là một câu hỏi phỏng vấn kinh điển cho vị trí embedded/systems. Bản tối giản dưới đây không có custom deleter, không có đặc biệt hoá mảng, không có so sánh toán tử — chỉ đủ để thấy rõ cơ chế move-only đến từ đâu:</p>
+
+      <div class="code-block">
+        <div class="code-block-head"><span class="code-block-label">mini_unique_ptr.hpp</span><button class="copy-btn">Copy</button></div>
+        <pre><code class="language-cpp">template &lt;typename T&gt;
+class MiniUniquePtr {
+    T* ptr_ = nullptr;
+public:
+    MiniUniquePtr() noexcept = default;
+    explicit MiniUniquePtr(T* p) noexcept : ptr_(p) {}
+    ~MiniUniquePtr() { delete ptr_; }
+
+    // Move-only: copy bị cấm tường minh
+    MiniUniquePtr(const MiniUniquePtr&amp;) = delete;
+    MiniUniquePtr&amp; operator=(const MiniUniquePtr&amp;) = delete;
+
+    MiniUniquePtr(MiniUniquePtr&amp;&amp; other) noexcept : ptr_(other.ptr_) {
+        other.ptr_ = nullptr;              // "cướp" con trỏ, làm rỗng nguồn
+    }
+    MiniUniquePtr&amp; operator=(MiniUniquePtr&amp;&amp; other) noexcept {
+        if (this != &amp;other) {
+            delete ptr_;                   // giải phóng tài nguyên hiện tại trước
+            ptr_ = other.ptr_;
+            other.ptr_ = nullptr;
+        }
+        return *this;
+    }
+
+    T&amp; operator*()  const          { return *ptr_; }
+    T*  operator-&gt;() const noexcept { return ptr_; }
+    T*  get()        const noexcept { return ptr_; }
+    explicit operator bool() const noexcept { return ptr_ != nullptr; }
+
+    T* release() noexcept {
+        T* tmp = ptr_;
+        ptr_ = nullptr;                    // từ bỏ sở hữu, KHÔNG delete
+        return tmp;
+    }
+    void reset(T* p = nullptr) noexcept {
+        T* old = ptr_;
+        ptr_ = p;                          // gán con trỏ mới TRƯỚC
+        delete old;                        // rồi mới xoá con trỏ cũ
+    }
+};</code></pre>
+      </div>
+
+      <p>Vài điểm đáng chú ý khi đọc lại đoạn code trên, thường là đúng những gì người phỏng vấn muốn nghe:</p>
+      <ul>
+        <li>Copy constructor/assignment bị <code>= delete</code> tường minh — đây là toàn bộ "bí mật" đằng sau move-only, không có gì huyền bí hơn.</li>
+        <li>Move constructor "cướp" con trỏ từ nguồn rồi đặt nguồn về <code>nullptr</code> — nếu thiếu bước đặt về null, destructor của cả hai object sẽ cùng <code>delete</code> một con trỏ khi ra khỏi scope.</li>
+        <li><code>reset()</code> gán con trỏ mới trước, xoá con trỏ cũ sau — thứ tự ngược lại (xoá trước, gán sau) sẽ để lại một khoảng khắc con trỏ trỏ vào vùng nhớ đã giải phóng nếu có bất kỳ side-effect nào xảy ra giữa hai bước.</li>
+        <li><code>release()</code> khác <code>reset()</code> ở chỗ nó <strong>không</strong> gọi <code>delete</code> — nó chỉ từ bỏ quyền sở hữu và trả quyền đó lại cho caller.</li>
+      </ul>
+
+      <p>Bản thật của <code>std::unique_ptr</code> phức tạp hơn: hỗ trợ deleter tuỳ biến làm template parameter thứ hai, dùng <code>std::compressed_pair</code> (hoặc tương đương) để áp dụng Empty Base Optimization khi deleter stateless, có đặc biệt hoá cho mảng, và hỗ trợ chuyển đổi từ <code>unique_ptr&lt;Derived&gt;</code> sang <code>unique_ptr&lt;Base&gt;</code>. Nhưng phần lõi — move-only, RAII destructor, release/reset — chính xác là những gì ở trên.</p>
+    </section>
+    </div>
+
+    <div class="section-block">
+    <section id="practices">
+      <div class="section-head"><span class="section-num">12</span><h2>Quy tắc truyền tham số</h2></div>
+
+      <p>Kiểu tham số của một hàm nên phản ánh đúng — không hơn không kém — điều hàm đó thực sự làm với ownership. Đây là bảng quyết định nhanh:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mục đích của hàm</th><th class="hl">Kiểu tham số</th><th>Vì sao</th></tr></thead>
+          <tbody>
+            <tr><td>Chỉ đọc/ghi đối tượng, không quan tâm ai sở hữu</td><td><code>T&amp;</code> hoặc <code>T*</code></td><td>Tổng quát nhất — hàm dùng được với object trên stack, trong unique_ptr, hay trong shared_ptr, không ép buộc gì</td></tr>
+            <tr><td>Nhận và giữ quyền sở hữu độc quyền lâu dài</td><td><code>std::unique_ptr&lt;T&gt;</code> theo giá trị</td><td>Buộc caller <code>std::move</code> vào — ý định "tôi lấy luôn" thể hiện ngay ở chữ ký hàm</td></tr>
+            <tr><td>Tham gia sở hữu chung, giữ lại sau khi hàm return</td><td><code>std::shared_ptr&lt;T&gt;</code> theo giá trị</td><td>Copy làm tăng strong_count — đối tượng chắc chắn còn sống ít nhất đến khi tham số này bị huỷ</td></tr>
+            <tr><td>Chỉ dùng tạm trong thân hàm, không giữ lại</td><td><code>const std::shared_ptr&lt;T&gt;&amp;</code></td><td>Tránh một lần copy + một cặp atomic inc/dec không cần thiết</td></tr>
+            <tr><td>Cần reset/gán lại chính smart pointer của caller</td><td><code>std::unique_ptr&lt;T&gt;&amp;</code> / <code>std::shared_ptr&lt;T&gt;&amp;</code></td><td>Hiếm gặp — chỉ khi hàm thực sự cần sửa biến smart pointer, không phải object bên trong nó</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout--note">
+        <span class="callout-label">Nguyên tắc chung</span>
+        <p>Nếu một hàm nhận <code>shared_ptr</code> hoặc <code>unique_ptr</code> chỉ để gọi một, hai phương thức trên đó rồi quên nó đi ngay khi hàm kết thúc — gần như chắc chắn tham số đó nên là <code>T&amp;</code> hoặc <code>T*</code> thay vì smart pointer. Smart pointer nên xuất hiện trong chữ ký hàm khi và chỉ khi hàm đó thực sự tương tác với <em>ownership</em>, không phải chỉ vì "biến đang có sẵn đang là smart pointer".</p>
+      </div>
+    </section>
+    </div>
+
+    <div class="section-block">
+    <section id="summary">
+      <div class="section-head"><span class="section-num">13</span><h2>Bảng tổng hợp &amp; hướng mở rộng</h2></div>
+
+      <p>Cây quyết định rút gọn cho câu hỏi "nên dùng smart pointer nào":</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tình huống</th><th class="hl">Lựa chọn</th></tr></thead>
+          <tbody>
+            <tr><td>Chỉ một owner, biết trước tại thời điểm tạo</td><td><code>std::unique_ptr</code></td></tr>
+            <tr><td>Nhiều owner, vòng đời không xác định trước ai sẽ giữ lâu nhất</td><td><code>std::shared_ptr</code></td></tr>
+            <tr><td>Cần tham chiếu tới đối tượng do shared_ptr khác quản lý, nhưng không muốn ảnh hưởng vòng đời</td><td><code>std::weak_ptr</code></td></tr>
+            <tr><td>Bare-metal, chính sách không cấp phát heap sau init</td><td><code>unique_ptr</code> + placement-new vào static storage, hoặc intrusive refcount</td></tr>
+            <tr><td>Chỉ cần truy cập, không liên quan ownership</td><td>Raw pointer / reference — không cần smart pointer nào cả</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Vài chủ đề liên quan tài liệu này chưa đi sâu, đáng để tìm hiểu thêm khi cần:</p>
+      <ul>
+        <li><strong>Custom allocator với make_shared</strong> — <code>std::allocate_shared</code> cho phép kiểm soát chính xác control block được cấp phát từ đâu (ví dụ một memory pool riêng thay vì heap mặc định).</li>
+        <li><strong>std::atomic&lt;std::shared_ptr&lt;T&gt;&gt;</strong> (C++20) — thao tác nguyên tử trên chính biến shared_ptr, hữu ích khi nhiều thread cần thay đổi "đối tượng nào đang được trỏ tới" mà không cần mutex ngoài.</li>
+        <li><strong>enable_shared_from_this với đa kế thừa</strong> — các trường hợp phức tạp hơn khi một class kế thừa enable_shared_from_this gián tiếp qua nhiều lớp trung gian.</li>
+        <li><strong>So sánh với Rc/Arc của Rust</strong> — cùng mô hình reference counting, nhưng borrow checker của Rust bắt lỗi use-after-free tại compile-time thay vì runtime — một góc nhìn hữu ích khi đối chiếu hai ngôn ngữ.</li>
+      </ul>
+
+      <hr class="rule">
+      <p style="color:var(--text-tertiary); font-size:13.5px;">Tài liệu này tiếp nối chuỗi tham khảo C++ cho lập trình nhúng — sau phần OOP cost &amp; design pattern, và move/copy semantics &amp; object lifetime. Cả ba cùng xoay quanh một trục: ai sở hữu tài nguyên, trong bao lâu, và với chi phí nào trên phần cứng hạn chế.</p>
+    </section>
+    </div>
+
+  </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  Prism.highlightAll();
+
+  // Copy-to-clipboard
+  document.querySelectorAll('.copy-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var codeEl = btn.closest('.code-block').querySelector('code');
+      var text = codeEl.innerText;
+      function done(){
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+        setTimeout(function(){ btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1600);
+      }
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(done).catch(function(){ fallbackCopy(text, done); });
+      } else {
+        fallbackCopy(text, done);
+      }
+    });
+  });
+  function fallbackCopy(text, done){
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); done(); }catch(e){}
+    document.body.removeChild(ta);
+  }
+
+  // Scroll-spy for sidebar
+  var sections = document.querySelectorAll('main section[id]');
+  var links = document.querySelectorAll('.navlink');
+  var map = {};
+  links.forEach(function(l){ map[l.getAttribute('href').slice(1)] = l; });
+  var observer = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      var id = entry.target.getAttribute('id');
+      if (entry.isIntersecting) {
+        links.forEach(function(l){ l.classList.remove('active'); });
+        if (map[id]) map[id].classList.add('active');
+      }
+    });
+  }, { rootMargin: '-10% 0px -75% 0px', threshold: 0 });
+  sections.forEach(function(s){ observer.observe(s); });
+});
+</script>
+</body>
+</html>

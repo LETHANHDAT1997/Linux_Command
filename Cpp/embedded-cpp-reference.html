@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C++ cho Lập trình Nhúng — Tài liệu tham khảo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0f1117;
+  --surface: #161a24;
+  --surface-2: #1b202c;
+  --border: #262c3a;
+  --border-soft: #1e2330;
+  --text: #e7e4db;
+  --text-dim: #9298ab;
+  --text-faint: #5c6376;
+  --copper: #cd9166;
+  --copper-soft: #8a6449;
+  --teal: #67b3ab;
+  --amber: #dcac57;
+  --danger: #c67885;
+  --good-bg: #16211f;
+  --warn-bg: #221d13;
+  --bad-bg: #221619;
+  --radius: 8px;
+  --radius-sm: 4px;
+  --sidebar-w: 288px;
+  --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --sans: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: var(--copper-soft); color: #fff; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+
+a { color: inherit; text-decoration: none; }
+a:focus-visible, .nav-link:focus-visible { outline: 2px solid var(--copper); outline-offset: 2px; }
+
+.layout { display: flex; min-height: 100vh; max-width: 1440px; margin: 0 auto; }
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 32px 22px;
+  border-right: 1px solid var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark {
+  width: 36px; height: 36px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--mono);
+  color: var(--copper);
+  font-weight: 600;
+  font-size: 15px;
+}
+.brand-title { font-family: var(--mono); font-weight: 600; font-size: 14.5px; letter-spacing: 0.01em; }
+.brand-sub { font-size: 12.5px; color: var(--text-faint); margin-top: 2px; }
+
+nav { display: flex; flex-direction: column; gap: 2px; }
+.nav-link {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-size: 14.3px;
+  transition: background .15s, color .15s, border-color .15s;
+  border-left: 2px solid transparent;
+}
+.nav-link:hover { color: var(--text); background: var(--surface); }
+.nav-link.active { color: var(--copper); background: var(--surface); border-left-color: var(--copper); }
+.nav-num { font-family: var(--mono); font-size: 11.5px; color: var(--text-faint); width: 20px; flex-shrink: 0; }
+.nav-link.active .nav-num { color: var(--copper); }
+
+.sidebar-footer { margin-top: auto; display: flex; flex-wrap: wrap; gap: 6px; }
+.scope-tag {
+  font-family: var(--mono); font-size: 10.8px; color: var(--text-faint);
+  border: 1px solid var(--border); border-radius: 20px; padding: 4px 10px;
+}
+
+/* Main */
+main { flex: 1; min-width: 0; padding: 56px 64px 120px; max-width: 840px; }
+
+.page-header { margin-bottom: 54px; }
+.page-header h1 {
+  font-family: var(--sans); font-weight: 800; font-size: 33px;
+  letter-spacing: -0.01em; margin-bottom: 14px;
+  background: linear-gradient(100deg, var(--text) 40%, var(--copper) 130%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.lede { color: var(--text-dim); font-size: 16.3px; max-width: 640px; }
+
+section { margin-bottom: 70px; scroll-margin-top: 28px; padding-top: 6px; }
+
+.section-head {
+  display: flex; align-items: baseline; gap: 16px;
+  margin-bottom: 22px; padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.section-num {
+  font-family: var(--mono); font-size: 14px; color: var(--copper);
+  border: 1px solid var(--copper-soft); border-radius: var(--radius-sm); padding: 3px 9px;
+  flex-shrink: 0;
+}
+.section-head h2 { font-size: 22px; font-weight: 700; }
+
+h3 {
+  font-size: 17px; font-weight: 700; margin: 30px 0 12px; color: var(--text);
+  display: flex; align-items: center; gap: 9px;
+}
+h3::before { content: ''; width: 6px; height: 6px; background: var(--teal); border-radius: 50%; flex-shrink: 0; }
+
+p { margin-bottom: 14px; color: var(--text); }
+p.dim { color: var(--text-dim); }
+ul, ol { margin: 0 0 16px 20px; }
+li { margin-bottom: 7px; color: var(--text); }
+strong { color: var(--copper); font-weight: 600; }
+em { color: var(--text-dim); font-style: italic; }
+
+code:not(pre code) {
+  font-family: var(--mono); background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1.5px 6px; font-size: 0.87em; color: var(--teal);
+}
+
+/* Code blocks */
+.code-block { margin: 16px 0 22px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface-2); }
+.code-meta { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--border); font-family: var(--mono); gap: 10px; }
+.code-file { font-size: 12.3px; color: var(--text-faint); }
+.badge-group { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.badge { font-size: 10.8px; font-family: var(--mono); padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+.badge-good { background: var(--good-bg); color: var(--teal); border: 1px solid #2b4a45; }
+.badge-warn { background: var(--warn-bg); color: var(--amber); border: 1px solid #4a3c1f; }
+.badge-bad  { background: var(--bad-bg); color: var(--danger); border: 1px solid #4a2b31; }
+
+.code-block pre { margin: 0; padding: 16px 18px; overflow-x: auto; background: transparent !important; }
+.code-block code { font-family: var(--mono); font-size: 13.1px; line-height: 1.65; background: transparent !important; }
+
+/* hljs overrides — custom palette, not a stock theme */
+.hljs { color: var(--text); background: transparent; }
+.hljs-comment, .hljs-quote { color: var(--text-faint); font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-doctag { color: var(--copper); }
+.hljs-string { color: #a8c98a; }
+.hljs-title, .hljs-title.class_, .hljs-title.class_.inherited__ { color: var(--teal); font-weight: 600; }
+.hljs-type { color: var(--teal); }
+.hljs-title.function_ { color: #dcc48e; }
+.hljs-number { color: var(--amber); }
+.hljs-built_in, .hljs-builtin-name { color: var(--copper); }
+.hljs-attr, .hljs-variable, .hljs-template-variable, .hljs-params { color: var(--text-dim); }
+.hljs-meta { color: var(--text-faint); }
+.hljs-operator, .hljs-punctuation { color: var(--text-dim); }
+.hljs-property { color: var(--text); }
+
+/* Keyword effect/usage block */
+.kw-effect { margin: 14px 0 20px; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.kw-row { display: flex; gap: 16px; padding: 11px 16px; background: var(--surface); border-bottom: 1px solid var(--border-soft); }
+.kw-row:last-child { border-bottom: none; }
+.kw-label { flex-shrink: 0; width: 78px; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--copper); padding-top: 2px; }
+.kw-desc { color: var(--text-dim); font-size: 14.3px; line-height: 1.65; }
+.kw-desc code:not(pre code) { color: var(--teal); }
+.kw-desc strong { color: var(--copper); }
+
+/* Callouts */
+.callout { margin: 18px 0; padding: 14px 18px; border-radius: var(--radius-sm); border-left: 3px solid; font-size: 14.6px; line-height: 1.65; background: var(--surface); }
+.callout-note { border-left-color: var(--teal); }
+.callout-warn { border-left-color: var(--amber); }
+.callout-title { font-family: var(--mono); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.callout-note .callout-title { color: var(--teal); }
+.callout-warn .callout-title { color: var(--amber); }
+.callout-body { color: var(--text-dim); }
+.callout-body code:not(pre code) { color: var(--teal); }
+
+/* Tables */
+.ref-table { width: 100%; border-collapse: collapse; margin: 18px 0 26px; font-size: 13.6px; }
+.ref-table th, .ref-table td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border-soft); vertical-align: top; }
+.ref-table th { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); font-weight: 600; }
+.ref-table td { color: var(--text-dim); }
+.ref-table td:first-child { color: var(--text); font-weight: 500; }
+.ref-table td code:not(pre code) { color: var(--teal); }
+.ref-table tr:last-child td { border-bottom: none; }
+
+footer { margin-top: 76px; padding-top: 22px; border-top: 1px solid var(--border-soft); color: var(--text-faint); font-size: 12.8px; }
+
+@media (max-width: 980px) {
+  .layout { flex-direction: column; }
+  .sidebar { width: 100%; height: auto; position: static; flex-direction: row; align-items: center; overflow-x: auto; padding: 16px 20px; gap: 20px; }
+  .sidebar-footer { display: none; }
+  nav { flex-direction: row; gap: 4px; }
+  .nav-link { white-space: nowrap; }
+  main { padding: 40px 22px 80px; max-width: 100%; }
+  .page-header h1 { font-size: 25px; }
+}
+
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">{ }</div>
+      <div>
+        <div class="brand-title">Embedded C++</div>
+        <div class="brand-sub">Tài liệu tham khảo</div>
+      </div>
+    </div>
+    <nav><a href="#s1" class="nav-link"><span class="nav-num">01</span>OOP trong nhúng</a><a href="#s2" class="nav-link"><span class="nav-num">02</span>Design Patterns</a><a href="#s3" class="nav-link"><span class="nav-num">03</span>Containers</a><a href="#s4" class="nav-link"><span class="nav-num">04</span>Từ khóa tối ưu</a><a href="#s5" class="nav-link"><span class="nav-num">05</span>Rule of Five</a><a href="#s6" class="nav-link"><span class="nav-num">06</span>Template</a><a href="#cheatsheet" class="nav-link"><span class="nav-num">&bull;</span>Tóm tắt nhanh</a></nav>
+    <div class="sidebar-footer">
+      <span class="scope-tag">Bare-metal / Cortex-M</span>
+      <span class="scope-tag">Embedded Linux</span>
+      <span class="scope-tag">C++14/17</span>
+    </div>
+  </aside>
+  <main>
+    <header class="page-header">
+      <h1>C++ cho Lập trình Nhúng</h1>
+      <p class="lede">OOP, design pattern, container và các từ khóa tối ưu hóa — nhìn từ góc độ chi phí RAM, Flash và tính real-time, không phải C++ "sách giáo khoa".</p>
+    </header>
+    
+<section id="s1">
+  <div class="section-head"><span class="section-num">01</span><h2>OOP trong lập trình nhúng</h2></div>
+
+  <p>OOP trên nhúng không "miễn phí" như trên desktop/server. Mỗi cơ chế — <code>virtual</code>, exception, RTTI — đều có chi phí RAM/Flash/cycle cụ thể, đo được. Câu hỏi không phải "có nên dùng OOP" mà là <strong>biết chính xác chi phí của từng cơ chế để chọn đúng chỗ dùng</strong>.</p>
+
+  <h3>Encapsulation — gần như zero-cost</h3>
+  <p>Bọc thanh ghi phần cứng vào class là trường hợp OOP "ăn chắc" nhất trên nhúng: với <code>constexpr</code> + hàm inline nhỏ, compiler dịch thẳng về đúng số lệnh ghi thanh ghi như code C thuần, không sinh thêm overhead.</p>
+  <div class="code-block"><div class="code-meta"><span class="code-file">gpio.hpp</span><span class="badge-group"><span class="badge badge-good">Zero overhead ở -O2</span></span></div><pre><code class="language-cpp">class GpioPin {
+public:
+    constexpr GpioPin(GPIO_TypeDef* port, uint16_t pin) noexcept
+        : port_(port), pin_(pin) {}
+
+    void set()   const noexcept { port_-&gt;BSRR = pin_; }
+    void reset() const noexcept { port_-&gt;BSRR = pin_ &lt;&lt; 16; }
+    bool read()  const noexcept { return port_-&gt;IDR &amp; pin_; }
+
+private:
+    GPIO_TypeDef* port_;
+    uint16_t pin_;
+};
+
+constexpr GpioPin led(GPIOA, GPIO_PIN_5);
+led.set();   // -O2: dịch thẳng thành 1 lệnh STR vào BSRR, không có call</code></pre></div>
+
+  <h3>Inheritance &amp; chi phí virtual dispatch</h3>
+  <p>Interface trừu tượng cho driver/sensor là chỗ inheritance tỏ ra hữu ích — nhưng <code>virtual</code> có giá cụ thể: mỗi object thêm <strong>1 con trỏ vtable</strong> (4 byte trên hệ 32-bit như Cortex-M, 8 byte trên hệ 64-bit), bản thân vtable nằm trong <code>.rodata</code>/flash, và gọi qua con trỏ base là <em>indirect call</em> — 2 lần load thay vì nhảy trực tiếp, compiler không inline được (trừ khi devirtualization tại LTO xác định được kiểu cụ thể).</p>
+  <div class="code-block"><div class="code-meta"><span class="code-file">sensor.hpp</span><span class="badge-group"><span class="badge badge-warn">vtable +4B/object</span><span class="badge badge-warn">Không inline được</span></span></div><pre><code class="language-cpp">class Sensor {
+public:
+    virtual float read() = 0;
+    virtual ~Sensor() = default;
+};
+
+class TempSensor : public Sensor {
+public:
+    float read() override { return value_; }
+private:
+    float value_;
+};
+
+// Sensor* s = &amp;tempSensor;
+// s-&gt;read();  // load vtable ptr -&gt; load slot -&gt; call: 2 indirect load + 1 branch</code></pre></div>
+
+  <ul>
+    <li><strong>Tránh virtual</strong> trong ISR, hot loop (sampling DMA/ADC tần suất kHz), và bất kỳ đoạn code nào chạy trong critical section (ngắt đang tắt — càng ngắn càng tốt).</li>
+    <li><strong>Virtual hợp lý</strong> ở code init/config (chạy một lần lúc boot), dispatch tần suất thấp (command parser, UI), hoặc nơi cần driver có thể hot-swap lúc runtime.</li>
+  </ul>
+
+  <div class="callout callout-note"><div class="callout-title">Static vs dynamic polymorphism</div><div class="callout-body">Khi kiểu cụ thể đã biết lúc compile-time, CRTP (mục 02) cho polymorphism mà không tốn vtable — đánh đổi bằng code size do mỗi kiểu instantiate riêng. Xem chi tiết ở phần Design Patterns và Template.</div></div>
+
+  <div class="callout callout-warn"><div class="callout-title">Exception &amp; RTTI</div><div class="callout-body">Nhiều toolchain bare-metal build với <code>-fno-exceptions -fno-rtti</code> vì exception unwinding cần thêm bảng unwind trong flash (có thể +10–20% code size) và phá tính deterministic về timing. <code>virtual</code> vẫn dùng bình thường khi tắt exception, nhưng <code>dynamic_cast</code>/<code>typeid</code> sẽ không hoạt động.</div></div>
+</section>
+
+    
+<section id="s2">
+  <div class="section-head"><span class="section-num">02</span><h2>Design Patterns cho nhúng</h2></div>
+  <p>Các pattern kinh điển vẫn áp dụng được, nhưng cách hiện thực trên nhúng thường lệch khỏi sách GoF — ưu tiên static storage, tránh heap, và luôn tính đến việc code có thể chạy trong ngữ cảnh ISR.</p>
+
+  <h3>RAII — quản lý resource phần cứng</h3>
+  <p>RAII quan trọng hơn trên nhúng so với application thường, vì "resource" ở đây là thanh ghi, DMA channel, critical section — quên giải phóng không chỉ leak mà có thể khiến phần cứng treo.</p>
+  <div class="code-block"><div class="code-meta"><span class="code-file">critical_section.hpp</span><span class="badge-group"><span class="badge badge-good">ISR-safe</span></span></div><pre><code class="language-cpp">class CriticalSection {
+public:
+    CriticalSection() noexcept { taskENTER_CRITICAL(); }
+    ~CriticalSection() noexcept { taskEXIT_CRITICAL(); }
+    CriticalSection(const CriticalSection&amp;) = delete;
+    CriticalSection&amp; operator=(const CriticalSection&amp;) = delete;
+};
+
+void updateSharedBuffer() {
+    CriticalSection guard;   // vào critical section
+    // ... thao tác dữ liệu chia sẻ với ISR
+}   // tự thoát critical section kể cả khi return sớm</code></pre></div>
+
+  <h3>Singleton — Meyer&#39;s singleton cho peripheral dùng chung</h3>
+  <div class="code-block"><div class="code-meta"><span class="code-file">uart_driver.hpp</span></div><pre><code class="language-cpp">class UartDriver {
+public:
+    static UartDriver&amp; instance() {
+        static UartDriver inst;   // khởi tạo lần gọi đầu, thread-safe từ C++11
+        return inst;
+    }
+    void write(std::span&lt;const uint8_t&gt; data);
+private:
+    UartDriver() = default;
+};</code></pre></div>
+  <div class="callout callout-warn"><div class="callout-title">Lưu ý FreeRTOS</div><div class="callout-body">Nên gọi <code>instance()</code> lần đầu trong <code>main()</code> — trước <code>vTaskStartScheduler()</code>. Guard variable cho magic-static dựa vào runtime hỗ trợ (<code>__cxa_guard_acquire</code>); khởi tạo trước khi scheduler chạy tránh phụ thuộc cơ chế double-checked locking đó trên MCU nhỏ.</div></div>
+
+  <h3>State Machine — cách tiếp cận table-driven cổ điển</h3>
+  <p>FSM là pattern xuất hiện nhiều nhất trong firmware thực tế (protocol parser, quản lý trạng thái sạc/nguồn...). Cách switch/enum không tốn gì ngoài vài lệnh so sánh, chạy tốt trên MCU nhỏ nhất:</p>
+  <div class="code-block"><div class="code-meta"><span class="code-file">charger_fsm.cpp</span><span class="badge-group"><span class="badge badge-good">Không heap, không virtual</span></span></div><pre><code class="language-cpp">enum class State { Idle, Charging, Fault };
+enum class Event { Start, Overcurrent, Done };
+
+State transition(State s, Event e) {
+    switch (s) {
+        case State::Idle:
+            if (e == Event::Start) return State::Charging;
+            break;
+        case State::Charging:
+            if (e == Event::Overcurrent) return State::Fault;
+            if (e == Event::Done) return State::Idle;
+            break;
+        case State::Fault:
+            break;
+    }
+    return s;
+}</code></pre></div>
+
+  <p>Với Embedded Linux hoặc MCU dư flash hơn, <code>std::variant</code> + <code>std::visit</code> (C++17) cho FSM type-safe — mỗi state mang theo đúng dữ liệu của nó, sai kiểu bị bắt lúc compile:</p>
+  <div class="code-block"><div class="code-meta"><span class="code-file">charger_fsm.cpp</span><span class="badge-group"><span class="badge badge-good">Type-safe</span><span class="badge badge-warn">Code size lớn hơn switch</span></span></div><pre><code class="language-cpp">struct Idle {};
+struct Charging { uint32_t startTick; };
+struct Fault { uint8_t errorCode; };
+using ChargerState = std::variant&lt;Idle, Charging, Fault&gt;;
+
+struct StartEvent { uint32_t tick; };
+
+ChargerState onEvent(const ChargerState&amp; s, const StartEvent&amp; e) {
+    return std::visit([&amp;](auto&amp;&amp; cur) -&gt; ChargerState {
+        using T = std::decay_t&lt;decltype(cur)&gt;;
+        if constexpr (std::is_same_v&lt;T, Idle&gt;)
+            return Charging{e.tick};
+        else
+            return cur;   // event không hợp lệ ở state hiện tại
+    }, s);
+}</code></pre></div>
+  <p class="dim">Trên MCU flash rất nhỏ (&lt;64KB) ưu tiên switch/enum — <code>std::visit</code> sinh code dispatch phức tạp hơn đáng kể so với switch thuần.</p>
+
+  <h3>Observer — callback list không heap</h3>
+  <p>Trong ngữ cảnh ISR gọi callback vào task, <code>std::function</code> là rủi ro: lambda có capture đủ lớn sẽ cấp phát heap. Dùng con trỏ hàm thuần với mảng slot cố định:</p>
+  <div class="code-block"><div class="code-meta"><span class="code-file">observer.hpp</span><span class="badge-group"><span class="badge badge-good">Không heap</span><span class="badge badge-bad">std::function: rủi ro heap</span></span></div><pre><code class="language-cpp">template &lt;typename... Args&gt;
+class StaticObserver {
+public:
+    using Callback = void(*)(Args...);
+
+    bool subscribe(Callback cb) {
+        for (auto&amp; slot : slots_) {
+            if (slot == nullptr) { slot = cb; return true; }
+        }
+        return false;   // hết chỗ — không heap alloc dự phòng
+    }
+    void notify(Args... args) const {
+        for (auto cb : slots_) if (cb) cb(args...);
+    }
+private:
+    std::array&lt;Callback, 4&gt; slots_{};
+};</code></pre></div>
+
+  <h3>CRTP — static polymorphism</h3>
+  <p>Curiously Recurring Template Pattern cho "interface" mà không tốn vtable — dispatch resolve hoàn toàn lúc compile-time, compiler có thể inline xuyên suốt.</p>
+  <div class="code-block"><div class="code-meta"><span class="code-file">spi_driver.hpp</span><span class="badge-group"><span class="badge badge-good">No vtable</span><span class="badge badge-good">Compile-time dispatch</span></span></div><pre><code class="language-cpp">template &lt;typename Derived&gt;
+class Driver {
+public:
+    void init() { static_cast&lt;Derived*&gt;(this)-&gt;initImpl(); }
+    void transmit(std::span&lt;const uint8_t&gt; d) {
+        static_cast&lt;Derived*&gt;(this)-&gt;transmitImpl(d);
+    }
+};
+
+class SpiDriver : public Driver&lt;SpiDriver&gt; {
+    friend class Driver&lt;SpiDriver&gt;;
+    void initImpl() { /* cấu hình SPI */ }
+    void transmitImpl(std::span&lt;const uint8_t&gt; d) { /* ghi thanh ghi SPI */ }
+};</code></pre></div>
+  <p class="dim">Đánh đổi: mỗi <code>Derived</code> khác nhau sinh một bản instantiate riêng của <code>Driver&lt;Derived&gt;</code> — nhiều driver type khác nhau đồng nghĩa code size tăng. Chi tiết kỹ thuật giảm bloat ở mục 06.</p>
+
+  <h3>PIMPL — chủ yếu có giá trị trên Embedded Linux</h3>
+  <p>Khi build shared library (<code>.so</code>) dùng chung giữa nhiều tiến trình — ví dụ daemon giao tiếp qua D-Bus — PIMPL cho phép đổi implementation nội bộ mà không phá ABI của thư viện, đổi lại thêm một lần cấp phát heap + một lớp indirect call cho mỗi truy cập.</p>
+  <p class="dim">Trên bare-metal thường không đáng: không có khái niệm "thư viện chia sẻ giữa nhiều process" nên chi phí PIMPL không bù lại được lợi ích gì.</p>
+
+  <h3>Object Pool — cấp phát "động" mà không chạm heap</h3>
+  <div class="code-block"><div class="code-meta"><span class="code-file">object_pool.hpp</span><span class="badge-group"><span class="badge badge-good">Static storage</span></span></div><pre><code class="language-cpp">template &lt;typename T, size_t N&gt;
+class ObjectPool {
+public:
+    T* acquire() {
+        for (size_t i = 0; i &lt; N; ++i)
+            if (!used_[i]) { used_[i] = true; return &amp;storage_[i]; }
+        return nullptr;
+    }
+    void release(T* obj) {
+        size_t i = obj - storage_.data();
+        used_[i] = false;
+    }
+private:
+    std::array&lt;T, N&gt; storage_{};
+    std::array&lt;bool, N&gt; used_{};
+};</code></pre></div>
+</section>
+
+    
+<section id="s3">
+  <div class="section-head"><span class="section-num">03</span><h2>Containers cho lập trình nhúng</h2></div>
+
+  <p><code>std::vector</code>, <code>std::string</code>, <code>std::map</code> mặc định dùng heap qua <code>std::allocator</code>. Trên hệ chạy liên tục hàng tuần/tháng, alloc/free với size khác nhau liên tục (buffer gói tin UART/network chẳng hạn) là con đường ngắn nhất tới <strong>heap fragmentation</strong>. Nhiều project bare-metal tắt hẳn heap (không link heap của newlib, hoặc override <code>operator new</code> để assert) — buộc lỗi lộ ra lúc build thay vì rơi ngẫu nhiên sau vài ngày chạy thật.</p>
+
+  <h3>std::array — thay thế C array, zero overhead</h3>
+  <div class="code-block"><div class="code-meta"><span class="code-file">&nbsp;</span><span class="badge-group"><span class="badge badge-good">Stack/static, không heap</span></span></div><pre><code class="language-cpp">std::array&lt;uint8_t, 64&gt; frame{};
+frame.at(3);     // bounds-checked, throw nếu tắt exception -&gt; terminate
+frame[3];        // không kiểm tra, giống C array thuần
+frame.size();    // biết trước lúc compile-time, thường bị tối ưu hết</code></pre></div>
+
+  <h3>ETL — Embedded Template Library</h3>
+  <p>Thư viện open-source phổ biến trong giới embedded C++: cung cấp API gần như giống hệt STL (<code>etl::vector</code>, <code>etl::list</code>, <code>etl::map</code>, <code>etl::string</code>...) nhưng backing storage là <strong>fixed-capacity khai báo tại compile-time</strong>, không đụng heap.</p>
+  <div class="code-block"><div class="code-meta"><span class="code-file">sensor_buffer.cpp</span><span class="badge-group"><span class="badge badge-good">Fixed capacity, không heap</span></span></div><pre><code class="language-cpp">#include "etl/vector.h"
+
+etl::vector&lt;SensorSample, 32&gt; buffer;   // dung lượng cố định 32 phần tử
+buffer.push_back({temp, ts});
+if (buffer.full()) { /* xử lý tràn theo policy riêng */ }</code></pre></div>
+
+  <h3>Ring buffer tự viết — kinh điển cho UART RX/TX</h3>
+  <div class="code-block"><div class="code-meta"><span class="code-file">ring_buffer.hpp</span><span class="badge-group"><span class="badge badge-good">SPSC — ISR ghi, task đọc</span></span></div><pre><code class="language-cpp">template &lt;typename T, size_t N&gt;
+class RingBuffer {
+    static_assert((N &amp; (N - 1)) == 0, "N phải là lũy thừa của 2 để dùng mask nhanh");
+public:
+    bool push(const T&amp; v) {
+        size_t next = (head_ + 1) &amp; (N - 1);
+        if (next == tail_) return false;   // đầy
+        buf_[head_] = v;
+        head_ = next;
+        return true;
+    }
+    bool pop(T&amp; out) {
+        if (head_ == tail_) return false;  // rỗng
+        out = buf_[tail_];
+        tail_ = (tail_ + 1) &amp; (N - 1);
+        return true;
+    }
+private:
+    std::array&lt;T, N&gt; buf_{};
+    volatile size_t head_ = 0, tail_ = 0;
+};</code></pre></div>
+  <div class="callout callout-note"><div class="callout-title">volatile hay atomic cho head_/tail_?</div><div class="callout-body"><code>volatile</code> ngăn compiler cache giá trị trong thanh ghi, đủ dùng cho pattern SPSC kinh điển này trên single-core Cortex-M. Chuẩn mực hơn theo C++11 trở lên là <code>std::atomic&lt;size_t&gt;</code> với <code>memory_order_acquire</code>/<code>release</code> — đúng về mặt chuẩn ngôn ngữ, và trên Cortex-M compile ra cùng load/store thường (không cần LDREX/STREX cho thao tác đơn giản này), tức không đổi chi phí runtime so với <code>volatile</code>.</div></div>
+
+  <h3>std::span (C++20) — view không copy</h3>
+  <div class="code-block"><div class="code-meta"><span class="code-file">&nbsp;</span><span class="badge-group"><span class="badge badge-good">Non-owning, không copy</span></span></div><pre><code class="language-cpp">void logHex(std::span&lt;const uint8_t&gt; data) {
+    for (auto b : data) printf("%02X ", b);
+}
+
+uint8_t frame[16];
+logHex(frame);   // truyền được array, std::array, hoặc con trỏ+size — không copy</code></pre></div>
+  <p class="dim">Kiểm tra toolchain có hỗ trợ <code>-std=c++20</code> trước khi dùng: <code>arm-none-eabi-gcc</code> ≥ 10 hỗ trợ khá đầy đủ; trên Embedded Linux với toolchain Buildroot hiện đại thường không vấn đề.</p>
+
+  <div class="callout callout-note"><div class="callout-title">Static allocator cho STL container</div><div class="callout-body">Có thể viết một allocator dùng static memory pool để vẫn dùng API STL quen thuộc (<code>std::vector&lt;T, StaticAllocator&lt;T, N&gt;&gt;</code>) mà không chạm heap thật — hữu ích khi muốn giữ API chuẩn nhưng vẫn kiểm soát bộ nhớ tuyệt đối.</div></div>
+</section>
+
+    
+<section id="s4">
+  <div class="section-head"><span class="section-num">04</span><h2>Từ khóa tối ưu hóa cho nhúng</h2></div>
+  <p>Bảy từ khóa dưới đây không "làm code nhanh hơn" một cách ma thuật — chúng cho compiler đủ thông tin để tự tối ưu đúng, và ở vài trường hợp (<code>const</code>, <code>constexpr</code>) quyết định thẳng dữ liệu nằm ở RAM hay Flash.</p>
+
+  <h3>explicit — chặn implicit conversion</h3>
+  <div class="kw-effect"><div class="kw-row"><span class="kw-label">Tác dụng</span><span class="kw-desc">Tắt implicit conversion cho constructor 1 tham số (hoặc conversion operator) — compiler ngừng tự động convert kiểu khác sang class này ở call site, bắt buộc gọi constructor tường minh.</span></div><div class="kw-row"><span class="kw-label">Dùng khi</span><span class="kw-desc">Class là wrapper mỏng cho một giá trị nguyên thủy dùng làm ID/handle/tham số (<code>Pin</code>, <code>ChannelId</code>, mili-giây...) — bất kỳ chỗ nào 2 tham số cùng kiểu nguyên thủy (<code>int</code>, <code>uint8_t</code>) có nguy cơ bị nhầm ở nơi gọi.</span></div></div>
+  <div class="code-block"><div class="code-meta"><span class="code-file">&nbsp;</span><span class="badge-group"><span class="badge badge-good">Bắt lỗi lúc compile</span></span></div><pre><code class="language-cpp">class Pin {
+public:
+    explicit Pin(uint8_t number) : number_(number) {}
+private:
+    uint8_t number_;
+};
+
+void configure(Pin p);
+configure(5);        // lỗi biên dịch — không cho convert ngầm định
+configure(Pin(5));   // OK, tường minh</code></pre></div>
+  <p class="dim">Rất đáng làm với mọi class wrapper mỏng cho ID/handle (<code>Pin</code>, <code>ChannelId</code>, <code>RegisterAddress</code>...) — nơi dễ vô tình convert nhầm <code>int</code> ở nơi gọi có nhiều overload.</p>
+
+  <h3>constexpr — tính lúc biên dịch, chi phí runtime bằng 0</h3>
+  <div class="kw-effect"><div class="kw-row"><span class="kw-label">Tác dụng</span><span class="kw-desc">Yêu cầu compiler đánh giá biểu thức/hàm lúc biên dịch <em>nếu input là hằng số</em> — kết quả trở thành hằng số nằm sẵn trong binary, không tốn cycle runtime để tính lại. Gọi với input không phải hằng số biên dịch, hàm vẫn chạy bình thường như hàm runtime thường.</span></div><div class="kw-row"><span class="kw-label">Dùng khi</span><span class="kw-desc">Giá trị/bảng suy ra hoàn toàn từ input đã biết lúc build — baud rate divisor, CRC/lookup table, kích thước buffer, giá trị cấu hình clock. Bất kỳ phép tính nào không phụ thuộc dữ liệu chỉ có lúc runtime.</span></div></div>
+  <div class="code-block"><div class="code-meta"><span class="code-file">&nbsp;</span><span class="badge-group"><span class="badge badge-good">0 cycle runtime</span></span></div><pre><code class="language-cpp">constexpr uint32_t computeBaudDiv(uint32_t clockHz, uint32_t baud) {
+    return clockHz / baud;
+}
+constexpr uint32_t kUsartDiv = computeBaudDiv(84'000'000, 115200);
+// Tính lúc BIÊN DỊCH — 0 cycle lúc runtime, giá trị nằm sẵn trong flash
+
+constexpr std::array&lt;uint16_t, 256&gt; makeCrcTable() {
+    std::array&lt;uint16_t, 256&gt; table{};
+    for (uint32_t i = 0; i &lt; 256; ++i) {
+        uint16_t crc = i;
+        for (int b = 0; b &lt; 8; ++b)
+            crc = (crc &amp; 1) ? (crc &gt;&gt; 1) ^ 0xA001 : crc &gt;&gt; 1;
+        table[i] = crc;
+    }
+    return table;
+}
+constexpr auto kCrcTable = makeCrcTable();   // 512 byte trong flash, không tính lại lúc chạy</code></pre></div>
+  <p class="dim">C++11 <code>constexpr</code> chỉ cho một statement <code>return</code>; C++14 trở đi nới lỏng — cho phép loop, biến local, nhiều statement như ví dụ trên. <code>if constexpr</code> (C++17) là biến thể dành cho template, xem mục 06.</p>
+
+  <h3>inline — gợi ý chèn code, và tránh vi phạm ODR</h3>
+  <div class="kw-effect"><div class="kw-row"><span class="kw-label">Tác dụng</span><span class="kw-desc">Hai tác dụng độc lập: <strong>(1)</strong> gợi ý compiler chèn thẳng thân hàm vào nơi gọi thay vì tạo lệnh gọi riêng — chỉ là gợi ý, compiler ở <code>-O2</code>+ tự quyết theo heuristic riêng, không đảm bảo tuyệt đối. <strong>(2)</strong> cho phép định nghĩa hàm/biến trong header include ở nhiều <code>.cpp</code> mà không vi phạm ODR (multiple definition lúc link).</span></div><div class="kw-row"><span class="kw-label">Dùng khi</span><span class="kw-desc">Hàm rất nhỏ, gọi tần suất cao (đọc/ghi thanh ghi, getter/setter) — muốn tránh overhead push/pop và nhảy của lệnh gọi hàm thật; hoặc cần định nghĩa hàm ngay trong file header.</span></div></div>
+  <div class="code-block"><div class="code-meta"><span class="code-file">adc.hpp</span></div><pre><code class="language-cpp">// Trong header — hàm nhỏ, tần suất gọi cao
+inline uint16_t readAdcRaw() {
+    return ADC1-&gt;DR;
+}</code></pre></div>
+  <p class="dim">Hai vai trò: (1) gợi ý compiler chèn code trực tiếp, tránh overhead gọi hàm (push/pop, nhảy — đáng kể trên MCU tần số thấp/hot loop); (2) cho phép định nghĩa hàm trong header include ở nhiều <code>.cpp</code> mà không vi phạm ODR. Compiler hiện đại ở <code>-O2</code> trở lên thường tự quyết định dựa trên heuristic riêng — muốn ép buộc dùng <code>__attribute__((always_inline))</code> (GCC/Clang-specific).</p>
+
+  <h3>volatile — bắt buộc cho thanh ghi memory-mapped</h3>
+  <div class="kw-effect"><div class="kw-row"><span class="kw-label">Tác dụng</span><span class="kw-desc">Buộc compiler đọc/ghi trực tiếp từ bộ nhớ ở <strong>mỗi lần truy cập</strong> trong code — không được cache giá trị trong thanh ghi CPU hay loại bỏ truy cập tưởng như "thừa". Chỉ có đúng tác dụng này: không đảm bảo atomic, không đảm bảo thứ tự đọc/ghi giữa các biến khác nhau, không đồng bộ giữa nhiều core.</span></div><div class="kw-row"><span class="kw-label">Dùng khi</span><span class="kw-desc">Đọc/ghi thanh ghi memory-mapped (giá trị có thể đổi bởi phần cứng ngoài tầm compiler biết) — hoặc một cờ đơn giản (1 <code>bool</code>/<code>int</code>) chia sẻ giữa ISR và main loop trên single-core. Dữ liệu phức tạp hơn hoặc hệ đa nhân → cần <code>std::atomic</code>.</span></div></div>
+  <div class="code-block"><div class="code-meta"><span class="code-file">&nbsp;</span><span class="badge-group"><span class="badge badge-good">Bắt buộc cho MMIO</span></span></div><pre><code class="language-cpp">volatile bool dataReady = false;
+
+void EXTI0_IRQHandler() {
+    dataReady = true;   // ISR ghi
+}
+void mainLoop() {
+    while (!dataReady) { /* chờ */ }   // volatile ngăn compiler tối ưu thành vòng lặp vô hạn
+    dataReady = false;
+}</code></pre></div>
+  <div class="callout callout-warn"><div class="callout-title">volatile không phải atomic</div><div class="callout-body"><code>volatile</code> chỉ đảm bảo compiler không cache/loại bỏ việc đọc-ghi — <strong>không</strong> đảm bảo tính atomic, không đảm bảo memory ordering giữa nhiều biến, và không đồng bộ giữa các core trên hệ multi-core. Với dữ liệu phức tạp hơn 1 cờ bool (counter, struct nhiều field), hoặc trên Embedded Linux đa luồng/đa nhân, dùng <code>std::atomic</code> thay vì chỉ <code>volatile</code>.</div></div>
+
+  <h3>noexcept — tài liệu hóa, và cho STL container tối ưu</h3>
+  <div class="kw-effect"><div class="kw-row"><span class="kw-label">Tác dụng</span><span class="kw-desc">Khai báo hàm không throw exception. Nếu vi phạm (throw xảy ra bên trong), chương trình gọi <code>std::terminate</code> ngay lập tức thay vì unwind stack. Cho phép compiler bỏ code xử lý exception liên quan (bảng unwind), và một số hàm STL — như reallocation của <code>std::vector</code> — chọn dùng move thay vì copy khi biết chắc không có exception giữa chừng.</span></div><div class="kw-row"><span class="kw-label">Dùng khi</span><span class="kw-desc">Move constructor/move assignment — gần như luôn nên đánh dấu <code>noexcept</code> nếu có thể; hoặc bất kỳ hàm nào chắc chắn không throw. Trên project build <code>-fno-exceptions</code>, <code>noexcept</code> chủ yếu mang tính tài liệu hóa.</span></div></div>
+  <div class="code-block"><div class="code-meta"><span class="code-file">dma_buffer.hpp</span></div><pre><code class="language-cpp">class DmaBuffer {
+public:
+    DmaBuffer(DmaBuffer&amp;&amp; other) noexcept
+        : ptr_(other.ptr_), size_(other.size_) {
+        other.ptr_ = nullptr;
+    }
+private:
+    uint8_t* ptr_;
+    size_t size_;
+};</code></pre></div>
+  <ul>
+    <li>Nhiều project build với <code>-fno-exceptions</code> — khi đó <code>noexcept</code> chủ yếu tài liệu hóa, và cho phép compiler bỏ bảng unwind liên quan.</li>
+    <li>Khi <strong>vẫn bật exception</strong>: đánh dấu move constructor/move assignment <code>noexcept</code> cho phép <code>std::vector</code> (và container tương tự) <strong>dùng move thay vì copy</strong> khi resize — nếu move ctor không noexcept, <code>std::vector</code> sẽ copy để giữ strong exception guarantee.</li>
+  </ul>
+
+  <h3>const — global const đi thẳng vào Flash, không tốn RAM</h3>
+  <div class="kw-effect"><div class="kw-row"><span class="kw-label">Tác dụng</span><span class="kw-desc">Với biến/mảng <strong>global có initializer hằng số</strong>: chuyển vị trí lưu trữ từ <code>.data</code> (RAM, phải copy từ flash lúc startup) sang <code>.rodata</code> (đọc thẳng từ flash, 0 byte RAM). Với biến local/tham số: chỉ ngăn code vô tình sửa giá trị — ít ảnh hưởng runtime nhưng giúp compiler tối ưu và code dễ đọc hơn.</span></div><div class="kw-row"><span class="kw-label">Dùng khi</span><span class="kw-desc">Mọi bảng dữ liệu/hằng số global không đổi lúc runtime — lookup table, chuỗi log, giá trị cấu hình cố định. Gần như luôn nên dùng, trừ khi thật sự cần ghi đè giá trị lúc runtime.</span></div></div>
+  <div class="code-block"><div class="code-meta"><span class="code-file">&nbsp;</span><span class="badge-group"><span class="badge badge-good">const: 0B RAM</span><span class="badge badge-bad">non-const: +256B RAM</span></span></div><pre><code class="language-cpp">// KHÔNG const: nằm trong .data — tốn 256 byte RAM,
+// và phải copy từ flash sang RAM lúc startup
+uint8_t lookupTable[256] = { /* ... */ };
+
+// CÓ const: nằm trong .rodata — link thẳng vào flash,
+// 0 byte RAM, không copy lúc boot
+const uint8_t lookupTable[256] = { /* ... */ };</code></pre></div>
+  <p class="dim">Một trong những tối ưu RAM dễ áp dụng nhất và hay bị bỏ sót nhất — trên MCU RAM nhỏ (STM32F4 dòng phổ biến chỉ 128–192KB RAM dù cả MB flash), luôn kiểm tra linker map file (<code>.map</code>) xem bảng dữ liệu lớn có đang nằm nhầm trong <code>.data</code>/<code>.bss</code> hay không.</p>
+
+  <h3>static — internal linkage &amp; static local</h3>
+  <div class="kw-effect"><div class="kw-row"><span class="kw-label">Tác dụng</span><span class="kw-desc">Ba ngữ cảnh khác nhau: <strong>(1)</strong> biến/hàm ở namespace scope → internal linkage, không vào symbol table toàn cục, giảm nguy cơ đụng tên khi link nhiều <code>.cpp</code>. <strong>(2)</strong> biến local trong hàm → chỉ khởi tạo một lần, giữ giá trị qua các lần gọi, khởi tạo lần đầu thread-safe từ C++11. <strong>(3)</strong> member của class → thuộc về class chứ không phải từng object, chỉ tồn tại một bản.</span></div><div class="kw-row"><span class="kw-label">Dùng khi</span><span class="kw-desc">(1) Hàm helper chỉ dùng nội bộ một file <code>.cpp</code>. (2) Singleton hoặc giá trị cần "nhớ" giữa các lần gọi mà không muốn lộ ra thành biến global. (3) Hằng số/counter dùng chung giữa mọi instance của class.</span></div></div>
+  <div class="code-block"><div class="code-meta"><span class="code-file">&nbsp;</span></div><pre><code class="language-cpp">// static function-scope: internal linkage, không vào symbol table toàn cục
+static void handleOverflow() { /* ... */ }
+
+// static local: nền tảng của Meyer's singleton (xem mục 02)
+UartDriver&amp; uart() {
+    static UartDriver inst;
+    return inst;
+}</code></pre></div>
+</section>
+
+    
+<section id="s5">
+  <div class="section-head"><span class="section-num">05</span><h2>Rule of Five</h2></div>
+  <p>Nếu tự định nghĩa một trong năm hàm — destructor, copy constructor, copy assignment, move constructor, move assignment — cân nhắc định nghĩa (hoặc <code>=default</code>/<code>=delete</code> tường minh) cả năm. Quan trọng trên nhúng vì class thường trực tiếp sở hữu resource phần cứng: DMA channel, UART handle, mutex — hai object cùng nghĩ mình sở hữu một kênh DMA vật lý là bug double-configure/double-free kinh điển.</p>
+
+  <div class="code-block"><div class="code-meta"><span class="code-file">dma_channel.hpp</span><span class="badge-group"><span class="badge badge-good">Move-only</span></span></div><pre><code class="language-cpp">class DmaChannel {
+public:
+    explicit DmaChannel(uint8_t channelId) : id_(channelId) {
+        DMA_Configure(id_);
+    }
+    ~DmaChannel() {
+        if (id_ != kInvalid) DMA_Release(id_);
+    }
+
+    // Không cho copy — 2 object không thể cùng sở hữu 1 kênh DMA vật lý
+    DmaChannel(const DmaChannel&amp;) = delete;
+    DmaChannel&amp; operator=(const DmaChannel&amp;) = delete;
+
+    // Cho phép move — chuyển quyền sở hữu
+    DmaChannel(DmaChannel&amp;&amp; other) noexcept : id_(other.id_) {
+        other.id_ = kInvalid;
+    }
+    DmaChannel&amp; operator=(DmaChannel&amp;&amp; other) noexcept {
+        if (this != &amp;other) {
+            if (id_ != kInvalid) DMA_Release(id_);
+            id_ = other.id_;
+            other.id_ = kInvalid;
+        }
+        return *this;
+    }
+
+private:
+    static constexpr uint8_t kInvalid = 0xFF;
+    uint8_t id_;
+};</code></pre></div>
+
+  <table class="ref-table"><thead><tr><th>Bạn tự khai báo</th><th>Copy ctor / copy assign</th><th>Move ctor / move assign</th></tr></thead><tbody><tr><td>Destructor</td><td>Vẫn sinh (deprecated)</td><td>Không sinh</td></tr><tr><td>Copy ctor hoặc copy assign</td><td>—</td><td>Không sinh</td></tr><tr><td>Move ctor hoặc move assign</td><td>Bị xóa hẳn (<code>=delete</code>)</td><td>—</td></tr></tbody></table>
+
+  <h3>Rule of Zero</h3>
+  <p>Nếu class chỉ chứa các member đã tự quản lý đúng (<code>std::array</code>, kiểu nguyên thủy, hoặc RAII wrapper như <code>DmaChannel</code> ở trên) — <strong>không cần viết tay bất kỳ hàm nào trong năm hàm</strong>, để compiler tự sinh. Ưu tiên Rule of Zero; chỉ viết tay Rule of Five khi class thật sự trực tiếp sở hữu một resource thô (con trỏ, handle, ID phần cứng).</p>
+  <p class="dim">Ghi chú tương tác với <code>noexcept</code>: move operations nên <code>noexcept</code> khi có thể — xem lại mục 04 về lý do <code>std::vector</code> quan tâm điều này.</p>
+</section>
+
+    
+<section id="s6">
+  <div class="section-head"><span class="section-num">06</span><h2>Template cho lập trình nhúng</h2></div>
+  <p>Ngoài CRTP (mục 02), template trên nhúng thường dùng cho hai việc: truy cập thanh ghi an toàn kiểu (type-safe), và driver generic không qua vtable. Đổi lại luôn phải cảnh giác với code bloat.</p>
+
+  <h3>Type-safe register access</h3>
+  <div class="code-block"><div class="code-meta"><span class="code-file">register.hpp</span><span class="badge-group"><span class="badge badge-good">Compile-time inline</span></span></div><pre><code class="language-cpp">template &lt;uintptr_t Address, typename T = uint32_t&gt;
+struct Register {
+    static T read()  { return *reinterpret_cast&lt;volatile T*&gt;(Address); }
+    static void write(T v) { *reinterpret_cast&lt;volatile T*&gt;(Address) = v; }
+
+    template &lt;T Mask&gt;
+    static void setBits() { write(read() | Mask); }
+};
+
+using GpioaOdr = Register&lt;0x40020014UL&gt;;
+GpioaOdr::write(0x20);
+GpioaOdr::setBits&lt;0x20&gt;();</code></pre></div>
+  <p class="dim">Mỗi <code>Register&lt;Address&gt;</code> khác nhau là một <em>type</em> khác nhau tại compile-time — gán nhầm giá trị của GPIOA cho GPIOB (nếu 2 thanh ghi định nghĩa type khác nhau) bị bắt lúc biên dịch, thay vì lỗi runtime khó dò như khi dùng con trỏ <code>void*</code>/<code>uint32_t</code> thô.</p>
+
+  <h3>Driver generic theo bus — không vtable</h3>
+  <div class="code-block"><div class="code-meta"><span class="code-file">temp_sensor.hpp</span><span class="badge-group"><span class="badge badge-good">No vtable</span></span></div><pre><code class="language-cpp">template &lt;typename Bus&gt;
+class TempSensor {
+public:
+    explicit TempSensor(Bus&amp; bus) : bus_(bus) {}
+    float readCelsius() {
+        uint8_t raw[2];
+        bus_.read(kAddr, raw, 2);
+        return decode(raw);
+    }
+private:
+    Bus&amp; bus_;
+    static constexpr uint8_t kAddr = 0x48;
+    static float decode(const uint8_t* raw) { return 0.0f; }
+};
+
+// Dùng được với BẤT KỲ bus type nào có method .read() phù hợp —
+// không cần base class, resolve tại compile-time
+TempSensor&lt;I2cBus&gt; sensor(i2c1);</code></pre></div>
+
+  <h3>if constexpr — loại bỏ nhánh không dùng khỏi code sinh ra</h3>
+  <div class="code-block"><div class="code-meta"><span class="code-file">&nbsp;</span><span class="badge-group"><span class="badge badge-good">Không sinh code thừa</span></span></div><pre><code class="language-cpp">template &lt;typename T&gt;
+void logValue(const T&amp; v) {
+    if constexpr (std::is_floating_point_v&lt;T&gt;)
+        printf("%f\n", v);
+    else
+        printf("%d\n", v);
+    // Nhánh không khớp T bị LOẠI BỎ hoàn toàn khỏi code sinh ra,
+    // không như if thường (sinh code cho cả 2 nhánh rồi mới prune)
+}</code></pre></div>
+
+  <h3>Cảnh báo code bloat &amp; cách giảm</h3>
+  <p>Mỗi tổ hợp tham số template khác nhau sinh một bản code riêng biệt. Trên MCU flash nhỏ (&lt;128KB), dùng template quá rộng cho nhiều type khác nhau có thể khiến flash phình nhanh. Kỹ thuật kinh điển: tách phần logic <strong>không phụ thuộc type</strong> ra một base class non-template — chỉ phần thật sự cần type-specific mới nằm trong template.</p>
+  <div class="code-block"><div class="code-meta"><span class="code-file">&nbsp;</span><span class="badge-group"><span class="badge badge-good">Giảm code size khi có nhiều N khác nhau</span></span></div><pre><code class="language-cpp">// Base không template — code CHỈ sinh một lần, dùng chung cho mọi N
+class RingBufferBase {
+protected:
+    bool pushImpl(void* buf, size_t elemSize, size_t&amp; head,
+                  size_t&amp; tail, size_t capacity, const void* v);
+};
+
+// Template chỉ giữ phần phụ thuộc T và N
+template &lt;typename T, size_t N&gt;
+class RingBuffer : private RingBufferBase {
+    // gọi pushImpl() thay vì tự viết lại logic mask/index
+};</code></pre></div>
+
+  <p>Explicit instantiation kiểm soát nơi sinh code — tránh mỗi translation unit include header tự sinh lại một bản (linker thường gộp lại nhưng vẫn tốn thời gian biên dịch):</p>
+  <div class="code-block"><div class="code-meta"><span class="code-file">ring_buffer.cpp</span></div><pre><code class="language-cpp">// trong 1 file .cpp duy nhất — chỉ sinh code tại đây
+template class RingBuffer&lt;uint8_t, 64&gt;;
+template class RingBuffer&lt;SensorSample, 32&gt;;</code></pre></div>
+</section>
+
+    
+<section id="cheatsheet">
+  <div class="section-head"><span class="section-num">&bull;</span><h2>Tóm tắt nhanh</h2></div>
+  <p class="dim">Bảng tra nhanh — chi tiết và ví dụ đầy đủ nằm ở các mục phía trên.</p>
+  <table class="ref-table"><thead><tr><th>Kỹ thuật</th><th>Chi phí runtime</th><th>Dùng khi</th></tr></thead><tbody><tr><td>Virtual function</td><td>vtable ptr +4–8B/obj, indirect call</td><td>Cần runtime polymorphism, gọi ít (init/config)</td></tr><tr><td>CRTP</td><td>0 — compile-time dispatch</td><td>Cần polymorphism nhưng biết type lúc compile</td></tr><tr><td><code>constexpr</code></td><td>0 — tính lúc biên dịch</td><td>Giá trị/bảng tính được từ input compile-time</td></tr><tr><td><code>const</code> global</td><td>0 RAM — vào .rodata/flash</td><td>Bảng dữ liệu chỉ đọc, không đổi lúc runtime</td></tr><tr><td><code>std::function</code></td><td>Có thể heap alloc (capture lớn)</td><td>Tránh dùng trong ISR / hot path</td></tr><tr><td>Function pointer</td><td>0, không heap</td><td>Callback trong ISR, cần tốc độ</td></tr><tr><td><code>std::vector</code></td><td>Heap, có thể fragment</td><td>Embedded Linux, dung lượng không biết trước</td></tr><tr><td><code>etl::vector</code> / <code>std::array</code></td><td>0 heap, fixed capacity</td><td>Bare-metal, xác định trước dung lượng</td></tr><tr><td>PIMPL</td><td>+1 indirect call + heap alloc</td><td>Cần ổn định ABI cho shared lib (Embedded Linux)</td></tr><tr><td><code>volatile</code></td><td>0 — chỉ ngăn compiler cache</td><td>Đọc/ghi thanh ghi phần cứng (MMIO)</td></tr><tr><td><code>std::atomic</code></td><td>~0 trên single-core (load/store thường)</td><td>Biến chia sẻ ISR/task, cần đúng chuẩn C++</td></tr></tbody></table>
+  <footer>Tài liệu tham khảo cá nhân · Phạm vi bare-metal (Cortex-M) &amp; Embedded Linux, C++14/17.</footer>
+</section>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+<script>
+  hljs.highlightAll();
+
+  const sections = document.querySelectorAll('main section[id]');
+  const navLinks = document.querySelectorAll('.nav-link');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const id = entry.target.getAttribute('id');
+        navLinks.forEach((link) => {
+          link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+        });
+      }
+    });
+  }, { rootMargin: '-15% 0px -70% 0px' });
+  sections.forEach((s) => io.observe(s));
+</script>
+
+</body>
+</html>

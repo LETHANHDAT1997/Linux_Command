@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Move, Copy &amp; Vòng Đời Đối Tượng — Tài liệu tham khảo C++ cho Embedded</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<style>
+:root{
+  --bg:#0a0e14;
+  --bg-elevated:#111823;
+  --bg-sidebar:#0b0f16;
+  --bg-code:#0d1219;
+  --border:#212b38;
+  --border-subtle:#171f2a;
+  --text-primary:#dfe5ec;
+  --text-secondary:#8c96a6;
+  --text-muted:#57616f;
+  --move:#4dd9c0;
+  --move-bg:rgba(77,217,192,.09);
+  --move-border:rgba(77,217,192,.35);
+  --copy:#e8ac52;
+  --copy-bg:rgba(232,172,82,.09);
+  --copy-border:rgba(232,172,82,.35);
+  --danger:#ea6672;
+  --danger-bg:rgba(234,102,114,.10);
+  --danger-border:rgba(234,102,114,.38);
+  --note:#7aa8ea;
+  --note-bg:rgba(122,168,234,.09);
+  --note-border:rgba(122,168,234,.35);
+  --font-display:'Be Vietnam Pro',-apple-system,sans-serif;
+  --font-body:'IBM Plex Sans',-apple-system,sans-serif;
+  --font-mono:'IBM Plex Mono',Consolas,monospace;
+  --sidebar-w:288px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text-primary);
+  font-family:var(--font-body);
+  font-size:15.5px;
+  line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--move-border);color:#04110e}
+
+/* ---------- layout ---------- */
+.layout{display:flex;min-height:100vh}
+.sidebar{
+  width:var(--sidebar-w);
+  flex-shrink:0;
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow-y:auto;
+  background:var(--bg-sidebar);
+  border-right:1px solid var(--border-subtle);
+  padding:28px 0 20px;
+  scrollbar-width:thin;
+  scrollbar-color:var(--border) transparent;
+}
+.sidebar::-webkit-scrollbar{width:6px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.sidebar__brand{
+  padding:0 24px 20px;
+  border-bottom:1px solid var(--border-subtle);
+  margin-bottom:14px;
+}
+.sidebar__kicker{
+  font-family:var(--font-mono);
+  font-size:11px;
+  letter-spacing:.14em;
+  color:var(--move);
+  text-transform:uppercase;
+  display:block;
+  margin-bottom:8px;
+}
+.sidebar__title{
+  font-family:var(--font-display);
+  font-weight:800;
+  font-size:19px;
+  line-height:1.25;
+  color:var(--text-primary);
+}
+.sidebar__subtitle{
+  font-size:12.5px;
+  color:var(--text-muted);
+  margin-top:8px;
+  line-height:1.5;
+}
+.toc{list-style:none;padding:0 12px}
+.toc li{margin-bottom:1px}
+.toc a{
+  display:flex;
+  align-items:baseline;
+  gap:10px;
+  padding:7px 12px;
+  border-radius:6px;
+  color:var(--text-secondary);
+  text-decoration:none;
+  font-size:13.5px;
+  transition:background .15s,color .15s;
+}
+.toc a:hover{background:var(--bg-elevated);color:var(--text-primary)}
+.toc a.active{background:var(--move-bg);color:var(--move)}
+.toc-num{
+  font-family:var(--font-mono);
+  font-size:11px;
+  color:var(--text-muted);
+  flex-shrink:0;
+  min-width:34px;
+}
+.toc a.active .toc-num{color:var(--move)}
+.sidebar__legend{
+  margin:20px 24px 0;
+  padding-top:16px;
+  border-top:1px solid var(--border-subtle);
+}
+.sidebar__legend-title{
+  font-family:var(--font-mono);
+  font-size:10.5px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--text-muted);
+  margin-bottom:10px;
+}
+.legend-item{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  font-size:12px;
+  color:var(--text-secondary);
+  margin-bottom:7px;
+}
+.legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+
+.main{flex:1;min-width:0}
+.content-wrap{max-width:828px;margin:0 auto;padding:64px 40px 100px}
+
+/* ---------- mobile nav toggle ---------- */
+.mobile-bar{display:none}
+
+/* ---------- hero / 0x00 ---------- */
+.hero-kicker{
+  font-family:var(--font-mono);
+  font-size:12px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--move);
+  margin-bottom:14px;
+  display:block;
+}
+.hero h1{
+  font-family:var(--font-display);
+  font-weight:800;
+  font-size:37px;
+  line-height:1.15;
+  letter-spacing:-.01em;
+  margin-bottom:20px;
+  color:#f2f5f8;
+}
+.hero .lede{
+  font-size:16.5px;
+  color:var(--text-secondary);
+  line-height:1.75;
+  margin-bottom:16px;
+}
+.hero .lede strong{color:var(--text-primary);font-weight:600}
+
+/* ---------- sections ---------- */
+section{padding-top:70px;margin-top:-6px}
+section:first-of-type{padding-top:0}
+.section-header{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-bottom:22px;
+  padding-bottom:14px;
+  border-bottom:1px solid var(--border-subtle);
+}
+.section-tag{
+  font-family:var(--font-mono);
+  font-size:13px;
+  color:var(--text-muted);
+  background:var(--bg-elevated);
+  border:1px solid var(--border);
+  padding:3px 9px;
+  border-radius:5px;
+  flex-shrink:0;
+}
+.section-header h2{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:23px;
+  color:var(--text-primary);
+  letter-spacing:-.005em;
+}
+h3{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:17px;
+  margin:30px 0 12px;
+  color:var(--text-primary);
+}
+h4{
+  font-family:var(--font-body);
+  font-weight:600;
+  font-size:14.5px;
+  margin:22px 0 10px;
+  color:var(--text-primary);
+}
+p{margin-bottom:14px;color:var(--text-secondary)}
+p strong,li strong{color:var(--text-primary);font-weight:600}
+ul,ol{margin:0 0 16px 0;padding-left:22px;color:var(--text-secondary)}
+li{margin-bottom:7px}
+li::marker{color:var(--text-muted)}
+a{color:var(--move)}
+code:not(pre code){
+  font-family:var(--font-mono);
+  background:var(--bg-elevated);
+  border:1px solid var(--border-subtle);
+  padding:1.5px 5px;
+  border-radius:4px;
+  font-size:.86em;
+  color:#c9e8e2;
+}
+
+/* ---------- badges & std tags ---------- */
+.badge{
+  display:inline-block;
+  font-family:var(--font-mono);
+  font-size:10.5px;
+  font-weight:600;
+  letter-spacing:.06em;
+  padding:2px 7px;
+  border-radius:4px;
+  vertical-align:middle;
+}
+.badge.move{background:var(--move-bg);color:var(--move);border:1px solid var(--move-border)}
+.badge.copy{background:var(--copy-bg);color:var(--copy);border:1px solid var(--copy-border)}
+.badge.danger{background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-border)}
+.std-tag{
+  font-family:var(--font-mono);
+  font-size:10.5px;
+  color:var(--text-muted);
+  border:1px solid var(--border);
+  padding:2px 7px;
+  border-radius:10px;
+  margin-left:8px;
+}
+
+/* ---------- callouts ---------- */
+.callout{
+  border-left:3px solid var(--note-border);
+  background:var(--note-bg);
+  border-radius:0 8px 8px 0;
+  padding:14px 18px;
+  margin:18px 0;
+}
+.callout p:last-child{margin-bottom:0}
+.callout__label{
+  display:block;
+  font-family:var(--font-mono);
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  margin-bottom:7px;
+  color:var(--note);
+}
+.callout.danger{border-left-color:var(--danger-border);background:var(--danger-bg)}
+.callout.danger .callout__label{color:var(--danger)}
+.callout.move{border-left-color:var(--move-border);background:var(--move-bg)}
+.callout.move .callout__label{color:var(--move)}
+.callout.copy{border-left-color:var(--copy-border);background:var(--copy-bg)}
+.callout.copy .callout__label{color:var(--copy)}
+
+/* ---------- code blocks ---------- */
+.code-block{
+  background:var(--bg-code);
+  border:1px solid var(--border);
+  border-radius:9px;
+  margin:16px 0 20px;
+  overflow:hidden;
+}
+.code-block__bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:8px 14px;
+  border-bottom:1px solid var(--border-subtle);
+  background:var(--bg-elevated);
+}
+.code-block__lang{
+  font-family:var(--font-mono);
+  font-size:11px;
+  color:var(--text-muted);
+  letter-spacing:.05em;
+}
+.copy-btn{
+  font-family:var(--font-mono);
+  font-size:11px;
+  color:var(--text-secondary);
+  background:transparent;
+  border:1px solid var(--border);
+  padding:3px 9px;
+  border-radius:5px;
+  cursor:pointer;
+  transition:all .15s;
+}
+.copy-btn:hover{color:var(--move);border-color:var(--move-border)}
+.copy-btn.copied{color:var(--move);border-color:var(--move-border)}
+pre{
+  padding:16px 18px;
+  overflow-x:auto;
+  font-family:var(--font-mono);
+  font-size:12.5px;
+  line-height:1.65;
+}
+pre code{background:none;border:none;padding:0;color:var(--text-primary)}
+.hljs-comment,.hljs-quote{color:#5b6472;font-style:italic}
+.hljs-keyword,.hljs-selector-tag,.hljs-literal{color:#c68cd6}
+.hljs-string,.hljs-doctag{color:#a3d977}
+.hljs-title,.hljs-section,.hljs-type,.hljs-built_in{color:#6fc4e8}
+.hljs-number{color:#e8ac52}
+.hljs-function .hljs-title{color:#7ec9e8}
+.hljs-params{color:#dfe5ec}
+.hljs-attribute,.hljs-variable{color:#e8ac52}
+.hljs-meta{color:#5b8fb0}
+.hljs-operator,.hljs-punctuation{color:#8c96a6}
+
+/* ---------- tables ---------- */
+.table-wrap{overflow-x:auto;margin:16px 0 22px;border:1px solid var(--border);border-radius:9px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{
+  font-family:var(--font-mono);
+  font-weight:600;
+  text-align:left;
+  font-size:11px;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:var(--text-muted);
+  background:var(--bg-elevated);
+  padding:10px 14px;
+  border-bottom:1px solid var(--border);
+  white-space:nowrap;
+}
+td{
+  padding:10px 14px;
+  border-bottom:1px solid var(--border-subtle);
+  color:var(--text-secondary);
+  vertical-align:top;
+}
+td code{white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg-elevated)}
+
+/* ---------- diagrams ---------- */
+.diagram{
+  background:var(--bg-elevated);
+  border:1px solid var(--border);
+  border-radius:11px;
+  padding:20px 16px;
+  margin:22px 0;
+}
+.diagram svg{width:100%;height:auto;display:block}
+.diagram-caption{
+  text-align:center;
+  font-size:12px;
+  color:var(--text-muted);
+  margin-top:6px;
+  font-family:var(--font-mono);
+}
+
+/* ---------- checklist ---------- */
+.checklist{list-style:none;padding-left:0;margin:16px 0 22px}
+.checklist li{
+  display:flex;
+  gap:11px;
+  padding:10px 14px;
+  background:var(--bg-elevated);
+  border:1px solid var(--border-subtle);
+  border-radius:8px;
+  margin-bottom:7px;
+  font-size:13.5px;
+  color:var(--text-secondary);
+}
+.checklist li::before{
+  content:"";
+  flex-shrink:0;
+}
+.checklist .n{
+  font-family:var(--font-mono);
+  color:var(--move);
+  font-weight:600;
+  flex-shrink:0;
+}
+
+footer{
+  margin-top:80px;
+  padding-top:24px;
+  border-top:1px solid var(--border-subtle);
+  color:var(--text-muted);
+  font-size:12.5px;
+  font-family:var(--font-mono);
+}
+
+@media (max-width:900px){
+  .sidebar{
+    position:fixed;
+    left:0;top:0;bottom:0;
+    z-index:50;
+    transform:translateX(-100%);
+    transition:transform .2s ease;
+    box-shadow:20px 0 40px rgba(0,0,0,.4);
+  }
+  .sidebar.open{transform:translateX(0)}
+  .mobile-bar{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    position:sticky;
+    top:0;
+    z-index:40;
+    background:var(--bg-sidebar);
+    border-bottom:1px solid var(--border-subtle);
+    padding:14px 20px;
+  }
+  .mobile-bar button{
+    background:var(--bg-elevated);
+    border:1px solid var(--border);
+    color:var(--text-primary);
+    border-radius:6px;
+    padding:7px 11px;
+    font-family:var(--font-mono);
+    font-size:13px;
+  }
+  .mobile-bar span{font-family:var(--font-display);font-weight:700;font-size:14px}
+  .content-wrap{padding:36px 22px 80px}
+  .hero h1{font-size:28px}
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:45}
+  .overlay.show{display:block}
+}
+</style>
+</head>
+<body>
+<div class="mobile-bar">
+  <button id="navToggle">☰ Mục lục</button>
+  <span>Move / Copy / Lifetime</span>
+</div>
+<div class="overlay" id="overlay"></div>
+
+<div class="layout">
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar__brand">
+    <span class="sidebar__kicker">C++ · Embedded Reference</span>
+    <div class="sidebar__title">Move, Copy &amp; Vòng Đời Đối Tượng</div>
+    <div class="sidebar__subtitle">Quản lý vùng nhớ &amp; lifetime cho bare-metal / embedded Linux</div>
+  </div>
+  <ul class="toc">
+    <li><a href="#s00"><span class="toc-num">0x00</span>Mở đầu</a></li>
+    <li><a href="#s01"><span class="toc-num">0x01</span>Value Categories</a></li>
+    <li><a href="#s02"><span class="toc-num">0x02</span>Copy Semantics</a></li>
+    <li><a href="#s03"><span class="toc-num">0x03</span>Move Semantics</a></li>
+    <li><a href="#s04"><span class="toc-num">0x04</span>Rule of 0/3/5</a></li>
+    <li><a href="#s05"><span class="toc-num">0x05</span>Copy Elision / RVO</a></li>
+    <li><a href="#s06"><span class="toc-num">0x06</span>Perfect Forwarding</a></li>
+    <li><a href="#s07"><span class="toc-num">0x07</span>Lifetime &amp; Storage</a></li>
+    <li><a href="#s08"><span class="toc-num">0x08</span>Lỗi thường gặp</a></li>
+    <li><a href="#s09"><span class="toc-num">0x09</span>Embedded Concerns</a></li>
+    <li><a href="#s0a"><span class="toc-num">0x0A</span>Ví dụ đầy đủ</a></li>
+    <li><a href="#s0b"><span class="toc-num">0x0B</span>Cheat Sheet</a></li>
+  </ul>
+  <div class="sidebar__legend">
+    <div class="sidebar__legend-title">Chú giải màu</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--move)"></span>MOVE — chuyển sở hữu</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--copy)"></span>COPY — nhân bản dữ liệu</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--danger)"></span>UB / nguy hiểm</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--note)"></span>Ghi chú bổ sung</div>
+  </div>
+</nav>
+
+<main class="main">
+<div class="content-wrap">
+
+<section id="s00" class="hero">
+  <span class="hero-kicker">0x00 — Mở đầu</span>
+  <h1>Move, Copy &amp; Vòng Đời Đối Tượng</h1>
+  <p class="lede">Một con trỏ bị <strong>copy</strong> thay vì <strong>move</strong>. Một reference trỏ vào stack frame đã pop từ lâu. Một move constructor quên đánh dấu <code>noexcept</code>, khiến <code>std::vector</code> âm thầm copy toàn bộ buffer mỗi lần realloc thay vì move. Đây không phải lỗi cú pháp — code vẫn biên dịch sạch, vẫn chạy được trên desktop, vẫn pass code review.</p>
+  <p class="lede">Chúng chỉ lộ ra khi buffer DMA 4KB bị double-free lúc 3 giờ sáng, hoặc khi firmware chạy ổn định trên máy dev nhưng crash ngẫu nhiên trên target RAM giới hạn. Tài liệu này đi sâu vào phần C++ hay bị hiểu sai nhất: <strong>điều gì thực sự xảy ra trong vùng nhớ</strong> khi một đối tượng được copy, được move, và kết thúc vòng đời — cùng với những hệ quả rất cụ thể của nó trong lập trình embedded.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrowCopy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#e8ac52"></path>
+        </marker>
+        <marker id="arrowMove" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#4dd9c0"></path>
+        </marker>
+      </defs>
+      <text x="180" y="22" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" font-weight="600" fill="#e8ac52" letter-spacing="1">COPY</text>
+      <text x="540" y="22" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" font-weight="600" fill="#4dd9c0" letter-spacing="1">MOVE</text>
+      <line x1="360" y1="10" x2="360" y2="290" stroke="#212b38" stroke-width="1"></line>
+
+      <text x="40" y="48" font-family="IBM Plex Mono" font-size="10.5" fill="#57616f">TRƯỚC</text>
+      <rect x="30" y="55" width="110" height="36" rx="6" fill="#111823" stroke="#212b38"></rect>
+      <text x="85" y="78" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" fill="#dfe5ec">buf_a</text>
+      <line x1="140" y1="73" x2="192" y2="73" stroke="#57616f" stroke-width="1.5" marker-end="url(#arrowCopy)"></line>
+      <rect x="196" y="55" width="124" height="36" rx="6" fill="#0d1219" stroke="#e8ac52" stroke-opacity=".4"></rect>
+      <text x="258" y="78" text-anchor="middle" font-family="IBM Plex Mono" font-size="11.5" fill="#e8ac52">0x1000</text>
+
+      <text x="400" y="48" font-family="IBM Plex Mono" font-size="10.5" fill="#57616f">TRƯỚC</text>
+      <rect x="390" y="55" width="110" height="36" rx="6" fill="#111823" stroke="#212b38"></rect>
+      <text x="445" y="78" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" fill="#dfe5ec">buf_a</text>
+      <line x1="500" y1="73" x2="552" y2="73" stroke="#57616f" stroke-width="1.5" marker-end="url(#arrowMove)"></line>
+      <rect x="556" y="55" width="124" height="36" rx="6" fill="#0d1219" stroke="#4dd9c0" stroke-opacity=".4"></rect>
+      <text x="618" y="78" text-anchor="middle" font-family="IBM Plex Mono" font-size="11.5" fill="#4dd9c0">0x1000</text>
+
+      <line x1="85" y1="100" x2="85" y2="122" stroke="#e8ac52" stroke-width="1.5" marker-end="url(#arrowCopy)"></line>
+      <text x="97" y="115" font-family="IBM Plex Mono" font-size="10.5" fill="#8c96a6">operator=(const T&amp;)</text>
+      <line x1="445" y1="100" x2="445" y2="122" stroke="#4dd9c0" stroke-width="1.5" marker-end="url(#arrowMove)"></line>
+      <text x="457" y="115" font-family="IBM Plex Mono" font-size="10.5" fill="#8c96a6">operator=(T&amp;&amp;)</text>
+
+      <text x="40" y="148" font-family="IBM Plex Mono" font-size="10.5" fill="#57616f">SAU</text>
+      <rect x="30" y="155" width="110" height="36" rx="6" fill="#111823" stroke="#212b38"></rect>
+      <text x="85" y="178" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" fill="#dfe5ec">buf_a</text>
+      <line x1="140" y1="173" x2="192" y2="173" stroke="#57616f" stroke-width="1.5" marker-end="url(#arrowCopy)"></line>
+      <rect x="196" y="155" width="124" height="36" rx="6" fill="#0d1219" stroke="#e8ac52" stroke-opacity=".4"></rect>
+      <text x="258" y="178" text-anchor="middle" font-family="IBM Plex Mono" font-size="11.5" fill="#e8ac52">0x1000</text>
+
+      <rect x="30" y="205" width="110" height="36" rx="6" fill="#111823" stroke="#212b38"></rect>
+      <text x="85" y="228" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" fill="#dfe5ec">buf_b</text>
+      <line x1="140" y1="223" x2="192" y2="223" stroke="#e8ac52" stroke-width="1.5" marker-end="url(#arrowCopy)"></line>
+      <rect x="196" y="205" width="124" height="36" rx="6" fill="#0d1219" stroke="#e8ac52"></rect>
+      <text x="258" y="228" text-anchor="middle" font-family="IBM Plex Mono" font-size="11.5" fill="#e8ac52">0x2000</text>
+
+      <text x="400" y="148" font-family="IBM Plex Mono" font-size="10.5" fill="#57616f">SAU</text>
+      <rect x="390" y="155" width="110" height="36" rx="6" fill="#111823" stroke="#212b38" stroke-dasharray="3,3"></rect>
+      <text x="445" y="178" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" fill="#57616f">nullptr</text>
+
+      <rect x="390" y="205" width="110" height="36" rx="6" fill="#111823" stroke="#212b38"></rect>
+      <text x="445" y="228" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" fill="#dfe5ec">buf_b</text>
+      <line x1="500" y1="223" x2="552" y2="223" stroke="#4dd9c0" stroke-width="1.5" marker-end="url(#arrowMove)"></line>
+      <rect x="556" y="205" width="124" height="36" rx="6" fill="#0d1219" stroke="#4dd9c0"></rect>
+      <text x="618" y="228" text-anchor="middle" font-family="IBM Plex Mono" font-size="11.5" fill="#4dd9c0">0x1000</text>
+
+      <text x="180" y="270" text-anchor="middle" font-family="IBM Plex Sans" font-size="11.5" fill="#8c96a6">2 vùng nhớ riêng biệt — 1 heap allocation + 1 memcpy mới</text>
+      <text x="540" y="270" text-anchor="middle" font-family="IBM Plex Sans" font-size="11.5" fill="#8c96a6">buf_b nhận đúng địa chỉ 0x1000 — 0 allocation, 0 memcpy</text>
+    </svg>
+    <div class="diagram-caption">Copy nhân đôi dữ liệu trong vùng nhớ · Move chỉ chuyển quyền sở hữu địa chỉ</div>
+  </div>
+
+  <p>Phạm vi tài liệu: value categories, copy/move semantics, Rule of Zero/Three/Five, copy elision, perfect forwarding, storage duration &amp; lifetime, các lỗi vùng nhớ thường gặp, và những cân nhắc đặc thù khi viết C++ cho bare-metal / embedded Linux — nơi mỗi allocation, mỗi memcpy đều có giá.</p>
+</section>
+
+<section id="s01">
+  <div class="section-header">
+    <span class="section-tag">0x01</span>
+    <h2>Value Categories</h2>
+  </div>
+
+  <p>Toàn bộ overload resolution giữa copy constructor và move constructor — tức là compiler quyết định "chỗ này nên copy hay move" — dựa trên <strong>value category</strong> của biểu thức, không dựa trên kiểu dữ liệu. Đây là nền tảng bắt buộc phải nắm trước khi đọc các phần sau.</p>
+
+  <p>C++11 phân loại mọi biểu thức theo hai thuộc tính độc lập: <strong>có identity hay không</strong> (lấy địa chỉ được, tham chiếu lại được nhiều lần) và <strong>có thể move hay không</strong> (được phép "cướp" tài nguyên bên trong). Tổ hợp hai thuộc tính đó cho ra 3 category thực sự cần nhớ:</p>
+
+  <div class="table-wrap">
+  <table>
+    <tr><th>Category</th><th>Identity</th><th>Movable</th><th>Ví dụ điển hình</th></tr>
+    <tr><td><code>lvalue</code></td><td>✅</td><td>❌</td><td><code>x</code>, <code>*p</code>, <code>arr[i]</code>, hàm trả <code>T&amp;</code></td></tr>
+    <tr><td><code>prvalue</code></td><td>❌</td><td>✅</td><td><code>42</code>, <code>x + 1</code>, temporary, hàm trả <code>T</code></td></tr>
+    <tr><td><code>xvalue</code></td><td>✅</td><td>✅</td><td><code>std::move(x)</code>, hàm trả <code>T&amp;&amp;</code></td></tr>
+  </table>
+  </div>
+
+  <p><code>glvalue</code> (lvalue ∪ xvalue — nhóm "có identity") và <code>rvalue</code> (prvalue ∪ xvalue — nhóm "có thể move") chỉ là hai tên gọi chung cho tiện nói chuyện; cái cần nhớ thật sự là 3 dòng trong bảng trên.</p>
+
+  <h3>Bảng tra cứu biểu thức thường gặp</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Biểu thức</th><th>Category</th><th>Vì sao</th></tr>
+    <tr><td><code>int x; x</code></td><td>lvalue</td><td>tên biến — luôn có identity</td></tr>
+    <tr><td><code>42</code>, <code>3.14f</code></td><td>prvalue</td><td>literal — không có identity</td></tr>
+    <tr><td><code>x + 1</code></td><td>prvalue</td><td>kết quả phép toán, temporary mới</td></tr>
+    <tr><td><code>std::move(x)</code></td><td>xvalue</td><td>ép kiểu tường minh thành <code>T&amp;&amp;</code></td></tr>
+    <tr><td><code>foo()</code> trả <code>T</code></td><td>prvalue</td><td>C++17: chưa "materialize" tới khi cần</td></tr>
+    <tr><td><code>foo()</code> trả <code>T&amp;</code></td><td>lvalue</td><td>tham chiếu object đã tồn tại</td></tr>
+    <tr><td><code>foo()</code> trả <code>T&amp;&amp;</code></td><td>xvalue</td><td>tham chiếu object sắp hết vòng đời</td></tr>
+    <tr><td><code>vec[i]</code></td><td>lvalue</td><td><code>operator[]</code> trả về <code>T&amp;</code></td></tr>
+    <tr><td><code>"chuỗi"</code></td><td>lvalue (!)</td><td>kiểu <code>const char[N]</code> — rất hay bị nhầm</td></tr>
+  </table>
+  </div>
+
+  <div class="callout note">
+    <span class="callout__label">Cách nhận biết nhanh</span>
+    <p>Đặt được <code>&amp;</code> trước biểu thức mà vẫn biên dịch → <strong>glvalue</strong> (lvalue/xvalue). Biểu thức có thể "chảy" thẳng vào move constructor mà không cần ép kiểu tường minh → <strong>rvalue</strong> (prvalue/xvalue). String literal là trường hợp ngoại lệ đáng nhớ: nó là lvalue kiểu mảng, chỉ decay thành con trỏ (prvalue) khi ngữ cảnh yêu cầu.</p>
+  </div>
+</section>
+
+<section id="s02">
+  <div class="section-header">
+    <span class="section-tag">0x02</span>
+    <h2>Copy Semantics</h2>
+    <span class="badge copy">COPY</span>
+  </div>
+
+  <p>Copy constructor (<code>T(const T&amp;)</code>) và copy assignment (<code>T&amp; operator=(const T&amp;)</code>) tạo ra một bản sao độc lập hoàn toàn — sau khi copy, hai đối tượng không còn liên hệ gì với nhau về vùng nhớ. Copy xảy ra ở nhiều chỗ dễ bị bỏ sót: truyền tham số theo giá trị, trả về theo giá trị (khi không được elide), <code>push_back</code>/<code>insert</code> vào container, gán thông thường.</p>
+
+  <h3>Shallow copy vs Deep copy</h3>
+  <p>Nếu class có raw pointer member và <strong>không tự viết</strong> copy constructor, compiler sinh ra bản memberwise copy — tức <strong>shallow copy</strong>: con trỏ được copy nguyên giá trị địa chỉ, không copy nội dung nó trỏ tới. Hai đối tượng cùng trỏ vào một vùng heap. Khi cả hai bị hủy, <code>delete</code>/<code>delete[]</code> được gọi hai lần trên cùng một địa chỉ.</p>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++ <span class="badge danger">UB — double free</span></span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">class Buffer {
+public:
+    explicit Buffer(size_t size) : size_(size), data_(new uint8_t[size]) {}
+    ~Buffer() { delete[] data_; }
+    // Không viết copy ctor/assign -> compiler tự sinh bản memberwise (SHALLOW!)
+private:
+    size_t size_;
+    uint8_t* data_;
+};
+
+void process(Buffer b) { /* ... */ }        // nhận theo giá trị -> 1 shallow copy
+
+int main() {
+    Buffer a(1024);
+    Buffer b = a;                            // shallow copy: b.data_ == a.data_
+    process(a);                              // thêm 1 shallow copy nữa
+}   // a, b và bản copy trong process() cùng "sở hữu" MỘT con trỏ
+    // -> delete[] được gọi nhiều lần trên cùng địa chỉ -> heap corruption</code></pre>
+  </div>
+
+  <p>Bản deep copy đúng phải tự cấp phát vùng nhớ mới và sao chép nội dung:</p>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++ <span class="badge copy">COPY</span></span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">Buffer(const Buffer&amp; other)
+    : size_(other.size_), data_(new uint8_t[other.size_]) {
+    std::memcpy(data_, other.data_, size_);
+}
+
+Buffer&amp; operator=(const Buffer&amp; other) {
+    if (this == &amp;other) return *this;   // guard tự-gán
+    // allocate TRƯỚC khi đổi state -> an toàn nếu new ném exception
+    auto* new_data = new uint8_t[other.size_];
+    std::memcpy(new_data, other.data_, other.size_);
+    delete[] data_;
+    data_ = new_data;
+    size_ = other.size_;
+    return *this;
+}</code></pre>
+  </div>
+
+  <div class="callout note">
+    <span class="callout__label">Idiom đáng biết — Copy-and-swap</span>
+    <p>Viết một hàm <code>swap</code> không ném exception, rồi để <code>operator=</code> nhận tham số <strong>theo giá trị</strong> và swap với <code>*this</code>. Compiler tự chọn copy hoặc move constructor cho tham số tùy value category của đối số — một hàm gán xử lý được cả hai trường hợp, exception-safe, không lặp logic:</p>
+    <pre style="margin-top:10px"><code class="language-cpp">friend void swap(Buffer&amp; a, Buffer&amp; b) noexcept {
+    using std::swap;
+    swap(a.size_, b.size_);
+    swap(a.data_, b.data_);
+}
+Buffer&amp; operator=(Buffer other) {   // copy hoặc move tùy caller
+    swap(*this, other);
+    return *this;
+}                                    // other (bản cũ) bị hủy khi ra khỏi scope</code></pre>
+  </div>
+
+  <h3>Chi phí ẩn trên hệ thống tài nguyên hạn chế</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Thao tác</th><th>Chi phí ẩn</th></tr>
+    <tr><td>Truyền <code>std::string</code>/<code>std::vector</code> theo giá trị</td><td>1 heap allocation + memcpy toàn bộ nội dung</td></tr>
+    <tr><td>Quên <code>const&amp;</code> trên tham số nhận object lớn</td><td>copy không cần thiết ở <strong>mỗi</strong> lần gọi hàm</td></tr>
+    <tr><td><code>push_back</code> object lớn vào container đầy</td><td>copy/move phần tử + có thể trigger realloc toàn bộ</td></tr>
+    <tr><td>Trả về object lớn theo giá trị, không có (N)RVO</td><td>thêm một lần copy/move ngoài dự tính</td></tr>
+  </table>
+  </div>
+</section>
+
+<section id="s03">
+  <div class="section-header">
+    <span class="section-tag">0x03</span>
+    <h2>Move Semantics</h2>
+    <span class="badge move">MOVE</span>
+  </div>
+
+  <p>Rvalue reference (<code>T&amp;&amp;</code>) là kiểu tham chiếu chỉ bind được vào rvalue (prvalue/xvalue) — tức những biểu thức compiler biết chắc "sắp hết dùng", nên cho phép hàm nhận nó <strong>lấy luôn</strong> tài nguyên bên trong thay vì copy. Move constructor (<code>T(T&amp;&amp; other)</code>) và move assignment (<code>T&amp; operator=(T&amp;&amp; other)</code>) khai thác đúng điều đó.</p>
+
+  <div class="callout note">
+    <span class="callout__label">std::move không di chuyển gì cả</span>
+    <p><code>std::move</code> chỉ là một <code>static_cast</code> ép biểu thức thành xvalue, để overload resolution chọn nhánh move thay vì copy. Bản thân nó không di chuyển byte nào:</p>
+    <pre style="margin-top:10px"><code class="language-cpp">template &lt;typename T&gt;
+constexpr std::remove_reference_t&lt;T&gt;&amp;&amp; move(T&amp;&amp; t) noexcept {
+    return static_cast&lt;std::remove_reference_t&lt;T&gt;&amp;&amp;&gt;(t);
+}</code></pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++ <span class="badge move">MOVE</span></span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">Buffer(Buffer&amp;&amp; other) noexcept
+    : size_(other.size_), data_(other.data_) {
+    other.data_ = nullptr;    // "cướp" xong PHẢI để other ở trạng thái an toàn để hủy
+    other.size_ = 0;
+}
+
+Buffer&amp; operator=(Buffer&amp;&amp; other) noexcept {
+    if (this == &amp;other) return *this;     // guard tự-move-gán
+    delete[] data_;
+    data_ = other.data_;
+    size_ = other.size_;
+    other.data_ = nullptr;
+    other.size_ = 0;
+    return *this;
+}</code></pre>
+  </div>
+
+  <h3>Trạng thái "moved-from" nghĩa là gì?</h3>
+  <p>Chuẩn C++ chỉ đảm bảo các kiểu trong thư viện chuẩn, sau khi bị move khỏi, ở trạng thái <strong>"valid but unspecified"</strong>: object vẫn hợp lệ để gán mới hoặc hủy, nhưng giá trị bên trong không xác định — không được đọc/dùng tiếp. Với kiểu tự viết, <strong>bạn</strong> quyết định trạng thái đó là gì; quy ước phổ biến là null hóa con trỏ, reset size về 0, để move-from object trở nên vô hại khi bị destructor gọi.</p>
+
+  <h3>noexcept — chi tiết nhỏ quyết định hiệu năng lớn</h3>
+  <p><code>std::vector</code> (và các container khác) khi realloc phải chọn: move hay copy từng phần tử cũ sang vùng nhớ mới? Để giữ strong exception guarantee, container chỉ dùng move nếu move constructor được đánh dấu <code>noexcept</code> (hoặc class không có copy ctor khả dụng) — cơ chế này gọi là <code>std::move_if_noexcept</code>. Quên <code>noexcept</code> không gây lỗi biên dịch, chỉ âm thầm khiến container copy thay vì move.</p>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++</span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">std::vector&lt;Buffer&gt; v;
+v.reserve(1);
+v.emplace_back(1024);
+v.emplace_back(1024);   // size == capacity -> vector phải realloc
+
+// Nếu Buffer(Buffer&amp;&amp;) KHÔNG noexcept nhưng Buffer(const Buffer&amp;) tồn tại:
+//   -> move_if_noexcept chọn COPY từng phần tử cũ sang buffer mới
+//   -> biên dịch sạch, không warning mặc định, chỉ chậm hơn + tốn allocation
+// Bật -Wall kèm clang-tidy performance-noexcept-move-constructor để bắt lỗi này.</code></pre>
+  </div>
+
+  <div class="callout danger">
+    <span class="callout__label">Luôn đánh dấu noexcept khi có thể</span>
+    <p>Move constructor/assignment nên <code>noexcept</code> bất cứ khi nào việc move thật sự không thể ném exception (gần như luôn đúng với các thao tác chỉ copy con trỏ/số nguyên). Đây là một trong những chi tiết dễ quên nhất và ảnh hưởng trực tiếp đến hiệu năng realloc của container trên hệ thống nhạy cảm về thời gian thực.</p>
+  </div>
+</section>
+
+<section id="s04">
+  <div class="section-header">
+    <span class="section-tag">0x04</span>
+    <h2>Rule of Zero / Three / Five</h2>
+  </div>
+
+  <p><strong>Rule of Three</strong> (trước C++11): nếu class cần tự viết một trong ba — destructor, copy constructor, copy assignment — gần như chắc chắn cần viết cả ba, vì đó là dấu hiệu class đang tự quản lý một resource thủ công. <strong>Rule of Five</strong> (C++11+) mở rộng thêm move constructor và move assignment. <strong>Rule of Zero</strong> — thực hành được khuyến nghị nhất — là đừng viết bất kỳ cái nào trong năm cái đó; hãy compose class từ những member đã tự quản lý đúng resource của chúng (RAII members).</p>
+
+  <h3>Bảng sinh ngầm định của compiler</h3>
+  <p>Việc bạn khai báo một trong năm special member function ảnh hưởng đến việc compiler có tự sinh những cái còn lại hay không, theo quy tắc khá rối và hay bị nhớ sai:</p>
+
+  <div class="table-wrap">
+  <table>
+    <tr><th>Bạn khai báo</th><th>Default Ctor</th><th>Copy Ctor</th><th>Copy Assign</th><th>Move Ctor</th><th>Move Assign</th></tr>
+    <tr><td>Không gì cả</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Ctor có tham số</td><td>➖</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Destructor</td><td>✅</td><td>⚠️</td><td>⚠️</td><td>➖</td><td>➖</td></tr>
+    <tr><td>Copy Ctor</td><td>➖</td><td>👤</td><td>⚠️</td><td>➖</td><td>➖</td></tr>
+    <tr><td>Copy Assign</td><td>✅</td><td>⚠️</td><td>👤</td><td>➖</td><td>➖</td></tr>
+    <tr><td>Move Ctor</td><td>➖</td><td>❌</td><td>❌</td><td>👤</td><td>➖</td></tr>
+    <tr><td>Move Assign</td><td>✅</td><td>❌</td><td>❌</td><td>➖</td><td>👤</td></tr>
+  </table>
+  </div>
+  <p style="font-size:12.5px;color:var(--text-muted);margin-top:-10px">✅ tự sinh bình thường · ⚠️ tự sinh nhưng deprecated · ➖ KHÔNG sinh (không lỗi khi không dùng, nhưng âm thầm rơi về copy khi cần move) · ❌ sinh ra ở dạng <code>=delete</code> · 👤 do bạn viết</p>
+
+  <div class="callout danger">
+    <span class="callout__label">Bẫy kinh điển — silent fallback to copy</span>
+    <p>Class chỉ viết destructor (cực kỳ phổ biến với class quản lý resource) khiến move ctor/assign <strong>không được sinh</strong>, nhưng copy ctor/assign vẫn còn (dù deprecated). <code>std::move(obj)</code> hay <code>std::vector</code> realloc lúc này vẫn biên dịch được — chỉ là chúng âm thầm gọi copy thay vì move. Nếu copy ctor cũng là bản mặc định (shallow), đây chính là con đường ngắn nhất dẫn đến double-free.</p>
+  </div>
+
+  <h3>Rule of Zero trong thực tế</h3>
+  <p>Thay vì viết tay cả năm hàm, hãy để mỗi resource được sở hữu bởi đúng một RAII member, rồi để compiler tự sinh move/copy bằng cách move/copy từng member. Ví dụ một buffer DMA cần quản lý cả vùng nhớ heap lẫn một DMA channel handle:</p>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++ <span class="badge move">Rule of Zero</span></span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">// RAII wrapper cho DMA channel - đối tượng DUY NHẤT sở hữu resource này
+class DmaChannel {
+public:
+    DmaChannel() : id_(dma_acquire_channel()) {}
+    ~DmaChannel() { if (id_ &gt;= 0) dma_release_channel(id_); }
+
+    DmaChannel(const DmaChannel&amp;) = delete;             // không cho copy handle
+    DmaChannel&amp; operator=(const DmaChannel&amp;) = delete;
+
+    DmaChannel(DmaChannel&amp;&amp; other) noexcept : id_(other.id_) {
+        other.id_ = -1;
+    }
+    DmaChannel&amp; operator=(DmaChannel&amp;&amp; other) noexcept {
+        if (this != &amp;other) {
+            if (id_ &gt;= 0) dma_release_channel(id_);
+            id_ = other.id_;
+            other.id_ = -1;
+        }
+        return *this;
+    }
+
+    int id() const { return id_; }
+private:
+    int id_;
+};
+
+// DmaBuffer chỉ COMPOSE - đây mới thực sự là Rule of Zero
+class DmaBuffer {
+public:
+    explicit DmaBuffer(size_t size)
+        : data_(std::make_unique&lt;uint8_t[]&gt;(size)), size_(size) {}
+
+    // Không viết destructor, copy, move nào cả:
+    //  - unique_ptr&lt;uint8_t[]&gt; tự quản lý vùng heap
+    //  - DmaChannel tự quản lý DMA channel
+    //  - compiler sinh move ctor/assign ĐÚNG bằng cách move từng member
+    //  - compiler XÓA copy ctor/assign vì cả hai member đều non-copyable
+    //    -> cố tình copy DmaBuffer là LỖI BIÊN DỊCH, không có double-free ẩn
+
+    uint8_t* data() const { return data_.get(); }
+    size_t size() const { return size_; }
+private:
+    std::unique_ptr&lt;uint8_t[]&gt; data_;
+    size_t size_;
+    DmaChannel channel_;
+};</code></pre>
+  </div>
+
+  <p>Khi bắt buộc phải khai báo một trong năm hàm (ví dụ để cấm copy tường minh), ưu tiên cú pháp <code>= default</code> / <code>= delete</code> thay vì viết thân hàm tay — thể hiện rõ chủ đích, không tự phát sinh logic dư thừa:</p>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++</span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">class NonCopyableHandle {
+public:
+    NonCopyableHandle() = default;
+    NonCopyableHandle(const NonCopyableHandle&amp;) = delete;
+    NonCopyableHandle&amp; operator=(const NonCopyableHandle&amp;) = delete;
+    NonCopyableHandle(NonCopyableHandle&amp;&amp;) = default;
+    NonCopyableHandle&amp; operator=(NonCopyableHandle&amp;&amp;) = default;
+    ~NonCopyableHandle() = default;
+};</code></pre>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="section-header">
+    <span class="section-tag">0x05</span>
+    <h2>Copy Elision &amp; RVO / NRVO</h2>
+  </div>
+
+  <p><strong>RVO</strong> (Return Value Optimization) — khi hàm trả về một prvalue — cho phép compiler dựng object trực tiếp vào vùng nhớ của caller, bỏ qua hoàn toàn copy/move. <strong>NRVO</strong> (Named RVO) là biến thể áp dụng cho biến cục bộ có tên được return, và <strong>không</strong> được chuẩn C++ đảm bảo — dù hầu hết compiler hiện đại đều làm được trong các trường hợp đơn giản.</p>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++</span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">DmaBuffer make_buffer(size_t n) {
+    return DmaBuffer(n);   // RVO trên prvalue - C++17: GUARANTEED, 0 lời gọi copy/move
+}
+
+DmaBuffer make_buffer_named(size_t n) {
+    DmaBuffer buf(n);
+    // ... xử lý buf ...
+    return buf;   // NRVO - hầu hết compiler làm được, nhưng không được chuẩn đảm bảo
+}</code></pre>
+  </div>
+
+  <div class="callout danger">
+    <span class="callout__label">Anti-pattern — return std::move(local)</span>
+    <p>Viết <code>std::move</code> quanh biến cục bộ trong câu lệnh <code>return</code> thường làm mọi thứ <strong>tệ hơn</strong>, không phải tốt hơn: nó phá khả năng NRVO (vì compiler không còn thấy đây là "trả về thẳng một biến có tên" theo đúng mẫu để elide), ép phải gọi move constructor thay vì loại bỏ hoàn toàn lệnh gọi. <code>-Wpessimizing-move</code> (GCC/Clang) cảnh báo chính xác trường hợp này.</p>
+    <pre style="margin-top:10px"><code class="language-cpp">DmaBuffer make_buffer_bad(size_t n) {
+    DmaBuffer buf(n);
+    return std::move(buf);   // ❌ phá NRVO, ép move thay vì 0 lời gọi nào cả
+}</code></pre>
+  </div>
+
+  <p>Since C++11, biến cục bộ đứng một mình trong <code>return</code> đã tự động được coi như rvalue cho mục đích overload resolution nếu NRVO không áp dụng được — nghĩa là viết <code>std::move</code> thủ công ở đây gần như luôn <strong>thừa</strong>, và có thể khiến tình huống elide-được biến thành move-bắt-buộc.</p>
+
+  <h3>C++17: copy elision không còn là "optimization"</h3>
+  <p>Từ C++17, với prvalue, đây không còn là một hành vi được phép bỏ qua nữa — ngôn ngữ định nghĩa lại rằng prvalue chưa "materialize" thành object cho tới khi thật sự cần. Hệ quả: copy/move constructor thậm chí <strong>không cần tồn tại</strong> để đoạn code sau biên dịch được: <span class="std-tag">C++17</span></p>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++</span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">struct NoisyBuffer {
+    explicit NoisyBuffer(size_t) { std::puts("constructed"); }
+    NoisyBuffer(const NoisyBuffer&amp;) = delete;   // XÓA cả copy ctor
+    NoisyBuffer(NoisyBuffer&amp;&amp;) = delete;        // lẫn move ctor
+};
+
+NoisyBuffer make() {
+    // Vẫn biên dịch! prvalue "materialize" thẳng vào storage của caller -
+    // không có ctor copy/move nào được gọi.
+    return NoisyBuffer(1024);
+}</code></pre>
+  </div>
+
+  <p>Lưu ý phân biệt: quy tắc guaranteed elision ở trên chỉ áp dụng cho <strong>prvalue</strong>. NRVO (trả về biến có tên) vẫn chỉ là optimization được <em>cho phép</em>, không bắt buộc, và vẫn đòi hỏi move hoặc copy constructor phải tồn tại (kể cả khi cuối cùng không được gọi tới).</p>
+</section>
+
+<section id="s06">
+  <div class="section-header">
+    <span class="section-tag">0x06</span>
+    <h2>Perfect Forwarding</h2>
+  </div>
+
+  <p><code>T&amp;&amp;</code> mang hai ý nghĩa hoàn toàn khác nhau tùy ngữ cảnh. Trong một hàm template mà <code>T</code> được deduce từ đối số, <code>T&amp;&amp;</code> là <strong>forwarding reference</strong> (hay "universal reference") — bind được vào cả lvalue lẫn rvalue. Trong mọi ngữ cảnh khác (kiểu cụ thể, không deduce), <code>T&amp;&amp;</code> là rvalue reference thật sự — chỉ bind vào rvalue.</p>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++</span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">template &lt;typename T&gt;
+void wrapper(T&amp;&amp; arg) {              // forwarding reference: T được deduce
+    inner(std::forward&lt;T&gt;(arg));      // giữ nguyên value category gốc của arg
+}
+
+void concrete(DmaBuffer&amp;&amp; arg);      // rvalue reference THẬT: T=DmaBuffer, không deduce</code></pre>
+  </div>
+
+  <p>Cơ chế đứng sau là <strong>reference collapsing</strong>: khi deduction tạo ra tham chiếu-tới-tham-chiếu, chỉ tổ hợp <code>&amp;&amp; &amp;&amp;</code> mới collapse thành <code>&amp;&amp;</code>; mọi tổ hợp còn lại collapse về <code>&amp;</code>:</p>
+
+  <div class="table-wrap">
+  <table>
+    <tr><th>Khai báo (T là T&amp;)</th><th>Kết quả sau collapsing</th></tr>
+    <tr><td><code>T&amp; &amp;</code></td><td><code>T&amp;</code></td></tr>
+    <tr><td><code>T&amp; &amp;&amp;</code></td><td><code>T&amp;</code></td></tr>
+    <tr><td><code>T&amp;&amp; &amp;</code></td><td><code>T&amp;</code></td></tr>
+    <tr><td><code>T&amp;&amp; &amp;&amp;</code></td><td><code>T&amp;&amp;</code></td></tr>
+  </table>
+  </div>
+
+  <p><code>std::forward&lt;T&gt;(arg)</code> dùng chính kết quả deduce của <code>T</code> để "phát lại" đúng value category caller đã truyền vào — lvalue vẫn ra lvalue, rvalue vẫn ra rvalue. Đây là khối xây dựng tiêu chuẩn cho các hàm factory nhận số lượng tham số bất kỳ:</p>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++</span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">template &lt;typename T, typename... Args&gt;
+std::unique_ptr&lt;T&gt; make_unique_custom(Args&amp;&amp;... args) {
+    return std::unique_ptr&lt;T&gt;(new T(std::forward&lt;Args&gt;(args)...));
+}</code></pre>
+  </div>
+
+  <div class="callout danger">
+    <span class="callout__label">Lỗi thường gặp — dùng std::move thay vì std::forward</span>
+    <p><code>std::move</code> bên trong một forwarding function luôn ép đối số thành rvalue, bất kể caller truyền lvalue hay rvalue. Nếu caller còn dùng biến đó sau lời gọi, họ sẽ đọc phải trạng thái moved-from ngoài ý muốn — một bug im lặng, khó phát hiện qua review thông thường.</p>
+    <pre style="margin-top:10px"><code class="language-cpp">template &lt;typename T&gt;
+void log_and_forward(T&amp;&amp; arg) {
+    log(arg);
+    inner(std::move(arg));         // ❌ luôn ép rvalue, kể cả khi arg vốn là lvalue
+    // Đúng:  inner(std::forward&lt;T&gt;(arg));
+}</code></pre>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="section-header">
+    <span class="section-tag">0x07</span>
+    <h2>Object Lifetime &amp; Storage Duration</h2>
+  </div>
+
+  <p>C++ định nghĩa 4 storage duration: <strong>automatic</strong> (biến local, gắn với scope), <strong>dynamic</strong> (heap, qua <code>new</code>/<code>delete</code> hoặc smart pointer), <strong>static</strong> (biến global, static local, static member — sống suốt vòng đời chương trình), và <strong>thread-local</strong> (C++11 — mỗi thread một bản riêng, sống hết vòng đời thread đó).</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg">
+      <rect x="60" y="20" width="340" height="64" rx="8" fill="#0d1219" stroke="#212b38"></rect>
+      <text x="80" y="46" font-family="IBM Plex Mono" font-size="13" font-weight="600" fill="#dfe5ec">STACK</text>
+      <text x="80" y="64" font-family="IBM Plex Mono" font-size="10.5" fill="#8c96a6">automatic storage duration</text>
+      <text x="360" y="55" text-anchor="end" font-family="IBM Plex Mono" font-size="18" fill="#57616f">↓</text>
+
+      <text x="230" y="122" text-anchor="middle" font-family="IBM Plex Mono" font-size="10.5" fill="#57616f">vùng nhớ trống — nơi 2 phía có thể "gặp nhau" khi tràn</text>
+      <text x="230" y="140" text-anchor="middle" font-family="IBM Plex Mono" font-size="14" fill="#3d4552">↓ ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯ ↑</text>
+
+      <rect x="60" y="170" width="340" height="64" rx="8" fill="#0d1219" stroke="#212b38"></rect>
+      <text x="80" y="196" font-family="IBM Plex Mono" font-size="13" font-weight="600" fill="#dfe5ec">HEAP</text>
+      <text x="80" y="214" font-family="IBM Plex Mono" font-size="10.5" fill="#8c96a6">dynamic storage duration</text>
+      <text x="360" y="205" text-anchor="end" font-family="IBM Plex Mono" font-size="18" fill="#57616f">↑</text>
+
+      <rect x="60" y="250" width="340" height="40" rx="8" fill="#0d1219" stroke="#212b38"></rect>
+      <text x="80" y="275" font-family="IBM Plex Mono" font-size="12" font-weight="600" fill="#dfe5ec">.data / .bss</text>
+      <text x="230" y="275" font-family="IBM Plex Mono" font-size="10.5" fill="#8c96a6">static storage duration</text>
+
+      <text x="424" y="42" font-family="IBM Plex Sans" font-size="12" fill="#8c96a6">Biến local, tham số hàm.</text>
+      <text x="424" y="60" font-family="IBM Plex Sans" font-size="12" fill="#8c96a6">Tự hủy khi ra khỏi scope</text>
+      <text x="424" y="78" font-family="IBM Plex Sans" font-size="12" fill="#8c96a6">theo LIFO.</text>
+
+      <text x="424" y="192" font-family="IBM Plex Sans" font-size="12" fill="#8c96a6">new/delete, make_unique,</text>
+      <text x="424" y="210" font-family="IBM Plex Sans" font-size="12" fill="#8c96a6">buffer nội bộ của vector/string.</text>
+      <text x="424" y="228" font-family="IBM Plex Sans" font-size="12" fill="#8c96a6">Sống tới khi giải phóng tường minh.</text>
+
+      <text x="424" y="266" font-family="IBM Plex Sans" font-size="12" fill="#8c96a6">Global, static local, static member.</text>
+      <text x="424" y="284" font-family="IBM Plex Sans" font-size="12" fill="#8c96a6">Khởi tạo trước main(), thứ tự giữa</text>
+      <text x="424" y="302" font-family="IBM Plex Sans" font-size="12" fill="#8c96a6">các translation unit KHÔNG đảm bảo.</text>
+    </svg>
+    <div class="diagram-caption">Mô hình minh họa phổ biến (kiểu Unix process) — trên MCU bare-metal, layout thật do linker script (.ld) quyết định và có thể khác đáng kể</div>
+  </div>
+
+  <h3>Static initialization order fiasco</h3>
+  <p>Thứ tự khởi tạo static object <strong>trong cùng một file</strong> luôn đúng theo thứ tự khai báo. Nhưng thứ tự khởi tạo giữa các <strong>translation unit khác nhau</strong> là <strong>không xác định</strong>. Nếu static object ở file A phụ thuộc vào static object ở file B, và B chưa được khởi tạo khi A chạy constructor — undefined behavior, thường biểu hiện thành giá trị rác im lặng.</p>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++ <span class="badge danger">UB tiềm ẩn</span></span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">// file_a.cpp
+Logger g_logger;                    // static storage duration, global
+
+// file_b.cpp
+// ❌ nếu static init của file_b chạy TRƯỚC file_a -&gt; g_logger CHƯA
+//    được construct khi dùng -&gt; hành vi không xác định
+Config g_config(g_logger);</code></pre>
+  </div>
+
+  <p>Giải pháp chuẩn là <strong>Meyer's Singleton</strong>: đưa static object vào bên trong một hàm, khởi tạo lazy ở lần gọi đầu tiên. Từ C++11, việc khởi tạo static local này được đảm bảo thread-safe ("magic statics") — cùng cơ chế Singleton pattern, áp dụng đúng chỗ để giải quyết vấn đề thứ tự khởi tạo:</p>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++ <span class="std-tag">C++11</span></span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">Logger&amp; logger() {
+    static Logger instance;   // khởi tạo ở lần gọi ĐẦU TIÊN, thread-safe, thứ tự luôn đúng
+    return instance;
+}</code></pre>
+  </div>
+
+  <h3>Lifetime extension của temporary</h3>
+  <p>Bind một temporary trực tiếp vào <code>const T&amp;</code> hoặc <code>T&amp;&amp;</code> sẽ kéo dài lifetime của temporary đó bằng đúng lifetime của reference. Nhưng quy tắc này <strong>không lan truyền</strong> qua return hay qua member — hai nguồn dangling reference phổ biến nhất:</p>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++ <span class="badge danger">UB — dangling</span></span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">const std::string&amp; r = std::string("hello");   // OK: lifetime được kéo dài bằng r
+
+const std::string&amp; get_name() {
+    return std::string("temp");    // ❌ dangling ngay - extension KHÔNG áp dụng qua return
+}
+
+struct Holder {
+    const std::string&amp; ref;
+    Holder(const std::string&amp; s) : ref(s) {}   // nếu s là temporary -&gt; ref dangling
+};                                                // ngay khi constructor kết thúc
+
+std::string_view sv = std::string("hello") + " world";
+// ❌ std::string tạm bị hủy cuối statement -&gt; sv dangling trước cả khi dùng lần đầu</code></pre>
+  </div>
+</section>
+
+<section id="s08">
+  <div class="section-header">
+    <span class="section-tag">0x08</span>
+    <h2>Lỗi thường gặp về Vùng nhớ &amp; Vòng đời</h2>
+  </div>
+
+  <h3>Use-after-move</h3>
+  <p>Dùng object như thể nó vẫn còn giá trị cũ sau khi đã bị move khỏi. Với kiểu tự viết, nếu move constructor null hóa con trỏ, đọc/ghi lại con trỏ đó sau move là null dereference:</p>
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++ <span class="badge danger">UB</span></span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">DmaBuffer buf(1024);
+auto buf2 = std::move(buf);
+buf.data()[0] = 0xFF;   // ❌ buf.data() == nullptr sau move -&gt; null dereference
+                          // "buf" không còn đại diện cho buffer 1024 byte nữa</code></pre>
+  </div>
+
+  <h3>Self-move-assignment</h3>
+  <p>Thiếu guard tự-gán trong move assignment khiến <code>a = std::move(a)</code> giải phóng chính vùng nhớ nó sắp đọc từ đó — lỗi hiếm gặp trực tiếp nhưng dễ xảy ra gián tiếp qua code generic (template, thuật toán tự viết thao tác trên container):</p>
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++ <span class="badge danger">UB</span></span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">DmaBuffer&amp; operator=(DmaBuffer&amp;&amp; other) noexcept {
+    // ❌ THIẾU: if (this == &amp;other) return *this;
+    delete[] data_;          // this == &amp;other -&gt; đang giải phóng vùng nhớ CỦA CHÍNH other
+    data_ = other.data_;     // other.data_ giờ đã dangling - gán lại con trỏ vừa delete
+    ...
+}</code></pre>
+  </div>
+
+  <h3>Object slicing</h3>
+  <p>Truyền một object đa hình theo <strong>giá trị</strong> vào tham số kiểu base class sẽ cắt bỏ hoàn toàn phần derived — kể cả vtable pointer. Không lỗi biên dịch, không warning mặc định, chỉ đơn giản là đa hình ngừng hoạt động:</p>
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++ <span class="badge danger">Slicing</span></span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">class Sensor { public: virtual void read(); };
+class TemperatureSensor : public Sensor {
+public:
+    void read() override;
+private:
+    float calibration_offset_;
+};
+
+void process(Sensor s) { s.read(); }   // ❌ nhận theo GIÁ TRỊ
+
+TemperatureSensor ts;
+process(ts);   // "slicing": phần TemperatureSensor (kể cả vtable) bị cắt bỏ
+                // s.read() gọi Sensor::read() - KHÔNG gọi bản override, im lặng.
+
+// Sửa: nhận theo reference hoặc pointer để giữ đa hình
+void process(Sensor&amp; s) { s.read(); }   // ✅
+void process(Sensor* s)  { s-&gt;read(); }  // ✅</code></pre>
+  </div>
+
+  <h3>Iterator / reference invalidation sau realloc</h3>
+  <p>Khi container phải realloc, toàn bộ phần tử cũ được move (hoặc copy) sang vùng nhớ mới rồi vùng cũ bị giải phóng — mọi iterator, pointer, reference trỏ vào phần tử cũ lập tức dangling. Đây là hệ quả trực tiếp của cách move semantics vận hành bên trong container:</p>
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++ <span class="badge danger">UB</span></span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">std::vector&lt;DmaBuffer&gt; buffers;
+buffers.reserve(1);
+buffers.emplace_back(64);
+DmaBuffer&amp; ref = buffers[0];    // reference vào phần tử đầu
+
+buffers.emplace_back(64);        // vượt capacity -&gt; realloc -&gt; TOÀN BỘ phần tử cũ bị
+                                   // move sang vùng nhớ mới, vùng cũ giải phóng
+ref.data()[0] = 0xFF;            // ❌ ref trỏ vào vùng nhớ ĐÃ GIẢI PHÓNG - UB</code></pre>
+  </div>
+  <div class="callout note">
+    <span class="callout__label">Ghi chú</span>
+    <p><code>reserve()</code> đủ dung lượng trước, hoặc dùng <code>std::deque</code>/danh sách chỉ mục thay vì giữ reference/pointer sống qua các lần <code>push_back</code>/<code>emplace_back</code> không kiểm soát được capacity.</p>
+  </div>
+</section>
+
+<section id="s09">
+  <div class="section-header">
+    <span class="section-tag">0x09</span>
+    <h2>Cân nhắc cho Embedded Systems</h2>
+  </div>
+
+  <h3>Move khi không có heap</h3>
+  <p>Move thật sự hữu ích khi có một con trỏ/handle để "cướp" thay vì phải copy dữ liệu. Với container dung lượng cố định như <code>etl::vector&lt;T,N&gt;</code> hay <code>std::array&lt;T,N&gt;</code>, dữ liệu nằm <strong>inline</strong> ngay bên trong object — không có con trỏ heap nào để cướp, nên move vẫn phải chuyển từng phần tử. Nó chỉ rẻ hơn copy khi <code>T</code> tự nó tốn kém để copy, không rẻ hơn nếu <code>T</code> là kiểu trivial như <code>uint8_t</code>. Ngược lại, với các handle không thể nhân bản có ý nghĩa (DMA channel, file descriptor, GPIO đã claim) — move là cách <strong>duy nhất hợp lệ</strong> để chuyển quyền sở hữu:</p>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++</span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">// Move KHÔNG rẻ hơn copy ở đây: dữ liệu inline, không có con trỏ heap để "cướp"
+etl::vector&lt;uint8_t, 256&gt; a = build_frame();
+etl::vector&lt;uint8_t, 256&gt; b = std::move(a);   // vẫn phải chuyển ~256 byte bên trong
+
+// Move LÀ CÁCH DUY NHẤT hợp lệ ở đây: không thể "nhân bản" một DMA channel vật lý
+DmaChannel ch  = acquire_channel();
+DmaChannel ch2 = std::move(ch);</code></pre>
+  </div>
+
+  <h3>Placement new &amp; quản lý lifetime thủ công</h3>
+  <p>Trên static memory pool (không heap), object được construct trực tiếp vào một vùng nhớ đã cấp phát sẵn bằng placement <code>new</code> — và vì storage không "tự biết" nó đang chứa object gì, destructor phải được gọi <strong>tường minh</strong>:</p>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++</span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">alignas(DmaBuffer) uint8_t storage[sizeof(DmaBuffer)];   // vùng nhớ tĩnh, không heap
+
+DmaBuffer* buf = ::new (storage) DmaBuffer(1024);   // placement new: construct TẠI CHỖ
+// ... dùng buf ...
+std::destroy_at(buf);                                // C++17 - tương đương buf-&gt;~DmaBuffer()</code></pre>
+  </div>
+
+  <p>Nếu tái sử dụng cùng một vùng storage cho một object mới (cùng kiểu, cùng địa chỉ), con trỏ cũ trỏ tới object cũ về mặt kỹ thuật đã hết hạn — cần <code>std::launder</code> để hợp thức hóa việc dùng lại: <span class="std-tag">C++17</span></p>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++</span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">DmaBuffer* p = ::new (storage) DmaBuffer(512);
+std::destroy_at(p);
+::new (storage) DmaBuffer(1024);   // object MỚI, cùng địa chỉ storage
+
+// ❌ kỹ thuật là UB: p vẫn "trỏ" tới object cũ đã hết vòng đời
+p-&gt;size();
+
+auto* p2 = std::launder(p);   // ✅ hợp thức hóa việc dùng lại storage
+p2-&gt;size();                    // OK</code></pre>
+  </div>
+
+  <h3>ISR &amp; volatile</h3>
+  <p>Copy/move constructor không atomic và không kèm memory barrier. Dữ liệu chia sẻ giữa ISR và main loop cần <code>std::atomic</code> hoặc critical section, không phải chỉ <code>volatile</code> — <code>volatile</code> chỉ ngăn compiler tối ưu bỏ việc đọc/ghi, không đảm bảo tính nguyên tử:</p>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++ <span class="badge danger">Torn read</span></span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">volatile SensorReading g_latest;   // ISR ghi, main loop đọc
+
+void ISR_Handler() {
+    g_latest = read_sensor();   // KHÔNG đảm bảo atomic nếu SensorReading &gt; 1 word
+}
+
+SensorReading r = g_latest;   // main loop: có thể đọc trạng thái nửa-ghi (torn read)</code></pre>
+  </div>
+
+  <div class="callout note">
+    <span class="callout__label">Ghi chú <span class="std-tag">C++20</span></span>
+    <p>Compound assignment (<code>+=</code>, <code>++</code>...) trên biến <code>volatile</code> đã bị deprecate từ C++20 (P1152), chính vì nó ngầm gợi ý một sự "nguyên tử" mà ngôn ngữ chưa từng đảm bảo.</p>
+  </div>
+
+  <h3>RAII cho peripheral: unique_ptr custom deleter hay tự viết?</h3>
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++</span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">// Cách 1: unique_ptr + custom deleter - tận dụng RAII có sẵn, hợp khi handle LÀ con trỏ
+struct GpioDeleter { void operator()(GpioHandle* h) const { gpio_release(h); } };
+using GpioPtr = std::unique_ptr&lt;GpioHandle, GpioDeleter&gt;;
+
+// Cách 2: RAII tự viết (như DmaChannel ở 0x04) - tự nhiên hơn khi handle KHÔNG phải
+// con trỏ (int fd, int channel id) - không cần "giả vờ" nó là một con trỏ</code></pre>
+  </div>
+  <p>Với stateless deleter, <code>unique_ptr</code> thường zero-overhead nhờ empty base optimization — chọn cách nào chủ yếu là vấn đề handle có tự nhiên biểu diễn như con trỏ hay không, không phải vấn đề hiệu năng.</p>
+</section>
+
+<section id="s0a">
+  <div class="section-header">
+    <span class="section-tag">0x0A</span>
+    <h2>Ví dụ đầy đủ</h2>
+  </div>
+
+  <p>Gộp lại toàn bộ: Rule of Zero, move-only API, guaranteed elision, và copy bị chặn ngay từ lúc biên dịch — một driver quản lý hàng đợi buffer DMA:</p>
+
+  <div class="code-block">
+    <div class="code-block__bar"><span class="code-block__lang">C++ <span class="badge move">Rule of Zero</span></span><button class="copy-btn">Copy</button></div>
+    <pre><code class="language-cpp">#include &lt;cstdint&gt;
+#include &lt;cstddef&gt;
+#include &lt;memory&gt;
+#include &lt;vector&gt;
+#include &lt;utility&gt;
+
+// --- Giả lập API phần cứng ---
+int  dma_acquire_channel();
+void dma_release_channel(int id);
+
+// --- RAII wrapper cho DMA channel ---
+class DmaChannel {
+public:
+    DmaChannel() : id_(dma_acquire_channel()) {}
+    ~DmaChannel() { if (id_ &gt;= 0) dma_release_channel(id_); }
+
+    DmaChannel(const DmaChannel&amp;) = delete;
+    DmaChannel&amp; operator=(const DmaChannel&amp;) = delete;
+
+    DmaChannel(DmaChannel&amp;&amp; other) noexcept : id_(other.id_) { other.id_ = -1; }
+    DmaChannel&amp; operator=(DmaChannel&amp;&amp; other) noexcept {
+        if (this != &amp;other) {
+            if (id_ &gt;= 0) dma_release_channel(id_);
+            id_ = other.id_;
+            other.id_ = -1;
+        }
+        return *this;
+    }
+    int id() const { return id_; }
+private:
+    int id_;
+};
+
+// --- Buffer DMA - Rule of Zero, compose từ 2 RAII member ---
+class DmaBuffer {
+public:
+    explicit DmaBuffer(size_t size)
+        : data_(std::make_unique&lt;uint8_t[]&gt;(size)), size_(size) {}
+
+    uint8_t*       data()       { return data_.get(); }
+    const uint8_t* data() const { return data_.get(); }
+    size_t         size() const { return size_; }
+    int            channel_id() const { return channel_.id(); }
+private:
+    std::unique_ptr&lt;uint8_t[]&gt; data_;
+    size_t size_;
+    DmaChannel channel_;
+};
+
+// --- Driver: chỉ nhận buffer qua move, không bao giờ qua copy ---
+class DmaQueue {
+public:
+    void submit(DmaBuffer&amp;&amp; buf) {           // chỉ nhận rvalue - buộc caller thể hiện
+        pending_.push_back(std::move(buf));   // rõ ý định "giao hẳn quyền sở hữu"
+    }
+    size_t pending_count() const { return pending_.size(); }
+private:
+    std::vector&lt;DmaBuffer&gt; pending_;
+};
+
+int main() {
+    DmaQueue queue;
+
+    DmaBuffer a(1024);
+    // DmaBuffer b = a;   // ❌ LỖI BIÊN DỊCH: copy ctor = deleted (đúng như ý muốn)
+
+    queue.submit(std::move(a));   // ✅ move: chuyển buffer + DMA channel cho queue
+    // a.data() giờ là nullptr - "a" đã hết vai trò, không nên dùng tiếp
+
+    queue.submit(DmaBuffer(512));   // ✅ prvalue - elision rồi move vào vector
+    return 0;
+}</code></pre>
+  </div>
+
+  <div class="callout move">
+    <span class="callout__label">Vì sao submit() nhận T&amp;&amp; thay vì T</span>
+    <p>Chữ ký <code>submit(DmaBuffer&amp;&amp; buf)</code> từ chối lvalue hoàn toàn trừ khi caller viết <code>std::move(...)</code> tường minh — buộc ý định "giao hẳn quyền sở hữu" phải hiện rõ tại nơi gọi, thay vì để trình biên dịch âm thầm chọn hộ như khi tham số nhận theo giá trị.</p>
+  </div>
+</section>
+
+<section id="s0b">
+  <div class="section-header">
+    <span class="section-tag">0x0B</span>
+    <h2>Cheat Sheet</h2>
+  </div>
+
+  <h3>Checklist khi viết một class sở hữu resource</h3>
+  <ul class="checklist">
+    <li><span class="n">01</span>Ưu tiên Rule of Zero trước — compose từ RAII member (<code>unique_ptr</code>, <code>vector</code>, <code>string</code>, container ETL...) thay vì tự quản lý resource thủ công.</li>
+    <li><span class="n">02</span>Nếu bắt buộc quản lý resource thủ công: viết đủ cả năm hàm, hoặc <code>= delete</code> tường minh những gì không cho phép.</li>
+    <li><span class="n">03</span>Move ctor/assign luôn đánh dấu <code>noexcept</code> khi thao tác bên trong thật sự không thể ném exception.</li>
+    <li><span class="n">04</span>Guard tự-gán (<code>this != &amp;other</code>) trong cả copy assignment lẫn move assignment.</li>
+    <li><span class="n">05</span>Sau khi move-from, để object ở trạng thái an toàn để hủy — null hóa con trỏ/handle.</li>
+    <li><span class="n">06</span>Không viết <code>return std::move(local)</code> — nó phá NRVO thay vì tối ưu thêm.</li>
+    <li><span class="n">07</span>Cẩn thận reference/pointer/<code>string_view</code> trỏ vào temporary — lifetime extension không lan truyền qua return hay qua member.</li>
+    <li><span class="n">08</span>Nhận object đa hình theo reference/pointer, không bao giờ theo giá trị — tránh object slicing.</li>
+  </ul>
+
+  <h3>Quyết định nhanh</h3>
+  <ol>
+    <li>Resource có thể compose từ member RAII có sẵn không? → <strong>Có:</strong> Rule of Zero, dừng ở đây.</li>
+    <li>Không — phải tự quản lý thủ công? → Viết đủ Rule of Five, đánh dấu <code>noexcept</code> cho move.</li>
+    <li>Class không nên cho phép copy? → <code>= delete</code> copy, vẫn giữ move (như <code>DmaChannel</code> ở 0x04).</li>
+  </ol>
+
+  <h3>Compiler warnings &amp; static analysis nên bật</h3>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Flag / Check</th><th>Bắt lỗi gì</th></tr>
+    <tr><td><code>-Wdeprecated-copy</code></td><td>copy ctor/assign tự sinh dù đã có destructor/copy khác user-declared</td></tr>
+    <tr><td><code>-Wpessimizing-move</code></td><td><code>return std::move(local)</code> phá mất NRVO</td></tr>
+    <tr><td><code>-Wredundant-move</code></td><td><code>std::move</code> dùng ở nơi không có tác dụng</td></tr>
+    <tr><td><code>clang-tidy performance-noexcept-move-constructor</code></td><td>move constructor thiếu <code>noexcept</code></td></tr>
+    <tr><td><code>clang-tidy performance-unnecessary-copy-initialization</code></td><td>copy không cần thiết khi reference là đủ</td></tr>
+    <tr><td><code>clang-tidy cppcoreguidelines-rvalue-reference-param-not-moved</code></td><td>tham số <code>T&amp;&amp;</code> nhận vào nhưng quên <code>std::move</code>/<code>std::forward</code></td></tr>
+    <tr><td><code>clang-tidy cppcoreguidelines-special-member-functions</code></td><td>vi phạm Rule of Five (chỉ khai báo một phần)</td></tr>
+  </table>
+  </div>
+</section>
+
+<footer>
+  C++ Move / Copy / Object Lifetime — tài liệu tham khảo cho embedded systems (bare-metal &amp; embedded Linux)<br>
+  Không bao gồm trong tài liệu này: coroutines, <code>std::memory_order</code> chi tiết, allocator-aware containers — mỗi chủ đề đủ lớn cho một tài liệu riêng.
+</footer>
+
+</div>
+</main>
+</div>
+
+<script>
+// Syntax highlighting is progressive enhancement - if the CDN is blocked/offline,
+// the rest of the page (scrollspy, copy buttons, mobile nav) must still work.
+if (window.hljs) {
+  try { hljs.highlightAll(); } catch (e) { console.warn('hljs init failed', e); }
+}
+
+// scrollspy
+const sections = document.querySelectorAll('main section[id]');
+const links = document.querySelectorAll('.toc a');
+const spy = new IntersectionObserver((entries)=>{
+  entries.forEach(entry=>{
+    const id = entry.target.getAttribute('id');
+    const link = document.querySelector(`.toc a[href="#${id}"]`);
+    if(!link) return;
+    if(entry.isIntersecting){
+      links.forEach(l=>l.classList.remove('active'));
+      link.classList.add('active');
+    }
+  });
+},{rootMargin:'-15% 0px -75% 0px',threshold:0});
+sections.forEach(s=>spy.observe(s));
+
+// copy buttons - Clipboard API with a legacy fallback (permissions/older browsers)
+function legacyCopy(text){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch (e) { /* give up quietly */ }
+  document.body.removeChild(ta);
+}
+document.querySelectorAll('.code-block').forEach(block=>{
+  const btn = block.querySelector('.copy-btn');
+  const code = block.querySelector('code');
+  if(!btn||!code) return;
+  btn.addEventListener('click',()=>{
+    const text = code.innerText;
+    const onDone = ()=>{
+      btn.textContent='Đã chép ✓';
+      btn.classList.add('copied');
+      setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('copied');},1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(onDone).catch(()=>{legacyCopy(text);onDone();});
+    } else {
+      legacyCopy(text);
+      onDone();
+    }
+  });
+});
+
+// mobile nav
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('overlay');
+const navToggle = document.getElementById('navToggle');
+if(navToggle){
+  navToggle.addEventListener('click',()=>{
+    sidebar.classList.add('open');
+    overlay.classList.add('show');
+  });
+  overlay.addEventListener('click',()=>{
+    sidebar.classList.remove('open');
+    overlay.classList.remove('show');
+  });
+  document.querySelectorAll('.toc a').forEach(a=>a.addEventListener('click',()=>{
+    sidebar.classList.remove('open');
+    overlay.classList.remove('show');
+  }));
+}
+</script>
+</body>
+</html>
