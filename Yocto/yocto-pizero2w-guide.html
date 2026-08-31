@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yocto · Pi Zero 2W · LVGL · FreeRTOS — Hướng dẫn từng bước</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f0d;
+    --surface: #101815;
+    --surface-2: #0d1512;
+    --border: #1c2b26;
+    --text: #e8f0ed;
+    --text-muted: #7d938c;
+    --text-dim: #55665f;
+    --linux: #4fd1c5;
+    --linux-dim: #2a5a54;
+    --mcu: #e8a54b;
+    --mcu-dim: #6b4f26;
+    --danger: #e8664b;
+    --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .layout { display: flex; min-height: 100vh; max-width: 1280px; margin: 0 auto; }
+  .sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 28px 18px;
+    border-right: 1px solid var(--border);
+  }
+  .sidebar-brand { font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; }
+  .sidebar-title { font-size: 17px; font-weight: 700; margin-bottom: 24px; color: var(--text); }
+  .sidebar-title .dot { color: var(--linux); }
+  .nav-group { margin-bottom: 6px; }
+  .nav-link {
+    display: flex; gap: 10px; align-items: baseline; padding: 7px 10px; border-radius: 6px;
+    color: var(--text-muted); text-decoration: none; font-size: 13px; transition: background 0.15s, color 0.15s;
+  }
+  .nav-link:hover { background: var(--surface); color: var(--text); }
+  .nav-link.active { background: var(--surface); color: var(--linux); }
+  .nav-num { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); width: 18px; flex-shrink:0; }
+  .nav-link.active .nav-num { color: var(--linux); }
+  main { flex: 1; min-width: 0; padding: 48px 56px 120px; }
+  .hero-eyebrow { font-family: var(--font-mono); font-size: 12px; color: var(--linux); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 14px; }
+  h1 { font-size: 28px; font-weight: 700; margin: 0 0 12px; line-height: 1.3; }
+  .hero-sub { color: var(--text-muted); font-size: 15px; max-width: 680px; margin-bottom: 40px; }
+  section { margin-bottom: 60px; scroll-margin-top: 24px; }
+  .section-eyebrow { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); margin-bottom: 8px; }
+  .section-eyebrow .n { color: var(--linux); }
+  h2 { font-size: 21px; font-weight: 700; margin: 0 0 14px; }
+  h3 { font-size: 15px; font-weight: 600; margin: 24px 0 10px; color: var(--text); }
+  p { color: #c7d6d1; font-size: 14.5px; margin: 0 0 14px; }
+  strong { color: var(--text); font-weight: 600; }
+  code.inline { font-family: var(--font-mono); background: var(--surface); border: 1px solid var(--border); padding: 1px 6px; border-radius: 4px; font-size: 0.88em; color: var(--linux); }
+  .arch-diagram { display: flex; align-items: center; gap: 0; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 26px; margin-bottom: 24px; flex-wrap: wrap; }
+  .arch-box { flex: 1; min-width: 180px; padding: 16px 18px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); }
+  .arch-box--linux { border-color: var(--linux-dim); }
+  .arch-box--mcu { border-color: var(--mcu-dim); }
+  .arch-label { display: block; font-weight: 700; font-size: 14.5px; margin-bottom: 4px; }
+  .arch-box--linux .arch-label { color: var(--linux); }
+  .arch-box--mcu .arch-label { color: var(--mcu); }
+  .arch-detail { display: block; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-muted); }
+  .arch-link { flex: 0 0 auto; padding: 0 16px; text-align: center; color: var(--text-dim); font-family: var(--font-mono); font-size: 11px; min-width: 110px; }
+  .arch-link .arrow { font-size: 18px; display: block; color: var(--text-muted); margin-bottom: 4px; }
+  pre { font-family: var(--font-mono); font-size: 12.5px; background: var(--surface-2); border: 1px solid var(--border); border-left: 3px solid var(--text-dim); border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 0 0 14px; line-height: 1.55; }
+  pre.code-linux { border-left-color: var(--linux); }
+  pre.code-mcu { border-left-color: var(--mcu); }
+  pre code { color: #d5e3de; }
+  .code-tag { display: inline-block; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px; }
+  .code-tag.linux { background: rgba(79,209,197,0.12); color: var(--linux); }
+  .code-tag.mcu { background: rgba(232,165,75,0.12); color: var(--mcu); }
+  .callout { border: 1px solid var(--border); border-left: 3px solid var(--danger); background: rgba(232,102,75,0.06); border-radius: 8px; padding: 13px 16px; margin: 0 0 18px; font-size: 13.5px; color: #dcc9c2; }
+  .callout strong { color: var(--danger); }
+  .callout.tip { border-left-color: var(--linux); background: rgba(79,209,197,0.06); color: #c7d6d1; }
+  .callout.tip strong { color: var(--linux); }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 11px; border-bottom: 1px solid var(--border); }
+  th { font-family: var(--font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); font-weight: 500; }
+  td { color: #c7d6d1; }
+  td code.inline { font-size: 0.85em; }
+  ol, ul { color: #c7d6d1; font-size: 14.5px; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  li::marker { color: var(--text-dim); font-family: var(--font-mono); font-size: 0.85em; }
+  .step { display: flex; gap: 16px; margin-bottom: 26px; }
+  .step-num {
+    flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
+    background: var(--surface); border: 1px solid var(--linux-dim); color: var(--linux);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-weight: 600; font-size: 12.5px;
+  }
+  .step-body { flex: 1; min-width: 0; padding-top: 1px; }
+  .step-title { font-weight: 600; font-size: 14.5px; margin-bottom: 6px; color: var(--text); }
+  .glossary dt { font-family: var(--font-mono); color: var(--linux); font-size: 13.5px; margin-top: 12px; font-weight: 600; }
+  .glossary dd { margin: 4px 0 0; color: #c7d6d1; font-size: 14px; }
+  .tn { display: flex; align-items: baseline; gap: 8px; padding: 3px 0; }
+  .tc { margin-left: 8px; padding-left: 14px; border-left: 1px solid var(--border); }
+  .tn .nm { font-family: var(--font-mono); font-size: 13px; color: var(--text); white-space: nowrap; }
+  .tn .ds { font-size: 12px; color: var(--text-muted); }
+  .mine .nm { color: var(--linux); }
+  .tree-legend { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .tree-legend .dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--linux); }
+  .tree-grp { font-size: 11px; color: var(--text-dim); margin: 14px 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+  @media (max-width: 820px) {
+    .layout { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; position: sticky; top: 0; z-index: 10; background: var(--bg); border-right: none; border-bottom: 1px solid var(--border); padding: 12px 14px; display: flex; align-items: center; gap: 2px; overflow-x: auto; white-space: nowrap; }
+    .sidebar-brand, .sidebar-title { display: none; }
+    .nav-link { padding: 6px 8px; }
+    main { padding: 26px 18px 80px; }
+    h1 { font-size: 22px; }
+    .arch-diagram { flex-direction: column; }
+    .arch-link { min-width: auto; padding: 8px 0; }
+    .arch-link .arrow { transform: rotate(90deg); }
+    .step { flex-direction: column; gap: 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-brand">Reference · LeDat</div>
+    <div class="sidebar-title"><span class="dot">●</span> Pi Zero 2W Build</div>
+    <div class="nav-group">
+      <a class="nav-link" href="#overview"><span class="nav-num">00</span>Kiến trúc &amp; khái niệm</a>
+      <a class="nav-link" href="#folder-structure"><span class="nav-num">01</span>Cấu trúc thư mục</a>
+      <a class="nav-link" href="#host-setup"><span class="nav-num">02</span>Chuẩn bị máy host</a>
+      <a class="nav-link" href="#get-layers"><span class="nav-num">03</span>Tải Poky + layer</a>
+      <a class="nav-link" href="#first-build"><span class="nav-num">04</span>Build ảnh đầu tiên</a>
+      <a class="nav-link" href="#add-lvgl"><span class="nav-num">05</span>Thêm LVGL</a>
+      <a class="nav-link" href="#pc-dev"><span class="nav-num">06</span>Code trên PC trước</a>
+      <a class="nav-link" href="#package-recipe"><span class="nav-num">07</span>Đóng gói thành recipe</a>
+      <a class="nav-link" href="#autostart"><span class="nav-num">08</span>Chạy tự động lúc boot</a>
+      <a class="nav-link" href="#target-build"><span class="nav-num">09</span>Build cho target, flash</a>
+      <a class="nav-link" href="#porting-path"><span class="nav-num">10</span>Đường sang MCU thật</a>
+      <a class="nav-link" href="#troubleshooting"><span class="nav-num">11</span>Lỗi thường gặp</a>
+    </div>
+  </nav>
+  <main>
+    <div class="hero-eyebrow">Embedded reference — Yocto / LVGL / FreeRTOS</div>
+    <h1>Yocto cho Pi Zero 2W: LVGL + FreeRTOS (POSIX port)</h1>
+    <p class="hero-sub">Bản chi tiết, từng bước, có giải thích — dành cho người đã quen FreeRTOS/STM32 và Buildroot nhưng chưa từng đụng Yocto. Mục tiêu: viết app theo API FreeRTOS ngay từ đầu để sau này port sang MCU thật không phải viết lại logic, không phải để chạy real-time trên Pi.</p>
+
+    <section id="overview">
+      <div class="section-eyebrow"><span class="n">00 ·</span> KIẾN TRÚC &amp; KHÁI NIỆM</div>
+      <h2>Yocto khác Buildroot ở chỗ nào</h2>
+      <p>Buildroot bạn quen: 1 file cấu hình to (menuconfig kiểu kernel) cho toàn hệ thống, build tuần tự theo Makefile, output là 1 rootfs. Yocto chia nhỏ hơn nhiều: mỗi phần mềm là 1 <strong>recipe</strong> (file <code class="inline">.bb</code>), các recipe liên quan gom vào 1 <strong>layer</strong> (thư mục), và <strong>BitBake</strong> (công cụ build thật sự — "Yocto Project" là tên cả hệ sinh thái, không phải tên tool) tự tính recipe nào cần recipe nào, build đúng thứ tự, cache kết quả từng recipe riêng lẻ. Linh hoạt hơn Buildroot nhiều nhưng cũng có đường cong học tập dốc hơn.</p>
+      <dl class="glossary">
+        <dt>layer</dt><dd>Thư mục chứa nhiều recipe liên quan — vd <code class="inline">meta-raspberrypi</code> = mọi thứ riêng cho board Raspberry Pi (kernel, bootloader, machine config).</dd>
+        <dt>recipe (.bb)</dt><dd>1 file mô tả cách lấy source (biến <code class="inline">SRC_URI</code>), build, cài đặt 1 phần mềm — tương đương 1 "package" trong Buildroot nhưng chi tiết/tuỳ biến được nhiều hơn.</dd>
+        <dt>.bbappend</dt><dd>File "vá thêm" vào 1 recipe có sẵn của layer khác mà không sửa trực tiếp file gốc — cách chuẩn để tuỳ biến mà không đụng vào source layer người khác viết.</dd>
+        <dt>MACHINE</dt><dd>Biến chọn board target, đặt trong <code class="inline">local.conf</code> — vai trò tương đương việc chọn board trong Buildroot, nhưng ở Yocto nó chỉ là 1 dòng biến, không phải cả 1 lần chạy menuconfig.</dd>
+        <dt>image recipe</dt><dd>1 loại recipe đặc biệt liệt kê tập hợp package nào sẽ có trong rootfs cuối — vd <code class="inline">core-image-minimal</code>.</dd>
+        <dt>local.conf / bblayers.conf</dt><dd>2 file cấu hình riêng cho <em>mỗi thư mục build</em> — <code class="inline">local.conf</code> chứa setting build (MACHINE, package cần thêm...), <code class="inline">bblayers.conf</code> liệt kê layer nào đang bật. Khác Buildroot: Yocto tách hẳn "code/recipe" (nằm trong git layer, dùng chung nhiều máy) khỏi "cấu hình build cụ thể của bạn" (nằm riêng trong thư mục build, không commit chung với layer).</dd>
+      </dl>
+      <div class="arch-diagram">
+        <div class="arch-box arch-box--linux">
+          <span class="arch-label">Yocto Linux — Pi Zero 2W</span>
+          <span class="arch-detail">FreeRTOS POSIX port · LVGL fbdev</span>
+        </div>
+        <div class="arch-link"><span class="arrow">→</span>sau này<br>port sang</div>
+        <div class="arch-box arch-box--mcu">
+          <span class="arch-label">MCU thật (STM32/ESP32...)</span>
+          <span class="arch-detail">FreeRTOS port thật · display driver SPI</span>
+        </div>
+      </div>
+      <p>Cả FreeRTOS lẫn LVGL đều có port chạy như 1 app userspace bình thường trên Linux, không cần bare-metal, không cần real-time:</p>
+      <ul>
+        <li><strong>FreeRTOS POSIX/Linux port</strong> (<code class="inline">portable/ThirdParty/GCC/Posix</code> trong repo FreeRTOS-Kernel chính thức) — dùng pthread + signal giả lập tick/context-switch. Tài liệu FreeRTOS nói rõ đây là simulator, không có real-time — đúng như bạn đã biết, dùng để phát triển/test logic task trước khi lên phần cứng thật.</li>
+        <li><strong>LVGL trên Linux</strong> (<code class="inline">lvgl/lv_port_linux</code>) — cùng 1 codebase chạy được cả SDL2 (giả lập cửa sổ trên PC, code nhanh) lẫn fbdev/DRM (chạy thật trên màn hình gắn vào Pi), chỉ đổi driver.</li>
+      </ul>
+      <p>Yocto ở đây không cần lo real-time hay kernel patch — chỉ cần thêm thư viện/recipe cho LVGL, vendor thêm source FreeRTOS-Kernel, rồi viết 1 app recipe nối chúng lại. Các bước dưới đây đi theo đúng thứ tự nên làm: dựng Yocto cơ bản trước → xác nhận chạy được → mới thêm LVGL → code app trên PC cho nhanh → cuối cùng mới đóng gói lên target thật.</p>
+    </section>
+
+    <section id="folder-structure">
+      <div class="section-eyebrow"><span class="n">01 ·</span> CẤU TRÚC THƯ MỤC</div>
+      <h2>Toàn bộ dự án trông ra sao khi xong</h2>
+      <p>2 lớp: <strong>workspace Yocto</strong> (những gì clone/tự sinh, không đụng vào) và <strong>phần bạn thật sự tạo ra</strong> (1 layer nhỏ + 1 repo app riêng).</p>
+      <h3>Workspace — chỉ 1 thư mục là của bạn</h3>
+      <div class="tree-legend"><span class="dot"></span>layer do bạn tạo — còn lại là clone hoặc tự sinh</div>
+      <div class="tn"><span class="nm">~/yocto/</span></div>
+      <div class="tc">
+        <div class="tn"><span class="nm">poky/</span><span class="ds">clone — bitbake + recipe nền</span></div>
+        <div class="tn"><span class="nm">meta-openembedded/</span><span class="ds">clone — có sẵn recipe lvgl</span></div>
+        <div class="tn"><span class="nm">meta-raspberrypi/</span><span class="ds">clone — BSP cho Pi Zero 2W</span></div>
+        <div class="tn mine"><span class="nm">meta-mylvglapp/</span><span class="ds">bạn tạo — layer app riêng</span></div>
+        <div class="tn"><span class="nm">build/</span><span class="ds">tự sinh bởi oe-init-build-env</span></div>
+        <div class="tc">
+          <div class="tn"><span class="nm">conf/</span></div>
+          <div class="tc">
+            <div class="tn"><span class="nm">local.conf</span><span class="ds">MACHINE, package cần thêm</span></div>
+            <div class="tn"><span class="nm">bblayers.conf</span><span class="ds">danh sách layer đang bật</span></div>
+          </div>
+          <div class="tn"><span class="nm">tmp/deploy/.../*.wic.bz2</span><span class="ds">ảnh flash ra thẻ SD</span></div>
+        </div>
+      </div>
+      <h3>Bên trong phần của bạn: layer + repo app</h3>
+      <p>File <code class="inline">.bb</code> không phải là code — nó chỉ là hướng dẫn "đi lấy code ở đâu, build sao". Code thật nằm ở 1 repo khác hẳn, Yocto tự tải về lúc build, không nằm sẵn trong layer.</p>
+      <div class="tree-grp">Layer — chỉ chứa hướng dẫn build</div>
+      <div class="tn mine"><span class="nm">meta-mylvglapp/</span></div>
+      <div class="tc">
+        <div class="tn"><span class="nm">recipes-myapp/lvgl-rtos-app/</span></div>
+        <div class="tc">
+          <div class="tn mine"><span class="nm">lvgl-rtos-app_1.0.bb</span><span class="ds">khai SRC_URI, DEPENDS...</span></div>
+          <div class="tn"><span class="nm">files/</span></div>
+          <div class="tc">
+            <div class="tn mine"><span class="nm">lvglapp.service</span><span class="ds">tự chạy lúc boot</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="tree-grp">Repo app — source thật (URL trong SRC_URI)</div>
+      <div class="tn mine"><span class="nm">myapp/</span></div>
+      <div class="tc">
+        <div class="tn mine"><span class="nm">CMakeLists.txt</span><span class="ds">build app + FreeRTOS-Kernel</span></div>
+        <div class="tn mine"><span class="nm">main.c</span><span class="ds">task LVGL, xTaskCreate</span></div>
+        <div class="tn mine"><span class="nm">FreeRTOSConfig.h</span><span class="ds">tự viết — heap, priority</span></div>
+        <div class="tn"><span class="nm">FreeRTOS-Kernel/</span><span class="ds">fetch riêng, không tự viết</span></div>
+        <div class="tc">
+          <div class="tn"><span class="nm">tasks.c, queue.c...</span><span class="ds">lõi — không đổi theo platform</span></div>
+          <div class="tn"><span class="nm">portable/.../Posix/</span><span class="ds">phần đổi khi lên MCU thật</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="host-setup">
+      <div class="section-eyebrow"><span class="n">02 ·</span> CHUẨN BỊ MÁY HOST</div>
+      <h2>Máy build cần gì</h2>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Hệ điều hành</div>
+          <p>Ubuntu 22.04/24.04 64-bit (hoặc Debian gần đây) — đây là môi trường được Yocto test kỹ nhất. Máy ảo cũng chạy được, miễn đủ tài nguyên bên dưới.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Cài package cần thiết</div>
+          <p>Danh sách chính thức cho nhánh Scarthgap:</p>
+          <span class="code-tag linux">host</span>
+          <pre class="code-linux"><code>sudo apt update
+sudo apt install gawk wget git diffstat unzip texinfo gcc build-essential chrpath \
+    socat cpio python3 python3-pip python3-pexpect xz-utils debianutils \
+    iputils-ping python3-git python3-jinja2 python3-subunit zstd liblz4-tool \
+    file locales libacl1
+sudo locale-gen en_US.UTF-8</code></pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Dung lượng ổ đĩa</div>
+          <p>Chuẩn bị tối thiểu <strong>~100GB trống</strong>. Yocto build lại toàn bộ toolchain (gcc, glibc...) và hàng trăm package từ source — tốn dung lượng hơn Buildroot rất nhiều, vì Buildroot thường build 1 lần rồi xong, còn Yocto giữ cache (sstate-cache) của từng recipe để build lại nhanh hơn lần sau.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">RAM &amp; thời gian</div>
+          <p>Càng nhiều RAM/core CPU, BitBake càng build song song được nhiều recipe cùng lúc — khuyên ≥8GB RAM, lý tưởng 16GB+. <strong>Lần build đầu tiên có thể mất 1–3+ tiếng</strong> tuỳ máy vì phải dựng lại toàn bộ toolchain từ đầu — đây là bình thường, không phải bị treo máy.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="get-layers">
+      <div class="section-eyebrow"><span class="n">03 ·</span> TẢI POKY + LAYER</div>
+      <h2>Poky là gì, và 3 layer cần</h2>
+      <p><strong>Poky</strong> không phải "1 tool" — nó là 1 "distro tham khảo" đóng gói sẵn: BitBake (công cụ build) + openembedded-core (recipe nền tảng: glibc, busybox, kernel chung...) + layer mặc định (meta-poky). Bạn không tự viết những thứ này, chỉ clone về dùng.</p>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Clone 3 layer</div>
+          <span class="code-tag linux">host</span>
+          <pre class="code-linux"><code>mkdir -p ~/yocto &amp;&amp; cd ~/yocto
+git clone -b scarthgap https://git.yoctoproject.org/poky
+git clone -b scarthgap https://git.openembedded.org/meta-openembedded
+git clone -b scarthgap https://github.com/agherzan/meta-raspberrypi</code></pre>
+          <p>Scarthgap (5.0 LTS, hỗ trợ tới 04/2028) là bản ổn định nên dùng — recipe LVGL trong meta-openembedded đã chạy tốt trên nhánh này.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">3 layer này làm gì</div>
+          <table>
+            <tr><th>Layer</th><th>Vai trò</th></tr>
+            <tr><td><code class="inline">poky</code></td><td>BitBake + recipe nền tảng (glibc, busybox, kernel chung, toolchain)</td></tr>
+            <tr><td><code class="inline">meta-openembedded</code></td><td>Kho recipe cộng đồng khổng lồ — recipe <code class="inline">lvgl</code> nằm trong sub-layer <code class="inline">meta-oe</code> của nó</td></tr>
+            <tr><td><code class="inline">meta-raspberrypi</code></td><td>BSP layer — kernel/bootloader/machine-config riêng cho board Raspberry Pi, định nghĩa <code class="inline">MACHINE = "raspberrypi0-2w"</code></td></tr>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="first-build">
+      <div class="section-eyebrow"><span class="n">04 ·</span> BUILD ẢNH ĐẦU TIÊN</div>
+      <h2>Xác nhận setup đúng trước khi thêm gì khác</h2>
+      <p>Nên build 1 ảnh tối thiểu trước, chưa vội thêm LVGL/FreeRTOS — để biết chắc layer/MACHINE/toolchain đều đúng, tránh vừa debug Yocto vừa debug LVGL cùng lúc.</p>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Tạo build directory</div>
+          <span class="code-tag linux">host — trong ~/yocto</span>
+          <pre class="code-linux"><code>source poky/oe-init-build-env build</code></pre>
+          <p>Script này làm 3 việc: set biến môi trường trỏ vào bitbake, <strong>tạo thư mục <code class="inline">build/</code></strong> nếu chưa có (kèm 2 file mẫu <code class="inline">conf/local.conf</code> và <code class="inline">conf/bblayers.conf</code>), rồi tự <code class="inline">cd</code> vào đó. Từ giờ mọi lệnh <code class="inline">bitbake</code> chạy trong thư mục <code class="inline">build/</code> này.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Bật 2 layer vừa clone</div>
+          <span class="code-tag linux">host — trong thư mục build</span>
+          <pre class="code-linux"><code>bitbake-layers add-layer ../meta-openembedded/meta-oe
+bitbake-layers add-layer ../meta-raspberrypi</code></pre>
+          <p>Lệnh này chỉ đơn giản <strong>thêm 1 dòng đường dẫn</strong> vào file <code class="inline">build/conf/bblayers.conf</code> — mở file đó lên xem sẽ thấy. Có thể tự sửa tay file này cũng được, <code class="inline">add-layer</code> chỉ tránh gõ sai đường dẫn.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Chọn board</div>
+          <p>Mở <code class="inline">build/conf/local.conf</code>, tìm dòng <code class="inline">MACHINE ?= "qemux86-64"</code> (giá trị mặc định), thêm dòng mới bên dưới để ghi đè:</p>
+          <span class="code-tag linux">build/conf/local.conf</span>
+          <pre class="code-linux"><code>MACHINE = "raspberrypi0-2w"</code></pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">Build</div>
+          <span class="code-tag linux">host</span>
+          <pre class="code-linux"><code>bitbake core-image-minimal</code></pre>
+          <p><code class="inline">core-image-minimal</code> là 1 image recipe có sẵn trong openembedded-core — rootfs tối thiểu (busybox, init, không GUI). Đây là lúc mất 1–3+ tiếng như nói ở trên, vì build lại toàn bộ toolchain từ đầu.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <div class="step-title">Flash thử ra thẻ SD</div>
+          <p>Ảnh nằm ở <code class="inline">tmp/deploy/images/raspberrypi0-2w/</code>. Trước khi cắm thẻ SD, chạy <code class="inline">lsblk</code> để xem danh sách ổ đĩa hiện có; cắm thẻ vào, chạy lại <code class="inline">lsblk</code> — ổ mới xuất hiện chính là thẻ SD.</p>
+          <div class="callout"><strong>Cẩn thận /dev/sdX:</strong> chọn sai ổ đĩa ở bước này sẽ ghi đè nhầm lên ổ cứng máy host, mất dữ liệu. Luôn xác nhận lại bằng <code class="inline">lsblk</code> trước khi chạy lệnh dưới.</div>
+          <span class="code-tag linux">host</span>
+          <pre class="code-linux"><code>bmaptool copy tmp/deploy/images/raspberrypi0-2w/core-image-minimal-raspberrypi0-2w.wic.bz2 /dev/sdX</code></pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <div class="step-title">Boot thử</div>
+          <p>Cắm thẻ vào Pi, gắn màn hình HDMI (hoặc cáp UART-TTL vào 2 chân debug UART trên header GPIO), cấp nguồn. Thấy log kernel chạy qua rồi tới prompt đăng nhập (<code class="inline">root</code>, không cần mật khẩu mặc định) nghĩa là toàn bộ setup layer/MACHINE/toolchain đã đúng — có thể yên tâm thêm LVGL ở bước sau.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="add-lvgl">
+      <div class="section-eyebrow"><span class="n">05 ·</span> THÊM LVGL</div>
+      <h2>Thêm thư viện LVGL vào rootfs</h2>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Thêm vào local.conf</div>
+          <span class="code-tag linux">build/conf/local.conf</span>
+          <pre class="code-linux"><code>IMAGE_INSTALL:append = " lvgl"</code></pre>
+          <p><code class="inline">:append</code> (cú pháp mới của bitbake, trước đây là <code class="inline">_append</code>) <strong>nối thêm</strong> vào cuối giá trị hiện có của biến, khác với <code class="inline">=</code> là gán/ghi đè hoàn toàn. Luôn nhớ để dấu cách ở đầu chuỗi (<code class="inline">" lvgl"</code>) — thiếu dấu cách, giá trị mới sẽ dính liền vào giá trị cũ thành 1 từ sai.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Build lại</div>
+          <span class="code-tag linux">host</span>
+          <pre class="code-linux"><code>bitbake core-image-minimal</code></pre>
+          <p>Lần này BitBake chỉ build thêm phần mới (nhờ sstate-cache của lần build trước) — nhanh hơn lần đầu rất nhiều, không phải dựng lại toolchain.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Kiểm tra đã có trong ảnh</div>
+          <p>Flash lại, boot lên, SSH hoặc qua serial console vào target rồi chạy:</p>
+          <span class="code-tag linux">target</span>
+          <pre class="code-linux"><code>find / -iname "*lvgl*" 2&gt;/dev/null</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="pc-dev">
+      <div class="section-eyebrow"><span class="n">06 ·</span> CODE TRÊN PC TRƯỚC</div>
+      <h2>Dựng LVGL + FreeRTOS trên PC, chưa cần Pi</h2>
+      <p>Build lên target rồi flash SD mỗi lần sửa code sẽ rất chậm. Cả <code class="inline">lv_port_linux</code> lẫn FreeRTOS POSIX port đều chạy thẳng trên PC Linux của bạn — code, chạy, sửa ngay tại đây, cuối cùng mới đóng gói qua Yocto.</p>
+      <h3>LVGL: dựng lv_port_linux với driver SDL2</h3>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Clone + lấy LVGL (submodule)</div>
+          <span class="code-tag linux">PC (không phải target)</span>
+          <pre class="code-linux"><code>git clone https://github.com/lvgl/lv_port_linux.git
+cd lv_port_linux/
+git submodule update --init --recursive</code></pre>
+          <p>LVGL core nằm ở 1 repo riêng (<code class="inline">lvgl/lvgl</code>); <code class="inline">lv_port_linux</code> kéo nó vào như git submodule — quen thuộc nếu bạn từng dùng thư viện ngoài qua git trên STM32.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Cài dependency (SDL2)</div>
+          <span class="code-tag linux">PC</span>
+          <pre class="code-linux"><code>sudo apt install libsdl2-dev</code></pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Chọn driver SDL2, build</div>
+          <p>Thư mục <code class="inline">configs/</code> có sẵn file cấu hình mẫu cho từng driver — kiểm tra tên chính xác trong đó (thường dạng <code class="inline">sdl.defaults</code>), rồi build:</p>
+          <span class="code-tag linux">PC</span>
+          <pre class="code-linux"><code>cmake -B build -DCONFIG=sdl
+cmake --build build -j$(nproc)
+./build/bin/lvglsim</code></pre>
+          <p>Nếu chạy đúng, 1 cửa sổ demo LVGL sẽ hiện lên. Biến môi trường <code class="inline">LV_SIM_WINDOW_WIDTH</code>/<code class="inline">LV_SIM_WINDOW_HEIGHT</code> chỉnh kích thước cửa sổ giả lập nếu cần khớp với màn hình thật sau này.</p>
+        </div>
+      </div>
+      <h3>FreeRTOS: thêm POSIX port vào cùng project</h3>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">Clone FreeRTOS-Kernel</div>
+          <span class="code-tag mcu">PC</span>
+          <pre class="code-mcu"><code>cd ..
+git clone https://github.com/FreeRTOS/FreeRTOS-Kernel.git</code></pre>
+          <p>Cấu trúc quan trọng cần biết:</p>
+          <table>
+            <tr><th>Đường dẫn</th><th>Nội dung</th></tr>
+            <tr><td><code class="inline">tasks.c, queue.c, list.c...</code></td><td>Lõi FreeRTOS — không đổi theo platform, giống hệt code bạn đã dùng trên STM32</td></tr>
+            <tr><td><code class="inline">portable/ThirdParty/GCC/Posix/</code></td><td>"Port layer" cho Linux — phần <strong>duy nhất</strong> sẽ đổi khi lên MCU thật</td></tr>
+            <tr><td><code class="inline">FreeRTOSConfig.h</code></td><td>Không có sẵn — mỗi project tự viết (heap size, số priority, tick rate...), giống file bạn đã viết cho project STM32</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <div class="step-title">Task LVGL đầu tiên</div>
+          <p>Cấu trúc app tối thiểu — 1 task lo vẽ LVGL, gọi đúng hàm quen thuộc <code class="inline">xTaskCreate</code>/<code class="inline">vTaskStartScheduler</code>:</p>
+          <span class="code-tag mcu">main.c</span>
+          <pre class="code-mcu"><code>#include "FreeRTOS.h"
+#include "task.h"
+#include "lvgl.h"
+
+void lvgl_task(void *pv) {
+    lv_init();
+    /* TODO: init driver hiển thị — SDL lúc dev, fbdev lúc lên target */
+    for (;;) {
+        lv_timer_handler();
+        vTaskDelay(pdMS_TO_TICKS(5));
+    }
+}
+
+int main(void) {
+    xTaskCreate(lvgl_task, "lvgl", 8192, NULL, tskIDLE_PRIORITY + 1, NULL);
+    vTaskStartScheduler();   /* không return nếu chạy đúng */
+    for (;;);
+}</code></pre>
+          <p><code class="inline">xTaskCreate</code> đăng ký task — cú pháp giống hệt bên STM32. <code class="inline">vTaskStartScheduler()</code> giao quyền điều khiển cho FreeRTOS: trên STM32 nó cấu hình SysTick + PendSV; trên port Posix nó tạo pthread + signal để giả lập tick. <strong>Code ở tầng application (task, priority, delay) không đổi giữa 2 môi trường</strong> — đây chính là điểm mấu chốt cho việc portability sau này.</p>
+          <div class="callout tip"><strong>Cần link thêm:</strong> port Posix cần <code class="inline">pthread</code> và <code class="inline">rt</code> — thêm <code class="inline">target_link_libraries(app pthread rt)</code> trong CMakeLists.txt của app.</div>
+        </div>
+      </div>
+      <div class="callout"><strong>Đúng như bạn đã biết:</strong> tài liệu chính thức của port POSIX nói rõ đây chỉ là simulator/emulation — Linux không chạy các thread giả lập liên tục nên số liệu thời gian không có ý nghĩa thực. Dùng để phát triển/test logic task và API portability, không phải để đo hiệu năng.</div>
+    </section>
+
+    <section id="package-recipe">
+      <div class="section-eyebrow"><span class="n">07 ·</span> ĐÓNG GÓI</div>
+      <h2>Biến app đã chạy trên PC thành 1 Yocto recipe</h2>
+      <p>Khi code đã chạy ổn trên PC, đóng gói thành recipe để Yocto build nó cho đúng kiến trúc CPU của Pi (cross-compile) và đưa vào rootfs.</p>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Tạo layer riêng cho app</div>
+          <span class="code-tag linux">host — trong thư mục build</span>
+          <pre class="code-linux"><code>bitbake-layers create-layer ../meta-mylvglapp
+bitbake-layers add-layer ../meta-mylvglapp</code></pre>
+          <p>Luôn tạo layer riêng cho code của mình, không sửa trực tiếp vào meta-openembedded hay meta-raspberrypi — 2 layer đó là code người khác viết, sẽ bị ghi đè nếu sau này bạn <code class="inline">git pull</code> cập nhật chúng.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Viết file recipe .bb</div>
+          <span class="code-tag linux">meta-mylvglapp/recipes-myapp/lvgl-rtos-app/lvgl-rtos-app_1.0.bb</span>
+          <pre class="code-linux"><code>SUMMARY = "LVGL UI chay tren FreeRTOS POSIX port"
+LICENSE = "MIT"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+SRC_URI = " \
+    git://github.com/YOUR_ORG/myapp.git;protocol=https;branch=main;name=app \
+    git://github.com/FreeRTOS/FreeRTOS-Kernel.git;protocol=https;branch=main;destsuffix=git/FreeRTOS-Kernel;name=freertos \
+"
+SRCREV_app = "..."
+SRCREV_freertos = "..."
+
+DEPENDS = "lvgl"
+S = "${WORKDIR}/git"
+
+inherit cmake</code></pre>
+          <p>Giải thích từng dòng:</p>
+          <table>
+            <tr><th>Dòng</th><th>Ý nghĩa</th></tr>
+            <tr><td><code class="inline">SUMMARY / LICENSE</code></td><td>Mô tả ngắn + giấy phép — bắt buộc phải khai, Yocto dùng để sinh báo cáo license cho cả image lúc cần</td></tr>
+            <tr><td><code class="inline">LIC_FILES_CHKSUM</code></td><td>Checksum MD5 của file LICENSE trong source — Yocto dùng để phát hiện khi nội dung license đổi giữa các lần fetch, tránh âm thầm đổi điều khoản pháp lý mà không ai để ý</td></tr>
+            <tr><td><code class="inline">SRC_URI</code></td><td>Khai 2 nguồn git cùng lúc (app + FreeRTOS-Kernel), mỗi nguồn có <code class="inline">name=</code> riêng để tham chiếu SRCREV theo tên đó</td></tr>
+            <tr><td><code class="inline">SRCREV_&lt;name&gt;</code></td><td>Commit hash cụ thể muốn build — ghim phiên bản, tránh build ra kết quả khác nhau mỗi lần tuỳ vào trạng thái mới nhất trên GitHub</td></tr>
+            <tr><td><code class="inline">DEPENDS</code></td><td>Recipe khác cần build xong trước — ở đây cần <code class="inline">lvgl</code> (đã add ở bước 04) build trước để có header/thư viện dùng khi biên dịch app</td></tr>
+            <tr><td><code class="inline">inherit cmake</code></td><td>Nạp sẵn toàn bộ logic build bằng CMake — tự động lo cross-compile toolchain cho đúng CPU của Pi, bạn <strong>không cần</strong> tự cấu hình toolchain file như khi build tay trên PC</td></tr>
+          </table>
+          <div class="callout tip"><strong>MD5 thật:</strong> giá trị <code class="inline">xxxx...</code> ở trên chỉ là chỗ trống — lần đầu build, bitbake sẽ báo lỗi và in ra đúng giá trị MD5 thật của file LICENSE, copy giá trị đó vào là xong.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">CMakeLists.txt của app</div>
+          <p>Trỏ nguồn tới cả 3 phần: code app, LVGL (đã có sẵn qua <code class="inline">DEPENDS</code>), và FreeRTOS-Kernel (nằm cạnh trong <code class="inline">FreeRTOS-Kernel/</code> sau khi fetch nhờ <code class="inline">destsuffix</code> ở SRC_URI):</p>
+          <span class="code-tag linux">CMakeLists.txt (rút gọn)</span>
+          <pre class="code-linux"><code>add_executable(myapp
+    main.c
+    FreeRTOS-Kernel/tasks.c
+    FreeRTOS-Kernel/queue.c
+    FreeRTOS-Kernel/list.c
+    FreeRTOS-Kernel/portable/ThirdParty/GCC/Posix/port.c
+    FreeRTOS-Kernel/portable/MemMang/heap_4.c
+)
+target_include_directories(myapp PRIVATE
+    FreeRTOS-Kernel/include
+    FreeRTOS-Kernel/portable/ThirdParty/GCC/Posix
+    .   # noi chua FreeRTOSConfig.h
+)
+target_link_libraries(myapp PRIVATE lvgl pthread rt)</code></pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">Thêm vào ảnh, build</div>
+          <span class="code-tag linux">build/conf/local.conf</span>
+          <pre class="code-linux"><code>IMAGE_INSTALL:append = " lvgl-rtos-app"</code></pre>
+          <span class="code-tag linux">host</span>
+          <pre class="code-linux"><code>bitbake core-image-minimal</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="autostart">
+      <div class="section-eyebrow"><span class="n">08 ·</span> TỰ ĐỘNG CHẠY</div>
+      <h2>Chạy app lúc boot bằng systemd</h2>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Viết file .service</div>
+          <span class="code-tag linux">meta-mylvglapp/recipes-myapp/lvgl-rtos-app/files/lvglapp.service</span>
+          <pre class="code-linux"><code>[Unit]
+Description=LVGL RTOS App
+
+[Service]
+ExecStart=/usr/bin/myapp
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Khai trong recipe</div>
+          <p>Thêm vào cuối file <code class="inline">.bb</code>:</p>
+          <span class="code-tag linux">lvgl-rtos-app_1.0.bb (thêm vào)</span>
+          <pre class="code-linux"><code>inherit systemd
+SRC_URI += "file://lvglapp.service"
+SYSTEMD_SERVICE:${PN} = "lvglapp.service"
+
+do_install:append() {
+    install -d ${D}${systemd_system_unitdir}
+    install -m 0644 ${WORKDIR}/lvglapp.service ${D}${systemd_system_unitdir}
+}</code></pre>
+          <p><code class="inline">inherit systemd</code> nạp logic có sẵn để tự động enable service lúc build image (không cần tự chạy <code class="inline">systemctl enable</code> tay trên target). <code class="inline">${PN}</code> là biến bitbake tự thay bằng tên package (<code class="inline">lvgl-rtos-app</code>) — quy ước chuẩn thay vì gõ cứng tên.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Quyền truy cập framebuffer</div>
+          <p>Mặc định user thường không có quyền ghi <code class="inline">/dev/fb0</code>. Nếu service không chạy bằng root, thêm dòng sau vào <code class="inline">.service</code>:</p>
+          <span class="code-tag linux">lvglapp.service (thêm vào [Service])</span>
+          <pre class="code-linux"><code>SupplementaryGroups=video</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="target-build">
+      <div class="section-eyebrow"><span class="n">09 ·</span> BUILD CHO TARGET</div>
+      <h2>Build lại, flash, kiểm tra trên Pi thật</h2>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Đổi driver LVGL từ SDL2 sang fbdev</div>
+          <p>Trong CMakeLists.txt (hoặc file cấu hình LVGL), tắt <code class="inline">LV_USE_SDL</code>, bật <code class="inline">LV_USE_LINUX_FBDEV</code> — đây là <strong>chỗ duy nhất đổi</strong> giữa bản chạy trên PC và bản chạy trên Pi thật, phần code task/logic LVGL còn lại giữ nguyên.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">Build lại image</div>
+          <span class="code-tag linux">host</span>
+          <pre class="code-linux"><code>bitbake core-image-minimal</code></pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">Flash + boot (giống bước 03)</div>
+          <pre class="code-linux"><code>bmaptool copy tmp/deploy/images/raspberrypi0-2w/core-image-minimal-raspberrypi0-2w.wic.bz2 /dev/sdX</code></pre>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">Xác nhận app chạy đúng</div>
+          <span class="code-tag linux">target</span>
+          <pre class="code-linux"><code>systemctl status lvglapp.service
+journalctl -u lvglapp.service -f</code></pre>
+          <p>Nếu màn hình gắn vào Pi hiện đúng UI đã thấy trên PC lúc dev — toàn bộ chuỗi Yocto → LVGL → FreeRTOS đã chạy đúng.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="porting-path">
+      <div class="section-eyebrow"><span class="n">10 ·</span> PORTABILITY</div>
+      <h2>Sau này lên MCU thật: cái gì đổi, cái gì giữ</h2>
+      <table>
+        <tr><th>Thành phần</th><th>Trên Pi (bây giờ)</th><th>Trên MCU thật (sau này)</th></tr>
+        <tr><td>FreeRTOS port layer</td><td><code class="inline">.../GCC/Posix</code></td><td><code class="inline">.../GCC/ARM_CM4F</code>... (vendor cung cấp sẵn)</td></tr>
+        <tr><td>Tick source</td><td>signal/timer giả lập</td><td>SysTick thật</td></tr>
+        <tr><td>LVGL display driver</td><td><code class="inline">LV_USE_LINUX_FBDEV</code></td><td>SPI/parallel LCD driver riêng cho panel</td></tr>
+        <tr><td>Task, queue, semaphore, logic app</td><td colspan="2" style="text-align:center">giữ nguyên — đây là lý do chọn hướng này</td></tr>
+      </table>
+      <p>Để phần "giữ nguyên" thực sự giữ nguyên: tách rõ code liên quan tới Linux (đọc file cấu hình, gọi mạng...) ra khỏi task logic chính ngay từ bây giờ, đừng để nó lẫn vào giữa các hàm xử lý UI/business logic — khi port, chỉ cần thay driver + port layer, không phải lục lại từng chỗ gọi API Linux nằm rải rác trong code.</p>
+    </section>
+
+    <section id="troubleshooting">
+      <div class="section-eyebrow"><span class="n">11 ·</span> THƯỜNG GẶP</div>
+      <h2>Lỗi hay gặp lúc mới làm quen Yocto</h2>
+      <table>
+        <tr><th>Thông báo lỗi</th><th>Nguyên nhân thường gặp</th></tr>
+        <tr><td><code class="inline">ERROR: no recipe files exist</code></td><td>Quên <code class="inline">bitbake-layers add-layer</code>, hoặc gõ sai đường dẫn layer trong <code class="inline">bblayers.conf</code></td></tr>
+        <tr><td><code class="inline">Nothing PROVIDES ...</code></td><td>Sai tên recipe/package, hoặc layer chứa nó chưa được bật</td></tr>
+        <tr><td>Build lỗi giữa chừng vì mất mạng lúc <code class="inline">do_fetch</code></td><td>Không sao — chạy lại đúng lệnh <code class="inline">bitbake</code>, nó tiếp tục từ chỗ dừng nhờ cache, không build lại từ đầu</td></tr>
+        <tr><td>Hết dung lượng ổ giữa chừng</td><td>Build cả trăm GB là bình thường — dọn bằng cách xoá thư mục <code class="inline">tmp/</code> rồi build lại (chậm hơn vì mất cache), hoặc trỏ <code class="inline">TMPDIR</code> sang ổ khác trong local.conf</td></tr>
+        <tr><td>Sửa recipe .bb nhưng build lại không thấy đổi</td><td>Đôi lúc bitbake không nhận diện thay đổi qua sstate-cache — chạy <code class="inline">bitbake -c cleansstate &lt;tên-recipe&gt;</code> rồi build lại</td></tr>
+        <tr><td>App không có quyền mở <code class="inline">/dev/fb0</code></td><td>Thêm <code class="inline">SupplementaryGroups=video</code> vào file .service như ở bước 07</td></tr>
+      </table>
+      <div class="callout tip"><strong>Log chi tiết:</strong> khi 1 recipe lỗi, bitbake in đường dẫn tới log đầy đủ (thường trong <code class="inline">tmp/work/.../temp/log.do_&lt;task&gt;</code>) — đọc thẳng file đó thường ra nguyên nhân rõ hơn nhiều so với dòng lỗi tóm tắt trên terminal.</div>
+    </section>
+  </main>
+</div>
+<script>
+  const links = document.querySelectorAll('.nav-link');
+  const sections = document.querySelectorAll('main section');
+  function setActive(id) {
+    links.forEach(function (l) {
+      l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+    });
+  }
+  const observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) setActive(entry.target.id);
+    });
+  }, { rootMargin: '-15% 0px -70% 0px' });
+  sections.forEach(function (s) { observer.observe(s); });
+</script>
+</body>
+</html>
