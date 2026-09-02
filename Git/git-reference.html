@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sổ tay Git — Lệnh cốt lõi &amp; Xử lý Conflict</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/c.min.js"></script>
+<style>
+  :root{
+    --bg:#10131a; --bg-deep:#0a0c11; --surface:#161a23; --surface-2:#1c212c;
+    --border:#262b38; --text:#e4e7ec; --text-muted:#8b93a7; --text-faint:#5b6272;
+    --accent:#dd9a51; --accent-soft:rgba(221,154,81,.14);
+    --add:#7ee2a8; --add-bg:rgba(63,185,80,.12);
+    --del:#f2777a; --del-bg:rgba(242,119,122,.13);
+    --warn:#e3b341; --warn-bg:rgba(227,179,65,.13);
+    --sans:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased;}
+  .layout{display:flex;min-height:100vh;align-items:flex-start;}
+  .sidebar{width:272px;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--surface);border-right:1px solid var(--border);padding:28px 22px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .sidebar::-webkit-scrollbar{width:6px;}
+  .sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+  .brand{margin-bottom:28px;}
+  .brand .mark{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:var(--accent-soft);color:var(--accent);font-family:var(--mono);font-weight:600;font-size:.95rem;margin-bottom:12px;}
+  .brand h2{font-size:1.05rem;margin:0 0 4px;font-weight:600;letter-spacing:-.01em;}
+  .brand p{font-size:.82rem;color:var(--text-faint);margin:0;}
+  .nav-group{margin-bottom:22px;}
+  .nav-group-label{font-size:.74rem;color:var(--text-faint);font-weight:500;margin:0 0 8px 10px;}
+  .nav-link{display:block;padding:7px 10px;border-radius:6px;color:var(--text-muted);text-decoration:none;font-size:.87rem;border-left:2px solid transparent;transition:color .15s,background .15s;}
+  .nav-link:hover{color:var(--text);background:var(--surface-2);}
+  .nav-link.active{color:var(--accent);background:var(--accent-soft);border-left-color:var(--accent);font-weight:500;}
+  .content{flex:1;min-width:0;padding:56px 56px 100px;max-width:900px;}
+  .lead-block{max-width:640px;}
+  h1{font-size:2.4rem;font-weight:700;letter-spacing:-.02em;margin:0 0 14px;}
+  .lead{color:var(--text-muted);font-size:1.05rem;margin:0 0 32px;max-width:60ch;}
+  h2{font-size:1.5rem;font-weight:600;letter-spacing:-.01em;margin:0 0 6px;padding-top:8px;}
+  h2 .num{color:var(--text-faint);font-family:var(--mono);font-weight:400;font-size:.85rem;margin-right:10px;}
+  section{margin-bottom:52px;scroll-margin-top:24px;}
+  section > p.intro{color:var(--text-muted);margin:0 0 20px;max-width:68ch;}
+  .terminal{background:var(--bg-deep);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:0 0 40px;box-shadow:0 20px 50px -20px rgba(0,0,0,.6);}
+  .terminal-bar{display:flex;align-items:center;gap:8px;padding:11px 16px;background:var(--surface);border-bottom:1px solid var(--border);}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+  .dot-r{background:#e5585a;} .dot-y{background:#e3b341;} .dot-g{background:#3fb950;}
+  .terminal-path{margin-left:8px;font-family:var(--mono);font-size:.78rem;color:var(--text-faint);}
+  .terminal pre{margin:0;padding:20px 22px;}
+  table{width:100%;border-collapse:collapse;margin:0 0 40px;font-size:.9rem;}
+  thead th{text-align:left;font-weight:600;color:var(--text-faint);font-size:.74rem;text-transform:none;padding:0 14px 10px;border-bottom:1px solid var(--border);}
+  tbody td{padding:13px 14px;border-bottom:1px solid var(--border);vertical-align:top;}
+  tbody tr:hover{background:var(--surface);}
+  td.cmd-col{white-space:nowrap;}
+  td.cmd-col code{font-family:var(--mono);font-size:.84em;color:var(--accent);background:var(--accent-soft);padding:3px 7px;border-radius:5px;}
+  td.opt-col code{font-family:var(--mono);font-size:.78em;color:var(--text-muted);background:var(--surface-2);padding:2px 6px;border-radius:4px;margin:1px 3px 1px 0;display:inline-block;}
+  td.desc-col{color:var(--text-muted);line-height:1.6;}
+  td.desc-col code{font-family:var(--mono);font-size:.85em;color:var(--text);}
+  p code, li code{font-family:var(--mono);font-size:.85em;background:var(--surface-2);color:var(--accent);padding:2px 6px;border-radius:4px;}
+  pre{background:var(--bg-deep);border:1px solid var(--border);border-radius:10px;padding:18px 20px;overflow-x:auto;font-family:var(--mono);font-size:.86rem;line-height:1.65;position:relative;margin:16px 0;}
+  pre code{font-family:var(--mono);background:none;padding:0;color:inherit;}
+  .hljs{background:transparent !important;}
+  .hljs-built_in,.hljs-title.function_{color:#79c0ff;}
+  .hljs-string{color:#a5d6a7;}
+  .hljs-comment{color:var(--text-faint);font-style:italic;}
+  .hljs-keyword,.hljs-type{color:#dd9a51;}
+  .hljs-number{color:#f2b880;}
+  .hljs-variable,.hljs-params{color:var(--text);}
+  .code-label{font-family:var(--mono);font-size:.76rem;color:var(--text-faint);margin:0 0 6px;padding-left:2px;}
+  .copy-btn{position:absolute;top:10px;right:10px;background:var(--surface-2);border:1px solid var(--border);color:var(--text-faint);font-family:var(--sans);font-size:.72rem;padding:5px 10px;border-radius:6px;cursor:pointer;opacity:0;transition:opacity .15s;}
+  pre:hover .copy-btn{opacity:1;}
+  .copy-btn:hover{color:var(--text);border-color:var(--text-faint);}
+  .copy-btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px;opacity:1;}
+  .conflict-block{background:var(--bg-deep);border:1px solid var(--border);border-radius:10px;padding:0;margin:18px 0;font-family:var(--mono);font-size:.85rem;line-height:1.6;overflow:hidden;}
+  .conflict-block span{display:block;padding:2px 20px;white-space:pre-wrap;}
+  .conflict-block .marker{color:var(--warn);background:var(--warn-bg);font-weight:600;padding-top:8px;padding-bottom:8px;}
+  .conflict-block .sep{color:var(--warn);background:var(--warn-bg);}
+  .conflict-block .ours{color:var(--text);background:var(--add-bg);border-left:3px solid var(--add);}
+  .conflict-block .theirs{color:var(--text);background:var(--del-bg);border-left:3px solid var(--del);padding-bottom:8px;}
+  .legend{display:flex;gap:20px;margin:14px 0 24px;flex-wrap:wrap;}
+  .legend-item{display:flex;align-items:center;gap:8px;font-size:.83rem;color:var(--text-muted);}
+  .legend-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
+  .callout{border:1px solid var(--border);border-left:3px solid var(--warn);background:var(--surface);border-radius:0 8px 8px 0;padding:14px 18px;margin:20px 0;font-size:.9rem;color:var(--text-muted);}
+  .callout strong{color:var(--warn);}
+  .callout.tip{border-left-color:var(--accent);}
+  .callout.tip strong{color:var(--accent);}
+  .steps{list-style:none;padding:0;margin:22px 0 0;counter-reset:step;}
+  .steps > li{position:relative;padding:0 0 30px 40px;margin-left:14px;border-left:2px solid var(--border);}
+  .steps > li:last-child{border-left-color:transparent;padding-bottom:2px;}
+  .steps > li::before{counter-increment:step;content:counter(step);position:absolute;left:-15px;top:0;width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--bg-deep);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:.82rem;font-family:var(--sans);}
+  .steps h4{margin:0 0 6px;font-size:1rem;font-weight:600;}
+  .steps > li > p{margin:0 0 4px;color:var(--text-muted);font-size:.92rem;}
+  .divider{border:none;border-top:1px solid var(--border);margin:8px 0 44px;}
+  .tips-list{margin:0;padding:0;list-style:none;}
+  .tips-list li{padding:14px 0;border-bottom:1px solid var(--border);display:flex;gap:14px;}
+  .tips-list li:last-child{border-bottom:none;}
+  .tips-list .tip-mark{color:var(--accent);font-family:var(--mono);flex-shrink:0;}
+  .tips-list strong{display:block;margin-bottom:3px;font-weight:600;}
+  .tips-list span.desc{color:var(--text-muted);font-size:.9rem;}
+  @media (max-width:900px){
+    .layout{flex-direction:column;}
+    .sidebar{position:sticky;top:0;z-index:20;width:100%;height:auto;display:flex;flex-direction:row;align-items:center;overflow-x:auto;overflow-y:hidden;padding:12px 16px;border-right:none;border-bottom:1px solid var(--border);gap:18px;}
+    .brand{display:none;}
+    .sidebar nav{display:flex;flex-direction:row;gap:18px;}
+    .nav-group{margin-bottom:0;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+    .nav-group-label{display:none;}
+    .nav-link{white-space:nowrap;padding:6px 12px;border-radius:999px;background:var(--surface-2);border-left:none;}
+    .nav-link.active{border-left:none;}
+    .content{padding:32px 20px 70px;max-width:100%;}
+    h1{font-size:1.9rem;}
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="mark">git</span>
+      <h2>Sổ tay Git</h2>
+      <p>Lệnh cốt lõi &amp; xử lý conflict</p>
+    </div>
+    <nav>
+      <div class="nav-group">
+        <p class="nav-group-label">Lệnh cần biết</p>
+        <a class="nav-link" href="#config">Cấu hình &amp; khởi tạo</a>
+        <a class="nav-link" href="#staging">Staging &amp; commit</a>
+        <a class="nav-link" href="#branch">Nhánh (branching)</a>
+        <a class="nav-link" href="#remote">Remote</a>
+        <a class="nav-link" href="#history">Xem lịch sử</a>
+        <a class="nav-link" href="#undo">Hoàn tác thay đổi</a>
+        <a class="nav-link" href="#advanced">Lệnh nâng cao</a>
+      </div>
+      <div class="nav-group">
+        <p class="nav-group-label">Xử lý conflict</p>
+        <a class="nav-link" href="#conflict-intro">Đọc hiểu conflict marker</a>
+        <a class="nav-link" href="#conflict-merge">git merge</a>
+        <a class="nav-link" href="#conflict-rebase">git rebase</a>
+        <a class="nav-link" href="#conflict-cherrypick">git cherry-pick</a>
+        <a class="nav-link" href="#conflict-pull">git pull</a>
+        <a class="nav-link" href="#tips">Mẹo xử lý nhanh</a>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="content">
+    <div class="lead-block">
+      <h1>Sổ tay Git</h1>
+      <p class="lead">Các lệnh cốt lõi cần nắm khi làm việc với Git, và cách xử lý conflict thực tế khi dùng <code>merge</code>, <code>rebase</code>, <code>cherry-pick</code>, <code>pull</code>.</p>
+    </div>
+
+    <div class="terminal">
+      <div class="terminal-bar">
+        <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+        <span class="terminal-path">~/firmware-project (main)</span>
+      </div>
+      <pre><code class="language-bash">$ git merge feature/uart-driver
+Auto-merging drivers/uart.c
+CONFLICT (content): Merge conflict in drivers/uart.c
+Automatic merge failed; fix conflicts and then commit the result.</code></pre>
+    </div>
+
+    <!-- PHẦN 1: LỆNH CỐT LÕI -->
+
+    <section id="config">
+      <h2>Cấu hình &amp; khởi tạo</h2>
+      <p class="intro">Nhóm lệnh dùng một lần khi bắt đầu với một repo hoặc một máy mới.</p>
+      <table>
+        <thead><tr><th>Lệnh</th><th>Tuỳ chọn thường dùng</th><th>Mô tả</th></tr></thead>
+        <tbody>
+          <tr><td class="cmd-col"><code>git init</code></td><td class="opt-col"><code>--bare</code></td><td class="desc-col">Khởi tạo repo Git mới trong thư mục hiện tại. <code>--bare</code> dùng khi tạo repo chỉ để làm remote, không có working directory.</td></tr>
+          <tr><td class="cmd-col"><code>git clone &lt;url&gt;</code></td><td class="opt-col"><code>--depth 1</code><code>--branch &lt;name&gt;</code></td><td class="desc-col">Sao chép một repo về máy. <code>--depth 1</code> chỉ lấy commit mới nhất (shallow clone), nhẹ hơn cho repo lớn hoặc CI.</td></tr>
+          <tr><td class="cmd-col"><code>git config</code></td><td class="opt-col"><code>--global</code><code>--list</code></td><td class="desc-col">Thiết lập danh tính commit (<code>user.name</code>, <code>user.email</code>), editor mặc định, hoặc alias cho lệnh hay dùng.</td></tr>
+          <tr><td class="cmd-col"><code>git config --global init.defaultBranch main</code></td><td class="opt-col">–</td><td class="desc-col">Đặt tên nhánh mặc định mỗi khi chạy <code>git init</code>.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="staging">
+      <h2>Staging &amp; commit</h2>
+      <p class="intro">Vòng lặp hằng ngày: xem thay đổi, đưa vào staging area, rồi commit.</p>
+      <table>
+        <thead><tr><th>Lệnh</th><th>Tuỳ chọn thường dùng</th><th>Mô tả</th></tr></thead>
+        <tbody>
+          <tr><td class="cmd-col"><code>git status</code></td><td class="opt-col"><code>-s</code></td><td class="desc-col">Xem file nào đã thay đổi, đã staged, hay chưa được theo dõi (untracked).</td></tr>
+          <tr><td class="cmd-col"><code>git add &lt;file&gt;</code></td><td class="opt-col"><code>-p</code><code>-A</code></td><td class="desc-col">Đưa thay đổi vào staging area. <code>-p</code> cho chọn từng phần (hunk) thay vì cả file.</td></tr>
+          <tr><td class="cmd-col"><code>git diff</code></td><td class="opt-col"><code>--staged</code></td><td class="desc-col">Xem nội dung thay đổi. Mặc định là phần chưa staged; thêm <code>--staged</code> để xem phần đã staged, chưa commit.</td></tr>
+          <tr><td class="cmd-col"><code>git commit -m "..."</code></td><td class="opt-col"><code>--amend</code><code>-a</code></td><td class="desc-col">Tạo commit từ staging area. <code>--amend</code> sửa lại commit gần nhất — chỉ dùng khi commit đó chưa push lên chỗ dùng chung.</td></tr>
+          <tr><td class="cmd-col"><code>git clean -fd</code></td><td class="opt-col"><code>-n</code></td><td class="desc-col">Xoá file untracked khỏi working directory. Luôn chạy <code>-n</code> (dry-run) trước để xem trước sẽ xoá gì.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="branch">
+      <h2>Nhánh (branching)</h2>
+      <p class="intro">Tách nhánh để làm việc độc lập, rồi gộp lại bằng <code>merge</code> hoặc <code>rebase</code>.</p>
+      <table>
+        <thead><tr><th>Lệnh</th><th>Tuỳ chọn thường dùng</th><th>Mô tả</th></tr></thead>
+        <tbody>
+          <tr><td class="cmd-col"><code>git branch</code></td><td class="opt-col"><code>-a</code><code>-d</code><code>-D</code></td><td class="desc-col">Liệt kê hoặc xoá nhánh. <code>-a</code> xem cả nhánh remote, <code>-D</code> xoá cưỡng bức nhánh chưa merge.</td></tr>
+          <tr><td class="cmd-col"><code>git switch &lt;branch&gt;</code></td><td class="opt-col"><code>-c &lt;new&gt;</code></td><td class="desc-col">Chuyển sang nhánh khác. <code>-c</code> tạo nhánh mới rồi chuyển sang luôn.</td></tr>
+          <tr><td class="cmd-col"><code>git checkout &lt;branch&gt;</code></td><td class="opt-col"><code>-b &lt;new&gt;</code></td><td class="desc-col">Lệnh cũ hơn, làm cả việc của <code>switch</code> lẫn <code>restore</code> — vẫn rất phổ biến trong thực tế.</td></tr>
+          <tr><td class="cmd-col"><code>git merge &lt;branch&gt;</code></td><td class="opt-col"><code>--no-ff</code><code>--abort</code></td><td class="desc-col">Gộp nhánh khác vào nhánh hiện tại. <code>--no-ff</code> luôn tạo merge commit dù có thể fast-forward.</td></tr>
+          <tr><td class="cmd-col"><code>git rebase &lt;branch&gt;</code></td><td class="opt-col"><code>-i</code><code>--abort</code><code>--continue</code></td><td class="desc-col">Đặt lại các commit của nhánh hiện tại lên trên <code>&lt;branch&gt;</code>, giữ lịch sử thẳng, dễ đọc.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="remote">
+      <h2>Remote</h2>
+      <p class="intro">Đồng bộ giữa repo local và server (GitHub, GitLab, hoặc server nội bộ).</p>
+      <table>
+        <thead><tr><th>Lệnh</th><th>Tuỳ chọn thường dùng</th><th>Mô tả</th></tr></thead>
+        <tbody>
+          <tr><td class="cmd-col"><code>git remote -v</code></td><td class="opt-col"><code>add</code><code>remove</code></td><td class="desc-col">Xem hoặc quản lý danh sách remote đang trỏ tới.</td></tr>
+          <tr><td class="cmd-col"><code>git fetch</code></td><td class="opt-col"><code>--all</code><code>--prune</code></td><td class="desc-col">Lấy dữ liệu mới nhất từ remote về — <strong>không</strong> tự động gộp vào working directory.</td></tr>
+          <tr><td class="cmd-col"><code>git pull</code></td><td class="opt-col"><code>--rebase</code><code>--ff-only</code></td><td class="desc-col">Tương đương <code>git fetch</code> rồi <code>git merge</code> (mặc định), hoặc rồi <code>rebase</code> nếu thêm <code>--rebase</code>.</td></tr>
+          <tr><td class="cmd-col"><code>git push</code></td><td class="opt-col"><code>-u</code><code>--force-with-lease</code></td><td class="desc-col">Đẩy commit lên remote. Khi cần ghi đè lịch sử, ưu tiên <code>--force-with-lease</code> thay vì <code>--force</code> vì nó kiểm tra remote chưa bị người khác cập nhật thêm.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="history">
+      <h2>Xem lịch sử</h2>
+      <table>
+        <thead><tr><th>Lệnh</th><th>Tuỳ chọn thường dùng</th><th>Mô tả</th></tr></thead>
+        <tbody>
+          <tr><td class="cmd-col"><code>git log</code></td><td class="opt-col"><code>--oneline</code><code>--graph</code><code>--all</code></td><td class="desc-col">Xem lịch sử commit. Kết hợp cả ba cờ này cho cái nhìn dạng cây, rất trực quan khi có nhiều nhánh.</td></tr>
+          <tr><td class="cmd-col"><code>git show &lt;commit&gt;</code></td><td class="opt-col">–</td><td class="desc-col">Xem chi tiết thay đổi của một commit cụ thể.</td></tr>
+          <tr><td class="cmd-col"><code>git blame &lt;file&gt;</code></td><td class="opt-col"><code>-L &lt;start&gt;,&lt;end&gt;</code></td><td class="desc-col">Xem từng dòng trong file do commit nào, ai sửa, lúc nào.</td></tr>
+          <tr><td class="cmd-col"><code>git diff &lt;c1&gt; &lt;c2&gt;</code></td><td class="opt-col">–</td><td class="desc-col">So sánh thay đổi giữa hai commit hoặc hai nhánh bất kỳ.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="undo">
+      <h2>Hoàn tác thay đổi</h2>
+      <table>
+        <thead><tr><th>Lệnh</th><th>Tuỳ chọn thường dùng</th><th>Mô tả</th></tr></thead>
+        <tbody>
+          <tr><td class="cmd-col"><code>git restore &lt;file&gt;</code></td><td class="opt-col"><code>--staged</code></td><td class="desc-col">Bỏ thay đổi chưa staged trong working directory; thêm <code>--staged</code> để unstage một file.</td></tr>
+          <tr><td class="cmd-col"><code>git reset &lt;commit&gt;</code></td><td class="opt-col"><code>--soft</code><code>--mixed</code><code>--hard</code></td><td class="desc-col">Đưa HEAD về một commit khác. <code>--hard</code> xoá luôn thay đổi trong working directory.</td></tr>
+          <tr><td class="cmd-col"><code>git revert &lt;commit&gt;</code></td><td class="opt-col"><code>-n</code></td><td class="desc-col">Tạo commit mới đảo ngược tác dụng của một commit cũ — an toàn cho lịch sử đã push và dùng chung.</td></tr>
+          <tr><td class="cmd-col"><code>git stash</code></td><td class="opt-col"><code>pop</code><code>list</code><code>-u</code></td><td class="desc-col">Cất tạm thay đổi chưa commit để chuyển việc khác, lấy lại sau bằng <code>stash pop</code>.</td></tr>
+        </tbody>
+      </table>
+      <div class="callout"><strong>Lưu ý:</strong> <code>git reset --hard</code> xoá vĩnh viễn thay đổi chưa commit trong working directory — không có staging area hay commit nào để cứu lại. Chạy <code>git status</code> và <code>git diff</code> trước để chắc chắn không mất gì cần giữ.</div>
+    </section>
+
+    <section id="advanced">
+      <h2>Lệnh nâng cao</h2>
+      <table>
+        <thead><tr><th>Lệnh</th><th>Tuỳ chọn thường dùng</th><th>Mô tả</th></tr></thead>
+        <tbody>
+          <tr><td class="cmd-col"><code>git cherry-pick &lt;commit&gt;</code></td><td class="opt-col"><code>-n</code><code>--abort</code><code>--continue</code></td><td class="desc-col">Áp dụng riêng một commit từ nhánh khác vào nhánh hiện tại, không cần merge cả nhánh.</td></tr>
+          <tr><td class="cmd-col"><code>git rebase -i HEAD~n</code></td><td class="opt-col"><code>pick / squash / fixup / drop</code></td><td class="desc-col">Interactive rebase: sửa message, gộp, hoặc xoá bớt n commit gần nhất trước khi push.</td></tr>
+          <tr><td class="cmd-col"><code>git bisect start</code></td><td class="opt-col"><code>good</code><code>bad</code><code>reset</code></td><td class="desc-col">Binary search qua lịch sử commit để tìm chính xác commit gây ra lỗi.</td></tr>
+          <tr><td class="cmd-col"><code>git reflog</code></td><td class="opt-col">–</td><td class="desc-col">Lịch sử di chuyển của HEAD — cứu lại commit tưởng đã "mất" sau một <code>reset --hard</code> nhầm.</td></tr>
+          <tr><td class="cmd-col"><code>git tag &lt;name&gt;</code></td><td class="opt-col"><code>-a -m</code><code>-d</code></td><td class="desc-col">Đánh dấu một điểm cụ thể trong lịch sử, thường dùng cho version/release firmware.</td></tr>
+          <tr><td class="cmd-col"><code>git submodule add &lt;url&gt;</code></td><td class="opt-col"><code>update --init --recursive</code></td><td class="desc-col">Quản lý repo con bên trong repo chính — hay gặp khi kéo SDK/HAL của hãng chip làm dependency.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <hr class="divider">
+
+    <!-- PHẦN 2: XỬ LÝ CONFLICT -->
+
+    <section id="conflict-intro">
+      <h2>Đọc hiểu conflict marker trước khi bắt đầu</h2>
+      <p class="intro">Cả bốn lệnh bên dưới đều có thể dẫn tới cùng một thứ: Git chèn thẳng marker vào file khi không tự gộp được. Hiểu rõ cấu trúc này thì phần còn lại chỉ là lặp lại quy trình.</p>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--add)"></span>Phần "ours" — nhánh bạn đang đứng (HEAD)</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--del)"></span>Phần "theirs" — nhánh/commit đang được đưa vào</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--warn)"></span>Dòng marker do Git chèn vào</div>
+      </div>
+      <div class="code-label">drivers/uart.c</div>
+      <div class="conflict-block">
+<span class="marker">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</span><span class="ours">void uart_init(uint32_t baudrate) {
+    USART1-&gt;BRR = SystemCoreClock / baudrate;
+}</span><span class="sep">=======</span><span class="theirs">void uart_init(uint32_t baudrate, uint8_t parity) {
+    USART1-&gt;BRR = SystemCoreClock / baudrate;
+    USART1-&gt;CR1 |= (parity &lt;&lt; 9);
+}</span><span class="marker">&gt;&gt;&gt;&gt;&gt;&gt;&gt; feature/uart-driver</span></div>
+      <p class="intro">Việc cần làm luôn giống nhau: sửa lại nội dung thành đúng cái bạn muốn (giữ một bên, gộp cả hai, hoặc viết lại hoàn toàn), xoá cả ba dòng marker (<code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code>, <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code>), rồi báo cho Git biết bằng <code>git add</code>.</p>
+    </section>
+
+    <section id="conflict-merge">
+      <h2>Conflict khi <code>git merge</code></h2>
+      <p class="intro">Xảy ra khi nhánh hiện tại và nhánh được merge vào cùng sửa một vùng code mà Git không tự quyết được nên giữ bên nào.</p>
+      <ol class="steps">
+        <li>
+          <h4>Chạy merge và gặp conflict</h4>
+          <pre><code class="language-bash">$ git switch main
+$ git merge feature/uart-driver
+Auto-merging drivers/uart.c
+CONFLICT (content): Merge conflict in drivers/uart.c
+Automatic merge failed; fix conflicts and then commit the result.</code></pre>
+        </li>
+        <li>
+          <h4>Kiểm tra file nào đang conflict</h4>
+          <p><code>git status</code> luôn liệt kê rõ file nào cần xử lý:</p>
+          <pre><code class="language-bash">$ git status
+On branch main
+You have unmerged paths.
+  (fix conflicts and run "git commit")
+  (use "git merge --abort" to abort the merge)
+
+Unmerged paths:
+  (use "git add &lt;file&gt;..." to mark resolution)
+        both modified:   drivers/uart.c</code></pre>
+        </li>
+        <li>
+          <h4>Mở file, sửa nội dung conflict</h4>
+          <p>Xem lại khối marker ở mục trên, chọn giữ bản nào (hoặc gộp cả hai), rồi xoá ba dòng marker.</p>
+        </li>
+        <li>
+          <h4>Đánh dấu đã resolve và commit</h4>
+          <pre><code class="language-bash">$ git add drivers/uart.c
+$ git commit</code></pre>
+          <p>Git tự mở editor với message mặc định kiểu <code>Merge branch 'feature/uart-driver'</code> — giữ nguyên hoặc chỉnh lại tuỳ ý. Muốn huỷ merge, quay về trạng thái trước đó: <code>git merge --abort</code>.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section id="conflict-rebase">
+      <h2>Conflict khi <code>git rebase</code></h2>
+      <p class="intro">Khác với merge, rebase phát lại (replay) từng commit một lên nhánh đích — nên conflict có thể xảy ra nhiều lần, mỗi lần ứng với một commit, thay vì chỉ một lần duy nhất.</p>
+      <ol class="steps">
+        <li>
+          <h4>Rebase và dừng lại ở commit gây conflict</h4>
+          <pre><code class="language-bash">$ git switch feature/lvgl-ui
+$ git rebase main
+Auto-merging src/ui/screen_main.c
+CONFLICT (content): Merge conflict in src/ui/screen_main.c
+error: could not apply a1b2c3d... Add temperature widget to main screen
+Resolve all conflicts manually, mark them as resolved with
+"git add/rm &lt;conflicted_files&gt;", then run "git rebase --continue".</code></pre>
+        </li>
+        <li>
+          <h4>Sửa conflict như bình thường, rồi tiếp tục rebase</h4>
+          <pre><code class="language-bash">$ git add src/ui/screen_main.c
+$ git rebase --continue</code></pre>
+          <p>Nếu commit tiếp theo cũng conflict, quy trình lặp lại y hệt cho tới khi hết commit cần replay.</p>
+        </li>
+        <li>
+          <h4>Các lối thoát khi cần</h4>
+          <p><code>git rebase --skip</code> bỏ qua hẳn commit hiện tại (dùng khi thay đổi của nó đã có ở nơi khác rồi). <code>git rebase --abort</code> huỷ toàn bộ, quay về đúng trạng thái trước khi rebase.</p>
+        </li>
+      </ol>
+      <div class="callout"><strong>Lưu ý:</strong> rebase viết lại hash của commit. Tránh rebase một nhánh đã push và đang có người khác cùng dùng, trừ khi cả team đã thống nhất — và khi push lại, ưu tiên <code>--force-with-lease</code> thay vì <code>--force</code>.</div>
+    </section>
+
+    <section id="conflict-cherrypick">
+      <h2>Conflict khi <code>git cherry-pick</code></h2>
+      <p class="intro">Xảy ra khi commit muốn lấy sang nhánh khác đụng vào phần code đã thay đổi khác đi ở nhánh đích.</p>
+      <ol class="steps">
+        <li>
+          <h4>Cherry-pick và gặp conflict</h4>
+          <pre><code class="language-bash">$ git switch release/v1.2
+$ git cherry-pick 9f8e7d6
+Auto-merging Kconfig
+CONFLICT (content): Merge conflict in Kconfig
+error: could not apply 9f8e7d6... Fix I2C timeout default value
+hint: after resolving the conflicts, mark the corrected paths
+hint: with 'git add &lt;paths&gt;' or 'git rm &lt;paths&gt;'
+hint: and commit the result with 'git commit'</code></pre>
+        </li>
+        <li>
+          <h4>Sửa file, thêm vào staging, rồi tiếp tục</h4>
+          <pre><code class="language-bash">$ git add Kconfig
+$ git cherry-pick --continue</code></pre>
+        </li>
+        <li>
+          <h4>Khi pick nhiều commit cùng lúc</h4>
+          <p>Với <code>git cherry-pick A B C</code>, hễ commit nào conflict thì xử lý y hệt bước trên rồi <code>--continue</code> để Git pick tiếp các commit sau. <code>--skip</code> bỏ qua riêng commit đang gây conflict, <code>--abort</code> huỷ toàn bộ thao tác.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section id="conflict-pull">
+      <h2>Conflict khi <code>git pull</code></h2>
+      <p class="intro"><code>git pull</code> về bản chất là <code>git fetch</code> nối theo <code>git merge</code> (mặc định) hoặc <code>git rebase</code> (nếu bật <code>--rebase</code>) — nên conflict xảy ra sẽ rơi đúng vào một trong hai tình huống đã nói ở trên, chỉ khác là diễn ra "ẩn" bên trong một lệnh duy nhất.</p>
+      <ol class="steps">
+        <li>
+          <h4>Trường hợp mặc định (fetch + merge)</h4>
+          <pre><code class="language-bash">$ git pull origin main
+remote: Enumerating objects: 12, done.
+Auto-merging CMakeLists.txt
+CONFLICT (content): Merge conflict in CMakeLists.txt
+Automatic merge failed; fix conflicts and then commit the result.</code></pre>
+          <p>Xử lý y hệt phần <a class="nav-link" style="display:inline;padding:0;color:var(--accent);" href="#conflict-merge">conflict khi merge</a> ở trên: sửa file, <code>git add</code>, <code>git commit</code> — hoặc <code>git merge --abort</code> để huỷ.</p>
+        </li>
+        <li>
+          <h4>Trường hợp dùng --rebase (fetch + rebase)</h4>
+          <pre><code class="language-bash">$ git pull --rebase origin main
+Auto-merging CMakeLists.txt
+CONFLICT (content): Merge conflict in CMakeLists.txt
+error: could not apply 5c6d7e8... Update toolchain version</code></pre>
+          <p>Xử lý y hệt phần <a class="nav-link" style="display:inline;padding:0;color:var(--accent);" href="#conflict-rebase">conflict khi rebase</a>: sửa file, <code>git add</code>, <code>git rebase --continue</code> — hoặc <code>git rebase --abort</code>.</p>
+        </li>
+        <li>
+          <h4>Chọn hẳn một quy ước cho cả team</h4>
+          <p>Lẫn lộn giữa hai kiểu pull trong cùng một repo dễ gây khó hiểu khi review lịch sử. Chọn một, đặt cấu hình cố định:</p>
+          <pre><code class="language-bash">$ git config --global pull.rebase true    # luôn rebase khi pull
+$ git config --global pull.rebase false   # luôn merge khi pull (mặc định)
+$ git config --global pull.ff only        # chỉ pull khi fast-forward được</code></pre>
+        </li>
+      </ol>
+    </section>
+
+    <section id="tips">
+      <h2>Mẹo xử lý nhanh</h2>
+      <ul class="tips-list">
+        <li><span class="tip-mark">›</span><div><strong>Bám vào git status</strong><span class="desc">Chạy trước, trong, và sau khi resolve — luôn biết chính xác đang ở giữa merge, rebase, hay cherry-pick nào.</span></div></li>
+        <li><span class="tip-mark">›</span><div><strong>Rà lại bằng git diff trước khi add</strong><span class="desc">Kiểm tra một lần cuối để chắc chắn không sót dòng marker nào trước khi đánh dấu resolved.</span></div></li>
+        <li><span class="tip-mark">›</span><div><strong>Dùng công cụ trực quan nếu ngại sửa tay</strong><span class="desc">git mergetool, hoặc merge editor tích hợp sẵn trong VS Code, hiển thị hai bên rõ ràng hơn đọc marker thô.</span></div></li>
+        <li><span class="tip-mark">›</span><div><strong>Luôn nhớ có đường lui</strong><span class="desc">--abort có mặt ở cả merge, rebase, cherry-pick — dùng ngay khi thấy rối, không mất gì cả.</span></div></li>
+        <li><span class="tip-mark">›</span><div><strong>Bật git rerere cho rebase lặp lại nhiều lần</strong><span class="desc">git config --global rerere.enabled true — Git tự nhớ cách bạn từng resolve một conflict giống hệt, đỡ phải lặp lại tay.</span></div></li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  if (window.hljs) { hljs.highlightAll(); }
+
+  document.querySelectorAll('pre').forEach(function (pre) {
+    if (!pre.querySelector('code')) return;
+    var btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = 'Copy';
+    btn.addEventListener('click', function () {
+      var text = pre.innerText.replace(/Copy$|Copied$/, '');
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(function () {
+          btn.textContent = 'Copied';
+          setTimeout(function () { btn.textContent = 'Copy'; }, 1400);
+        }).catch(function () {});
+      }
+    });
+    pre.appendChild(btn);
+  });
+
+  var links = Array.prototype.slice.call(document.querySelectorAll('.sidebar > nav .nav-link'));
+  var sections = links.map(function (link) {
+    return { link: link, el: document.getElementById(link.getAttribute('href').slice(1)) };
+  }).filter(function (s) { return s.el; });
+
+  if ('IntersectionObserver' in window && sections.length) {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        var match = sections.find(function (s) { return s.el === entry.target; });
+        if (match && entry.isIntersecting) {
+          links.forEach(function (l) { l.classList.remove('active'); });
+          match.link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+    sections.forEach(function (s) { observer.observe(s.el); });
+  }
+});
+</script>
+</body>
+</html>

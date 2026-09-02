@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitLab CI/CD — Hướng dẫn cấu hình pipeline bằng .gitlab-ci.yml</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+:root{
+  --bg:#10131a;
+  --surface:#171b24;
+  --surface-2:#1c212c;
+  --surface-code:#0c0e13;
+  --border:#262c38;
+  --border-soft:#1e2330;
+  --text:#e5e8ef;
+  --text-muted:#8b93a6;
+  --text-faint:#5c6478;
+  --accent:#56c2d6;
+  --accent-soft:rgba(86,194,214,0.12);
+  --success:#4caf7d;
+  --success-soft:rgba(76,175,125,0.14);
+  --warning:#e0a458;
+  --warning-soft:rgba(224,164,88,0.14);
+  --danger:#e2636b;
+  --danger-soft:rgba(226,99,107,0.13);
+  --font-mono:'IBM Plex Mono','SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+  --font-sans:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --sidebar-w:272px;
+  --content-max:740px;
+}
+
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-sans);
+  font-size:16px;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--accent-soft);color:var(--text);}
+
+a{color:var(--accent);text-decoration:none;}
+a:hover{text-decoration:underline;}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+.layout{display:flex;max-width:1400px;margin:0 auto;min-height:100vh;}
+
+/* ---------- Sidebar ---------- */
+.sidebar{
+  width:var(--sidebar-w);
+  flex-shrink:0;
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow-y:auto;
+  border-right:1px solid var(--border);
+  background:var(--surface);
+  padding:28px 0 40px;
+}
+.sidebar-brand{
+  padding:0 24px 20px;
+  border-bottom:1px solid var(--border-soft);
+  margin-bottom:16px;
+}
+.sidebar-brand .mark{
+  font-family:var(--font-mono);
+  font-weight:600;
+  font-size:15px;
+  color:var(--text);
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.sidebar-brand .mark::before{
+  content:"";
+  width:8px;height:8px;border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-soft);
+  flex-shrink:0;
+}
+.sidebar-brand .sub{
+  font-size:12.5px;
+  color:var(--text-muted);
+  margin-top:6px;
+  line-height:1.5;
+}
+.sidebar-nav{list-style:none;margin:0;padding:0 12px;}
+.sidebar-nav li{margin-bottom:2px;}
+.sidebar-nav a{
+  display:flex;
+  gap:10px;
+  align-items:baseline;
+  padding:8px 12px;
+  border-radius:6px;
+  color:var(--text-muted);
+  font-size:14px;
+  line-height:1.4;
+  transition:background .15s ease, color .15s ease;
+}
+.sidebar-nav a:hover{background:var(--surface-2);color:var(--text);text-decoration:none;}
+.sidebar-nav a.active{background:var(--accent-soft);color:var(--accent);}
+.sidebar-nav .num{
+  font-family:var(--font-mono);
+  font-size:11.5px;
+  color:var(--text-faint);
+  flex-shrink:0;
+  padding-top:1px;
+}
+.sidebar-nav a.active .num{color:var(--accent);}
+
+/* ---------- Main content ---------- */
+main{flex:1;min-width:0;padding:56px 40px 120px;}
+.content-inner{max-width:var(--content-max);margin:0 auto;}
+
+.doc-header{margin-bottom:44px;}
+.doc-header h1{
+  font-family:var(--font-mono);
+  font-size:clamp(28px,4vw,40px);
+  font-weight:700;
+  margin:0 0 10px;
+  letter-spacing:-0.01em;
+}
+.doc-header p{
+  color:var(--text-muted);
+  font-size:16.5px;
+  max-width:56ch;
+  margin:0;
+}
+
+/* ---------- Hero pipeline visual ---------- */
+.hero-pipeline{
+  margin:32px 0 8px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:28px 24px 22px;
+  overflow-x:auto;
+}
+.hero-track{
+  display:flex;
+  align-items:center;
+  min-width:560px;
+}
+.stage-node{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  position:relative;
+}
+.stage-node .dot{
+  width:16px;height:16px;border-radius:50%;
+  background:var(--surface-2);
+  border:2px solid var(--border);
+  transition:background .4s ease, border-color .4s ease, box-shadow .4s ease;
+}
+.stage-node.is-live .dot{
+  background:var(--success);
+  border-color:var(--success);
+  box-shadow:0 0 0 5px var(--success-soft);
+}
+.stage-node .label{
+  font-family:var(--font-mono);
+  font-size:13px;
+  color:var(--text-muted);
+  transition:color .4s ease;
+}
+.stage-node.is-live .label{color:var(--text);}
+.stage-node .jobs{
+  font-size:11.5px;
+  color:var(--text-faint);
+  text-align:center;
+}
+.hero-connector{
+  flex:0.6;
+  height:2px;
+  background:var(--border);
+  position:relative;
+  top:-31px;
+  transition:background .4s ease;
+}
+.hero-connector.is-live{background:var(--success);}
+
+/* ---------- Sections ---------- */
+section{padding-top:64px;margin-top:-64px;}
+section:first-of-type{padding-top:0;margin-top:0;}
+.section-head{
+  display:flex;
+  align-items:baseline;
+  gap:12px;
+  margin-bottom:18px;
+  padding-bottom:14px;
+  border-bottom:1px solid var(--border-soft);
+}
+.section-head .idx{
+  font-family:var(--font-mono);
+  color:var(--text-faint);
+  font-size:15px;
+}
+.section-head h2{
+  font-size:23px;
+  font-weight:600;
+  margin:0;
+  letter-spacing:-0.01em;
+}
+h3{font-size:17.5px;font-weight:600;margin:30px 0 10px;color:var(--text);}
+p{margin:0 0 16px;color:#c9cedb;}
+ul,ol{margin:0 0 16px;padding-left:22px;color:#c9cedb;}
+li{margin-bottom:6px;}
+li::marker{color:var(--text-faint);}
+strong{color:var(--text);font-weight:600;}
+code:not(pre code){
+  font-family:var(--font-mono);
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  padding:1.5px 6px;
+  border-radius:4px;
+  font-size:0.87em;
+  color:var(--accent);
+  white-space:nowrap;
+}
+
+/* ---------- Code blocks ---------- */
+.code-block{
+  background:var(--surface-code);
+  border:1px solid var(--border);
+  border-radius:8px;
+  margin:18px 0 24px;
+  overflow:hidden;
+}
+.code-block__header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:9px 14px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  font-family:var(--font-mono);
+  font-size:12px;
+  color:var(--text-muted);
+}
+.code-copy{
+  font-family:var(--font-sans);
+  font-size:12px;
+  color:var(--text-muted);
+  background:transparent;
+  border:1px solid var(--border);
+  border-radius:5px;
+  padding:4px 10px;
+  cursor:pointer;
+  transition:all .15s ease;
+}
+.code-copy:hover{color:var(--text);border-color:var(--text-faint);}
+.code-copy.copied{color:var(--success);border-color:var(--success);}
+pre{margin:0;padding:16px 18px;overflow-x:auto;}
+pre code{
+  font-family:var(--font-mono);
+  font-size:13.5px;
+  line-height:1.6;
+  background:none;
+  border:none;
+  padding:0;
+  white-space:pre;
+  color:var(--text);
+}
+.hljs-attr{color:#7dd0e0;}
+.hljs-string{color:#c9d97a;}
+.hljs-number{color:var(--warning);}
+.hljs-literal{color:var(--warning);}
+.hljs-comment{color:var(--text-faint);font-style:italic;}
+.hljs-variable, .hljs-template-variable{color:#e0a458;}
+.hljs-meta{color:var(--text-faint);}
+.hljs-bullet{color:var(--accent);}
+.hljs-symbol{color:#c9d97a;}
+
+/* ---------- Tables ---------- */
+.table-wrap{overflow-x:auto;margin:18px 0 24px;border:1px solid var(--border);border-radius:8px;}
+table{width:100%;border-collapse:collapse;font-size:14px;}
+th{
+  text-align:left;
+  font-family:var(--font-mono);
+  font-weight:600;
+  font-size:12.5px;
+  color:var(--text-muted);
+  background:var(--surface);
+  padding:10px 14px;
+  border-bottom:1px solid var(--border);
+  white-space:nowrap;
+}
+td{
+  padding:11px 14px;
+  border-bottom:1px solid var(--border-soft);
+  color:#c9cedb;
+  vertical-align:top;
+}
+tr:last-child td{border-bottom:none;}
+tr:nth-child(even) td{background:rgba(255,255,255,0.012);}
+td code, th code{white-space:nowrap;}
+
+/* ---------- Callouts ---------- */
+.callout{
+  border-left:3px solid var(--accent);
+  background:var(--surface);
+  border-radius:0 8px 8px 0;
+  padding:12px 16px;
+  margin:18px 0 24px;
+  font-size:14.5px;
+}
+.callout p{margin:0;color:#c9cedb;}
+.callout p + p{margin-top:8px;}
+.callout .callout-label{
+  font-family:var(--font-mono);
+  font-size:11.5px;
+  font-weight:600;
+  color:var(--accent);
+  display:block;
+  margin-bottom:5px;
+}
+.callout.warn{border-left-color:var(--danger);}
+.callout.warn .callout-label{color:var(--danger);}
+.callout.tip{border-left-color:var(--success);}
+.callout.tip .callout-label{color:var(--success);}
+
+/* ---------- Misc components ---------- */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0 24px;}
+.compare-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 18px;}
+.compare-card h4{
+  font-family:var(--font-mono);
+  font-size:13.5px;
+  margin:0 0 10px;
+  color:var(--text);
+  display:flex;align-items:center;gap:8px;
+}
+.compare-card h4::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent);}
+.compare-card ul{margin:0;padding-left:18px;font-size:13.8px;}
+.compare-card li{margin-bottom:7px;color:var(--text-muted);}
+
+.checklist{list-style:none;padding:0;margin:18px 0 24px;}
+.checklist li{
+  display:flex;gap:10px;padding:10px 0;
+  border-bottom:1px solid var(--border-soft);
+  color:#c9cedb;font-size:14.8px;
+}
+.checklist li:last-child{border-bottom:none;}
+.checklist li::before{
+  content:"✓";
+  color:var(--success);
+  font-family:var(--font-mono);
+  flex-shrink:0;
+  font-weight:600;
+}
+
+.ref-list{list-style:none;padding:0;margin:18px 0;}
+.ref-list li{
+  padding:13px 16px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  margin-bottom:8px;
+}
+.ref-list a{font-family:var(--font-mono);font-size:13.8px;}
+.ref-list .desc{display:block;color:var(--text-muted);font-size:13px;margin-top:4px;font-family:var(--font-sans);}
+
+footer{
+  margin-top:60px;
+  padding-top:24px;
+  border-top:1px solid var(--border-soft);
+  color:var(--text-faint);
+  font-size:12.5px;
+  font-family:var(--font-mono);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width:900px){
+  .layout{flex-direction:column;}
+  .sidebar{
+    width:100%;
+    height:auto;
+    position:sticky;
+    top:0;
+    padding:14px 0;
+    z-index:10;
+  }
+  .sidebar-brand{display:none;}
+  .sidebar-nav{
+    display:flex;
+    overflow-x:auto;
+    padding:0 14px;
+    gap:4px;
+  }
+  .sidebar-nav li{margin-bottom:0;flex-shrink:0;}
+  .sidebar-nav a{white-space:nowrap;padding:7px 12px;}
+  main{padding:32px 18px 90px;}
+  .compare-grid{grid-template-columns:1fr;}
+  .hero-track{min-width:480px;}
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="mark">GitLab CI/CD</div>
+      <div class="sub">Hướng dẫn cấu hình pipeline bằng tệp .gitlab-ci.yml</div>
+    </div>
+    <ul class="sidebar-nav">
+      <li><a href="#overview"><span class="num">01</span>Tổng quan</a></li>
+      <li><a href="#architecture"><span class="num">02</span>Kiến trúc &amp; khái niệm</a></li>
+      <li><a href="#file-structure"><span class="num">03</span>Cấu trúc tệp YAML</a></li>
+      <li><a href="#core-keywords"><span class="num">04</span>Từ khóa nền tảng</a></li>
+      <li><a href="#predefined-variables"><span class="num">05</span>Biến có sẵn (Predefined)</a></li>
+      <li><a href="#flow-control"><span class="num">06</span>Điều khiển luồng Job</a></li>
+      <li><a href="#cache-artifacts"><span class="num">07</span>Cache &amp; Artifacts</a></li>
+      <li><a href="#reuse"><span class="num">08</span>Tái sử dụng cấu hình</a></li>
+      <li><a href="#variables-security"><span class="num">09</span>Biến &amp; bảo mật</a></li>
+      <li><a href="#examples"><span class="num">10</span>Ví dụ tổng hợp</a></li>
+      <li><a href="#real-world"><span class="num">11</span>Ứng dụng thực tế</a></li>
+      <li><a href="#debug-practices"><span class="num">12</span>Debug &amp; Best Practices</a></li>
+      <li><a href="#references"><span class="num">13</span>Tài liệu tham khảo</a></li>
+    </ul>
+  </aside>
+
+  <main>
+    <div class="content-inner">
+
+      <div class="doc-header">
+        <h1>GitLab CI/CD</h1>
+        <p>Toàn bộ cách vận hành pipeline thông qua tệp <code>.gitlab-ci.yml</code> — từ khái niệm nền tảng, các từ khóa cốt lõi, đến pipeline thực chiến cho firmware nhúng và build Yocto.</p>
+      </div>
+
+      <div class="hero-pipeline" id="hero">
+        <div class="hero-track">
+          <div class="stage-node" data-stage="1">
+            <div class="dot"></div>
+            <div class="label">build</div>
+            <div class="jobs">compile · lint</div>
+          </div>
+          <div class="hero-connector"></div>
+          <div class="stage-node" data-stage="2">
+            <div class="dot"></div>
+            <div class="label">test</div>
+            <div class="jobs">unit · static analysis</div>
+          </div>
+          <div class="hero-connector"></div>
+          <div class="stage-node" data-stage="3">
+            <div class="dot"></div>
+            <div class="label">package</div>
+            <div class="jobs">artifact</div>
+          </div>
+          <div class="hero-connector"></div>
+          <div class="stage-node" data-stage="4">
+            <div class="dot"></div>
+            <div class="label">deploy</div>
+            <div class="jobs">manual</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 01 OVERVIEW -->
+      <section id="overview">
+        <div class="section-head"><span class="idx">01</span><h2>Tổng quan</h2></div>
+
+        <p><strong>CI/CD</strong> là viết tắt của <strong>Continuous Integration</strong> (Tích hợp liên tục) và <strong>Continuous Delivery/Deployment</strong> (Chuyển giao/Triển khai liên tục). Hai khái niệm này giải quyết hai vấn đề khác nhau trong vòng đời phát triển phần mềm:</p>
+
+        <ul>
+          <li><strong>Continuous Integration</strong>: mỗi khi có code mới được push lên, hệ thống tự động build và chạy test ngay lập tức, thay vì để tới cuối sprint mới build thử và phát hiện hàng loạt lỗi tích tụ.</li>
+          <li><strong>Continuous Delivery</strong>: sau khi qua hết các bước kiểm tra, code được đóng gói sẵn sàng để deploy, nhưng bước deploy thật sự vẫn cần một người bấm nút xác nhận (thường dùng cho production).</li>
+          <li><strong>Continuous Deployment</strong>: giống Continuous Delivery nhưng bước deploy cuối cùng cũng tự động, không cần con người can thiệp.</li>
+        </ul>
+
+        <p>GitLab tích hợp sẵn CI/CD ngay trong nền tảng — không cần dựng thêm Jenkins hay CircleCI riêng. Chỉ cần một tệp duy nhất tên <code>.gitlab-ci.yml</code> đặt ở thư mục gốc repository, GitLab sẽ tự phát hiện và chạy pipeline mỗi khi có sự kiện phù hợp (push, merge request, tag, lịch chạy định kỳ...).</p>
+
+        <div class="callout tip">
+          <span class="callout-label">Vì sao nên dùng</span>
+          <p>Lợi ích lớn nhất không nằm ở việc "tự động hóa cho nhanh", mà ở tính <strong>nhất quán</strong>: mọi commit đều được build/test theo đúng cùng một quy trình, trên cùng một môi trường sạch — không còn tình trạng "chạy được trên máy tôi" nhưng lỗi khi build ở nơi khác.</p>
+        </div>
+      </section>
+
+      <!-- 02 ARCHITECTURE -->
+      <section id="architecture">
+        <div class="section-head"><span class="idx">02</span><h2>Kiến trúc &amp; khái niệm cốt lõi</h2></div>
+
+        <p>Bốn khái niệm sau là nền tảng của mọi thứ trong GitLab CI/CD, xếp theo quan hệ phân cấp: <strong>Pipeline → Stage → Job → Runner</strong>.</p>
+
+        <div class="table-wrap">
+          <table>
+            <tr><th>Khái niệm</th><th>Vai trò</th></tr>
+            <tr><td><code>Pipeline</code></td><td>Một lần chạy toàn bộ cấu hình CI/CD, được tạo khi có sự kiện kích hoạt: push code, mở merge request, gắn tag, tới lịch (schedule), hoặc gọi qua API.</td></tr>
+            <tr><td><code>Stage</code></td><td>Một giai đoạn trong pipeline (build, test, deploy...). Mặc định các stage chạy <strong>tuần tự</strong> — mọi job ở stage trước phải xong thì stage sau mới bắt đầu.</td></tr>
+            <tr><td><code>Job</code></td><td>Đơn vị thực thi nhỏ nhất, chứa danh sách lệnh cần chạy (<code>script</code>). Các job trong cùng một stage mặc định chạy <strong>song song</strong>.</td></tr>
+            <tr><td><code>Runner</code></td><td>Tiến trình thực sự thực thi job — có thể là shared runner của GitLab.com, hoặc self-hosted runner do bạn tự quản lý (bắt buộc nếu cần toolchain đặc thù hoặc cache dung lượng lớn).</td></tr>
+          </table>
+        </div>
+
+        <p>Runner hoạt động qua một <strong>executor</strong> — cơ chế quyết định job chạy trong môi trường nào: <code>docker</code> (mỗi job chạy trong container sạch, phổ biến nhất), <code>shell</code> (chạy trực tiếp trên máy runner, hay dùng cho build cần phần cứng/USB thật), hoặc <code>kubernetes</code>.</p>
+
+        <div class="callout">
+          <span class="callout-label">Khi nào cần self-hosted runner</span>
+          <p>Shared runner của GitLab.com dùng chung tài nguyên và có giới hạn thời gian chạy theo phút. Với các build cần cross-compiler đặc thù (arm-none-eabi-gcc, toolchain OpenOCD), cần quyền truy cập phần cứng, hoặc build rất nặng/lâu như Yocto, gần như luôn cần một self-hosted runner riêng.</p>
+        </div>
+      </section>
+
+      <!-- 03 FILE STRUCTURE -->
+      <section id="file-structure">
+        <div class="section-head"><span class="idx">03</span><h2>Cấu trúc tệp .gitlab-ci.yml</h2></div>
+
+        <p>Tệp cấu hình phải đặt đúng ở thư mục gốc repository, tên chính xác là <code>.gitlab-ci.yml</code> (có dấu chấm ở đầu). Cú pháp là YAML chuẩn: <code>key: value</code>, danh sách bằng dấu <code>-</code>, phân cấp bằng thụt lề — dùng dấu cách, không dùng tab.</p>
+
+        <p>Bất kỳ key nào ở cấp cao nhất mà không trùng với một keyword đặc biệt (như <code>stages</code>, <code>variables</code>, <code>include</code>...) đều được GitLab hiểu là <strong>tên một job</strong>.</p>
+
+        <div class="code-block">
+          <div class="code-block__header"><span>.gitlab-ci.yml</span><button class="code-copy">Sao chép</button></div>
+          <pre><code class="language-yaml">stages:
+  - build
+  - test
+
+build-job:
+  stage: build
+  script:
+    - echo "Đang build..."
+
+test-job:
+  stage: test
+  script:
+    - echo "Đang test..."</code></pre>
+        </div>
+
+        <p>Trước khi commit, nên kiểm tra cú pháp bằng công cụ <strong>CI Lint</strong> có sẵn trong giao diện GitLab (mục Build → Pipeline editor) để tránh pipeline fail chỉ vì lỗi YAML — vốn rất dễ mắc phải do thụt lề sai.</p>
+      </section>
+
+      <!-- 04 CORE KEYWORDS -->
+      <section id="core-keywords">
+        <div class="section-head"><span class="idx">04</span><h2>Từ khóa nền tảng</h2></div>
+
+        <p>Đây là nhóm keyword xuất hiện trong hầu như mọi <code>.gitlab-ci.yml</code>, dùng để định nghĩa khung sườn của pipeline.</p>
+
+        <div class="table-wrap">
+          <table>
+            <tr><th>Keyword</th><th>Phạm vi</th><th>Mô tả</th></tr>
+            <tr><td><code>stages</code></td><td>Global</td><td>Danh sách và thứ tự các stage sẽ chạy.</td></tr>
+            <tr><td><code>image</code></td><td>Global / Job</td><td>Docker image dùng làm môi trường chạy job.</td></tr>
+            <tr><td><code>variables</code></td><td>Global / Job</td><td>Khai báo biến môi trường.</td></tr>
+            <tr><td><code>script</code></td><td>Job (bắt buộc)</td><td>Danh sách lệnh shell sẽ thực thi.</td></tr>
+            <tr><td><code>before_script</code> / <code>after_script</code></td><td>Global / Job</td><td>Lệnh chạy trước/sau <code>script</code> chính.</td></tr>
+            <tr><td><code>tags</code></td><td>Job</td><td>Chọn runner theo tag — cần thiết khi có nhiều runner với năng lực khác nhau.</td></tr>
+            <tr><td><code>default</code></td><td>Global</td><td>Giá trị mặc định áp cho mọi job; từng job có thể override lại riêng.</td></tr>
+          </table>
+        </div>
+
+        <div class="code-block">
+          <div class="code-block__header"><span>.gitlab-ci.yml</span><button class="code-copy">Sao chép</button></div>
+          <pre><code class="language-yaml">default:
+  image: alpine:3.20
+  tags:
+    - docker
+
+variables:
+  APP_ENV: "staging"
+
+stages:
+  - build
+  - test
+
+build-job:
+  stage: build
+  script:
+    - echo "Build cho môi trường $APP_ENV"
+
+test-job:
+  stage: test
+  image: node:20-alpine   # override image mặc định riêng cho job này
+  script:
+    - npm test</code></pre>
+        </div>
+      </section>
+
+      <!-- 05 PREDEFINED VARIABLES -->
+      <section id="predefined-variables">
+        <div class="section-head"><span class="idx">05</span><h2>Biến có sẵn của GitLab</h2></div>
+
+        <p>Những biến như <code>CI_PIPELINE_SOURCE</code>, <code>CI_COMMIT_BRANCH</code>, <code>CI_COMMIT_TAG</code> không phải do bạn khai báo — GitLab tự động <strong>tiêm (inject)</strong> hàng trăm biến môi trường này vào mọi job ngay khi pipeline được tạo, tùy theo ngữ cảnh: nhánh nào, commit nào, ai/cái gì kích hoạt, loại sự kiện gì...</p>
+
+        <div class="callout">
+          <span class="callout-label">Khác với macro tiền xử lý</span>
+          <p>Đây không phải cơ chế thay thế văn bản lúc biên dịch như macro trong C/C++ (<code>#define</code>). Chúng là <strong>biến môi trường (environment variable)</strong> thông thường, được GitLab gán giá trị lúc <strong>runtime</strong> — ngay trước khi job bắt đầu chạy — dựa trên hoàn cảnh cụ thể của lần chạy pipeline đó. Vì vậy dùng trong YAML qua cú pháp <code>$TEN_BIEN</code>, giống hệt cách gọi một biến môi trường trong shell.</p>
+        </div>
+
+        <p>Toàn bộ danh sách có hàng trăm biến, tra cứu đầy đủ ở mục <a href="#references">Tài liệu tham khảo</a>. Dưới đây là nhóm hay dùng nhất:</p>
+
+        <div class="table-wrap">
+          <table>
+            <tr><th>Biến</th><th>Nhóm</th><th>Mô tả</th></tr>
+            <tr><td><code>CI_PIPELINE_SOURCE</code></td><td>Pipeline</td><td>Sự kiện kích hoạt pipeline: <code>push</code>, <code>merge_request_event</code>, <code>web</code> (bấm Run pipeline thủ công), <code>schedule</code>, <code>api</code>, <code>trigger</code>...</td></tr>
+            <tr><td><code>CI_COMMIT_BRANCH</code></td><td>Commit</td><td>Tên nhánh — chỉ có giá trị khi pipeline chạy do push trực tiếp lên nhánh. Rỗng trong MR pipeline hoặc khi build từ tag.</td></tr>
+            <tr><td><code>CI_COMMIT_TAG</code></td><td>Commit</td><td>Tên tag — chỉ có giá trị khi pipeline chạy do push tag. Rỗng trong mọi trường hợp khác.</td></tr>
+            <tr><td><code>CI_COMMIT_REF_NAME</code></td><td>Commit</td><td>Tên nhánh <em>hoặc</em> tag, dùng chung được cho cả hai trường hợp.</td></tr>
+            <tr><td><code>CI_COMMIT_REF_SLUG</code></td><td>Commit</td><td>Giống <code>REF_NAME</code> nhưng đã chuẩn hóa (viết thường, thay ký tự đặc biệt bằng <code>-</code>) — an toàn để dùng làm cache key hoặc tên URL.</td></tr>
+            <tr><td><code>CI_COMMIT_SHA</code> / <code>CI_COMMIT_SHORT_SHA</code></td><td>Commit</td><td>Mã SHA đầy đủ / rút gọn (8 ký tự) của commit đang build.</td></tr>
+            <tr><td><code>CI_DEFAULT_BRANCH</code></td><td>Project</td><td>Tên nhánh mặc định của repository (thường là <code>main</code>).</td></tr>
+            <tr><td><code>CI_MERGE_REQUEST_IID</code></td><td>Merge Request</td><td>Số thứ tự của MR — chỉ có giá trị trong MR pipeline.</td></tr>
+            <tr><td><code>CI_JOB_NAME</code> / <code>CI_JOB_STAGE</code></td><td>Job</td><td>Tên job và stage hiện tại đang chạy.</td></tr>
+            <tr><td><code>CI_PROJECT_DIR</code></td><td>Project</td><td>Đường dẫn tuyệt đối tới thư mục code đã checkout trên runner.</td></tr>
+            <tr><td><code>CI_PROJECT_NAME</code></td><td>Project</td><td>Tên project trên GitLab.</td></tr>
+            <tr><td><code>CI_REGISTRY_IMAGE</code></td><td>Registry</td><td>Địa chỉ image trong GitLab Container Registry gắn với project — hữu ích khi job cần tự build/push Docker image.</td></tr>
+          </table>
+        </div>
+
+        <div class="callout warn">
+          <span class="callout-label">Vì sao ví dụ dùng nhiều biến cùng lúc</span>
+          <p><code>CI_COMMIT_BRANCH</code> và <code>CI_COMMIT_TAG</code> không bao giờ cùng có giá trị một lúc — mỗi biến chỉ "sống" trong đúng loại sự kiện của nó. Đây là lý do ví dụ <code>workflow:rules</code> ở mục kế tiếp phải kiểm tra riêng từng trường hợp (<code>merge_request_event</code>, rồi nhánh, rồi tag) thay vì gộp chung — không có một biến duy nhất đúng cho mọi ngữ cảnh.</p>
+        </div>
+
+        <p>Cách nhanh nhất để xem toàn bộ giá trị thực tế trong một lần chạy cụ thể — thay vì tra tài liệu — là in trực tiếp ra log:</p>
+
+        <div class="code-block">
+          <div class="code-block__header"><span>.gitlab-ci.yml</span><button class="code-copy">Sao chép</button></div>
+          <pre><code class="language-yaml">debug-vars:
+  stage: build
+  script:
+    - env | grep ^CI_ | sort</code></pre>
+        </div>
+        <p>Job này liệt kê chính xác những biến nào đang tồn tại và giá trị thực của chúng trong ngữ cảnh pipeline hiện tại — cách đáng tin cậy nhất khi không chắc một biến có khả dụng hay không trong tình huống cụ thể.</p>
+      </section>
+
+      <!-- 06 FLOW CONTROL -->
+      <section id="flow-control">
+        <div class="section-head"><span class="idx">06</span><h2>Điều khiển luồng chạy Job</h2></div>
+
+        <p><code>rules</code> là cách hiện tại để quyết định một job có được thêm vào pipeline hay không, và chạy trong điều kiện nào — thay thế hoàn toàn cho <code>only</code>/<code>except</code>.</p>
+
+        <div class="callout warn">
+          <span class="callout-label">Đã lỗi thời</span>
+          <p><code>only</code>/<code>except</code> đã bị đánh dấu deprecated từ nhiều năm và không còn được phát triển thêm tính năng. Vẫn có thể gặp trong codebase cũ, nhưng cấu hình mới nên dùng <code>rules</code>. Không nên trộn lẫn hai kiểu cấu hình này trong cùng một pipeline vì cơ chế mặc định của chúng khác nhau, dễ gây pipeline chạy trùng lặp khó debug.</p>
+        </div>
+
+        <h3>workflow:rules — kiểm soát toàn bộ pipeline</h3>
+        <p>Trong khi <code>rules</code> trong một job chỉ quyết định job đó, <code>workflow:rules</code> đặt ở cấp global quyết định <strong>cả pipeline</strong> có được tạo ra hay không. Cách dùng phổ biến nhất là tránh tình trạng chạy hai pipeline trùng nhau khi vừa có merge request vừa có push trên cùng nhánh.</p>
+
+        <div class="code-block">
+          <div class="code-block__header"><span>.gitlab-ci.yml</span><button class="code-copy">Sao chép</button></div>
+          <pre><code class="language-yaml">workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+stages:
+  - build
+  - deploy
+
+deploy-prod:
+  stage: deploy
+  script:
+    - echo "Deploy lên production..."
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: manual
+  environment:
+    name: production</code></pre>
+        </div>
+
+        <h3>when — thời điểm chạy job</h3>
+        <div class="table-wrap">
+          <table>
+            <tr><th>Giá trị</th><th>Ý nghĩa</th></tr>
+            <tr><td><code>on_success</code></td><td>Mặc định — chạy khi các job trước đó (cùng stage trước) thành công.</td></tr>
+            <tr><td><code>on_failure</code></td><td>Chỉ chạy khi có job trước đó thất bại.</td></tr>
+            <tr><td><code>always</code></td><td>Luôn chạy bất kể kết quả trước đó.</td></tr>
+            <tr><td><code>manual</code></td><td>Chờ người bấm nút chạy thủ công trong giao diện Pipeline.</td></tr>
+            <tr><td><code>delayed</code></td><td>Chạy sau một khoảng thời gian chờ nhất định.</td></tr>
+          </table>
+        </div>
+
+        <h3>needs — biến pipeline tuần tự thành DAG</h3>
+        <p>Mặc định, mọi job ở stage sau phải chờ <strong>toàn bộ</strong> job ở stage trước hoàn tất — kể cả khi không có phụ thuộc thực sự. <code>needs</code> khai báo phụ thuộc trực tiếp giữa các job, biến pipeline thành một <strong>DAG (Directed Acyclic Graph)</strong>: job chạy ngay khi job nó cần xong, không cần đợi hết cả stage. <code>needs: []</code> nghĩa là "không phụ thuộc gì, chạy ngay lập tức".</p>
+
+        <div class="code-block">
+          <div class="code-block__header"><span>.gitlab-ci.yml</span><button class="code-copy">Sao chép</button></div>
+          <pre><code class="language-yaml">stages:
+  - build
+  - test
+  - package
+
+build-firmware:
+  stage: build
+  needs: []
+  script:
+    - ./build_firmware.sh
+
+lint-code:
+  stage: build
+  needs: []
+  script:
+    - ./run_lint.sh
+
+unit-test:
+  stage: test
+  needs: ["build-firmware"]   # chỉ đợi build-firmware, KHÔNG đợi lint-code
+  script:
+    - ./run_unit_tests.sh
+
+package-release:
+  stage: package
+  needs: ["unit-test", "lint-code"]
+  script:
+    - ./package.sh</code></pre>
+        </div>
+        <p><code>build-firmware</code> và <code>lint-code</code> chạy song song ngay từ đầu. <code>unit-test</code> không phải chờ <code>lint-code</code> xong — chỉ chờ <code>build-firmware</code> — nên tổng thời gian pipeline ngắn hơn đáng kể so với chạy tuần tự theo stage.</p>
+
+        <p>Job cũng có thể được đánh dấu không bắt buộc chặn pipeline bằng <code>allow_failure: true</code> — hữu ích cho các bước kiểm tra mang tính cảnh báo, không phải điều kiện chặn (blocking).</p>
+      </section>
+
+      <!-- 07 CACHE & ARTIFACTS -->
+      <section id="cache-artifacts">
+        <div class="section-head"><span class="idx">07</span><h2>Cache &amp; Artifacts</h2></div>
+
+        <p>Đây là hai khái niệm hay bị nhầm lẫn nhất vì cùng liên quan tới việc lưu file giữa các job, nhưng phục vụ mục đích hoàn toàn khác nhau.</p>
+
+        <div class="compare-grid">
+          <div class="compare-card">
+            <h4>cache</h4>
+            <ul>
+              <li>Mục đích: tăng tốc bằng cách tái sử dụng file đã tải/build trước đó (node_modules/, ~/.m2, ccache...).</li>
+              <li><strong>Best-effort</strong> — không đảm bảo luôn còn, runner có thể xóa bất kỳ lúc nào.</li>
+              <li>Không hiển thị để tải về trong giao diện GitLab.</li>
+              <li>Có thể chia sẻ giữa nhiều pipeline khác nhau qua cùng một <code>key</code>.</li>
+            </ul>
+          </div>
+          <div class="compare-card">
+            <h4>artifacts</h4>
+            <ul>
+              <li>Mục đích: lưu <strong>kết quả chính thức</strong> của job (file build, báo cáo test...).</li>
+              <li>Được đảm bảo giữ lại sau khi job chạy xong thành công.</li>
+              <li>Tải trực tiếp được từ giao diện Pipeline/Job.</li>
+              <li>Tự động chuyển tiếp cho job ở stage/needs sau.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-block__header"><span>.gitlab-ci.yml</span><button class="code-copy">Sao chép</button></div>
+          <pre><code class="language-yaml">build-job:
+  stage: build
+  image: node:20-alpine
+  script:
+    - npm ci
+    - npm run build
+  cache:
+    key: $CI_COMMIT_REF_SLUG   # mỗi nhánh có cache riêng
+    paths:
+      - node_modules/
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week</code></pre>
+        </div>
+
+        <p>Dùng <code>$CI_COMMIT_REF_SLUG</code> làm cache key là cách phổ biến nhất để mỗi nhánh có cache riêng, tránh nhánh này ghi đè cache của nhánh khác. Với <code>artifacts</code>, nên luôn đặt <code>expire_in</code> để GitLab tự dọn dẹp, tránh chiếm dung lượng lưu trữ vô thời hạn. Khi cần hiển thị kết quả test ngay trong giao diện Merge Request, dùng <code>artifacts.reports.junit</code> trỏ tới file báo cáo dạng JUnit XML.</p>
+      </section>
+
+      <!-- 08 REUSE -->
+      <section id="reuse">
+        <div class="section-head"><span class="idx">08</span><h2>Tái sử dụng cấu hình</h2></div>
+
+        <h3>extends — kế thừa job ẩn</h3>
+        <p>Job có tên bắt đầu bằng dấu chấm (<code>.</code>) không được GitLab chạy trực tiếp — dùng làm "khuôn" để job khác kế thừa qua <code>extends</code>, giúp tránh lặp lại cấu hình.</p>
+
+        <div class="code-block">
+          <div class="code-block__header"><span>.gitlab-ci.yml</span><button class="code-copy">Sao chép</button></div>
+          <pre><code class="language-yaml">.base-build:
+  image: alpine:3.20
+  before_script:
+    - echo "Chuẩn bị môi trường..."
+
+build-arm:
+  extends: .base-build
+  script:
+    - ./build.sh --target=arm
+
+build-x86:
+  extends: .base-build
+  script:
+    - ./build.sh --target=x86</code></pre>
+        </div>
+
+        <h3>include — chia nhỏ cấu hình</h3>
+        <p>Khi <code>.gitlab-ci.yml</code> quá dài, có thể tách thành nhiều tệp và gộp lại bằng <code>include</code> (local, project khác, remote URL, hoặc template có sẵn của GitLab). Nội dung include luôn được gộp trước, sau đó mới tới nội dung trong chính <code>.gitlab-ci.yml</code>.</p>
+
+        <h3>CI/CD Components — tái sử dụng có versioning</h3>
+        <p>Đây là cách hiện đại nhất GitLab khuyến khích để chia sẻ cấu hình pipeline giữa <strong>nhiều repository khác nhau</strong> — giống như publish một package riêng, có version rõ ràng thay vì copy-paste YAML. Rất phù hợp nếu có nhiều project firmware dùng chung một khuôn build/test.</p>
+
+        <div class="code-block">
+          <div class="code-block__header"><span>.gitlab-ci.yml</span><button class="code-copy">Sao chép</button></div>
+          <pre><code class="language-yaml">include:
+  - component: gitlab.com/my-group/ci-components/cmake-build@1.2.0
+    inputs:
+      toolchain_file: cmake/arm-none-eabi.cmake</code></pre>
+        </div>
+
+        <p>Component tự định nghĩa tham số đầu vào bằng khối <code>spec.inputs</code> ở đầu tệp, và nội suy giá trị bằng cú pháp <code>$[[ inputs.ten_tham_so ]]</code> bên trong job.</p>
+      </section>
+
+      <!-- 09 VARIABLES & SECURITY -->
+      <section id="variables-security">
+        <div class="section-head"><span class="idx">09</span><h2>Biến &amp; bảo mật</h2></div>
+
+        <p>Biến khai báo trong <code>variables:</code> ngay trong YAML sẽ hiển thị được với bất kỳ ai có quyền xem repository — chỉ nên dùng cho cấu hình <strong>không nhạy cảm</strong> (tên môi trường, đường dẫn build...). Token, mật khẩu, private key phải khai báo qua giao diện <strong>Settings → CI/CD → Variables</strong>, không bao giờ hard-code trong YAML.</p>
+
+        <div class="table-wrap">
+          <table>
+            <tr><th>Tùy chọn</th><th>Tác dụng</th></tr>
+            <tr><td><code>masked</code></td><td>Ẩn giá trị khỏi job log, hiện thành <code>[MASKED]</code>. Yêu cầu giá trị dài tối thiểu 8 ký tự, không chứa xuống dòng, chỉ gồm ký tự trong tập cho phép.</td></tr>
+            <tr><td><code>protected</code></td><td>Chỉ cấp cho job chạy trên protected branch/tag — ngăn việc tạo nhánh lạ để đọc trộm secret production.</td></tr>
+            <tr><td><code>hidden</code></td><td>Ẩn cả trên giao diện Settings sau khi tạo, không chỉ trong log (bổ sung từ GitLab 17.4).</td></tr>
+          </table>
+        </div>
+
+        <div class="callout warn">
+          <span class="callout-label">Giới hạn của masking</span>
+          <p>Masking không chống được nếu script chủ động biến đổi giá trị (base64, đảo chuỗi...) rồi in ra — dạng biến đổi đó không được nhận diện để che. Vì vậy không bao giờ nên <code>echo</code> trực tiếp một biến secret dù đã mask, và cần review kỹ mọi thay đổi trong <code>.gitlab-ci.yml</code> đến từ merge request lạ trước khi cho chạy pipeline.</p>
+        </div>
+
+        <p>Với hệ thống lớn hơn, nên cân nhắc kết nối external secret manager (HashiCorp Vault, Google Secret Manager, Azure Key Vault) hoặc dùng OIDC để cấp credential ngắn hạn thay vì lưu secret tĩnh lâu dài.</p>
+      </section>
+
+      <!-- 10 EXAMPLES -->
+      <section id="examples">
+        <div class="section-head"><span class="idx">10</span><h2>Ví dụ tổng hợp</h2></div>
+
+        <h3>Build nhiều target song song với parallel:matrix</h3>
+        <p>Khi cần build cùng một codebase cho nhiều target khác nhau, <code>parallel:matrix</code> tự sinh ra nhiều job con chạy song song thay vì phải viết tay từng job.</p>
+
+        <div class="code-block">
+          <div class="code-block__header"><span>.gitlab-ci.yml</span><button class="code-copy">Sao chép</button></div>
+          <pre><code class="language-yaml">build-targets:
+  stage: build
+  parallel:
+    matrix:
+      - TARGET: [stm32f4, stm32f7, esp32]
+  script:
+    - ./build.sh --target=$TARGET
+  artifacts:
+    paths:
+      - build/$TARGET/</code></pre>
+        </div>
+        <p>GitLab sinh ra 3 job con chạy song song (<code>build-targets: [stm32f4]</code>, <code>[stm32f7]</code>, <code>[esp32]</code>), mỗi job nhận biến <code>TARGET</code> tương ứng.</p>
+
+        <h3>Pipeline hoàn chỉnh — kết hợp mọi khái niệm</h3>
+        <p>Ví dụ dưới đây gộp lại <code>workflow</code>, <code>default</code>, <code>needs</code>, <code>cache</code>, <code>artifacts</code> và <code>rules</code> trong cùng một cấu hình thực tế.</p>
+
+        <div class="code-block">
+          <div class="code-block__header"><span>.gitlab-ci.yml</span><button class="code-copy">Sao chép</button></div>
+          <pre><code class="language-yaml">workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+default:
+  image: alpine:3.20
+  tags:
+    - docker
+
+variables:
+  BUILD_DIR: "build"
+
+stages:
+  - build
+  - test
+  - deploy
+
+build-job:
+  stage: build
+  needs: []
+  script:
+    - mkdir -p $BUILD_DIR &amp;&amp; ./compile.sh
+  artifacts:
+    paths:
+      - $BUILD_DIR/
+    expire_in: 3 days
+  cache:
+    key: $CI_COMMIT_REF_SLUG
+    paths:
+      - .cache/
+
+test-job:
+  stage: test
+  needs: ["build-job"]
+  script:
+    - ./run_tests.sh $BUILD_DIR
+
+deploy-job:
+  stage: deploy
+  needs: ["test-job"]
+  script:
+    - ./deploy.sh
+  environment:
+    name: production
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual</code></pre>
+        </div>
+      </section>
+
+      <!-- 11 REAL WORLD -->
+      <section id="real-world">
+        <div class="section-head"><span class="idx">11</span><h2>Ứng dụng thực tế</h2></div>
+        <p>Hai ví dụ dưới đây áp dụng đúng các khái niệm ở trên vào hai dạng pipeline nhúng phổ biến: build firmware bare-metal bằng CMake, và build image Embedded Linux bằng Yocto.</p>
+
+        <h3>1. Firmware STM32 — CMake + arm-none-eabi-gcc</h3>
+        <p>Pipeline gồm build bằng cross-toolchain, static analysis, và unit test chạy trên host (x86) cho phần logic không phụ thuộc phần cứng.</p>
+
+        <div class="code-block">
+          <div class="code-block__header"><span>.gitlab-ci.yml</span><button class="code-copy">Sao chép</button></div>
+          <pre><code class="language-yaml">stages:
+  - build
+  - analyze
+  - test
+
+variables:
+  BUILD_DIR: "build"
+
+build-firmware:
+  stage: build
+  image: registry.gitlab.com/your-group/arm-toolchain:latest
+  needs: []
+  script:
+    - cmake -B $BUILD_DIR -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake -DCMAKE_BUILD_TYPE=Release
+    - cmake --build $BUILD_DIR -j$(nproc)
+  artifacts:
+    paths:
+      - $BUILD_DIR/*.elf
+      - $BUILD_DIR/*.bin
+      - $BUILD_DIR/*.hex
+    expire_in: 30 days
+
+static-analysis:
+  stage: analyze
+  image: alpine:3.20
+  needs: []
+  before_script:
+    - apk add --no-cache cppcheck
+  script:
+    - cppcheck --enable=warning,style --error-exitcode=1 --inline-suppr src/
+
+host-unit-tests:
+  stage: test
+  image: gcc:13
+  needs: []
+  script:
+    - cmake -B build-host -DTARGET=host
+    - cmake --build build-host
+    - ctest --test-dir build-host --output-on-failure
+  artifacts:
+    when: always
+    reports:
+      junit: build-host/test-results.xml</code></pre>
+        </div>
+        <p><code>static-analysis</code> và <code>host-unit-tests</code> đều đặt <code>needs: []</code> nên chạy song song với <code>build-firmware</code> ngay từ đầu, vì cả hai không phụ thuộc vào file .elf/.bin — rút ngắn đáng kể thời gian pipeline so với chạy tuần tự theo stage.</p>
+
+        <h3>2. Build Yocto image — Raspberry Pi Zero 2W</h3>
+        <p>Build Yocto có hai đặc điểm khiến pipeline cần thiết kế khác hẳn: <strong>thời gian build rất dài</strong> (có thể vài giờ cho lần build sạch) và <strong>dung lượng cache rất lớn</strong> (thư mục <code>sstate-cache</code> và <code>downloads</code> có thể lên tới hàng chục GB).</p>
+
+        <div class="callout">
+          <span class="callout-label">Vì sao không dùng cache: mặc định của GitLab</span>
+          <p>Cơ chế <code>cache:</code> tiêu chuẩn của GitLab nén/tải lên-tải xuống dưới dạng zip mỗi lần chạy job — không thực tế với dung lượng sstate-cache của Yocto. Giải pháp phổ biến là dùng self-hosted runner có gắn tag riêng, trỏ <code>DL_DIR</code> và <code>SSTATE_DIR</code> ra một thư mục cố định trên đĩa của chính runner đó, tồn tại xuyên suốt giữa các lần build thay vì đóng gói qua lại.</p>
+        </div>
+
+        <div class="code-block">
+          <div class="code-block__header"><span>.gitlab-ci.yml</span><button class="code-copy">Sao chép</button></div>
+          <pre><code class="language-yaml">stages:
+  - build
+
+variables:
+  DL_DIR: "/opt/yocto-cache/downloads"
+  SSTATE_DIR: "/opt/yocto-cache/sstate-cache"
+
+build-pi-image:
+  stage: build
+  tags:
+    - yocto-builder          # self-hosted runner có sẵn cache trên đĩa cục bộ
+  timeout: 6h
+  resource_group: yocto-pi-build   # chặn 2 pipeline build chồng lên nhau, phá sstate-cache dùng chung
+  script:
+    - source poky/oe-init-build-env build
+    - echo 'DL_DIR = "${DL_DIR}"' &gt;&gt; conf/local.conf
+    - echo 'SSTATE_DIR = "${SSTATE_DIR}"' &gt;&gt; conf/local.conf
+    - bitbake rpi-image-lvgl
+  artifacts:
+    paths:
+      - build/tmp/deploy/images/raspberrypi0-2w*/*.wic.bz2
+    expire_in: 14 days
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "web"   # cho phép chạy tay khi cần build lại image đầy đủ</code></pre>
+        </div>
+        <p><code>resource_group</code> đảm bảo không có hai lần chạy pipeline nào ghi vào cùng thư mục <code>sstate-cache</code>/<code>DL_DIR</code> cùng lúc — nếu hai job Yocto chạy song song trên cùng runner mà chia sẻ cùng thư mục cache, dữ liệu cache rất dễ bị hỏng. Đường dẫn artifact dùng dấu <code>*</code> vì tên thư mục output phụ thuộc MACHINE cụ thể (<code>raspberrypi0-2w</code> cho build 32-bit, <code>raspberrypi0-2w-64</code> cho build 64-bit).</p>
+      </section>
+
+      <!-- 12 DEBUG & BEST PRACTICES -->
+      <section id="debug-practices">
+        <div class="section-head"><span class="idx">12</span><h2>Debug &amp; Best Practices</h2></div>
+
+        <h3>Khi pipeline lỗi</h3>
+        <ul>
+          <li>Dùng <strong>CI Lint</strong> (Build → Pipeline editor) để validate cú pháp YAML trước khi commit.</li>
+          <li>Xem log job trực tiếp trên giao diện Pipeline; bật biến <code>CI_DEBUG_TRACE: "true"</code> để in chi tiết từng lệnh và giá trị biến khi thực thi.</li>
+          <li>Tab đồ thị Pipeline trong UI trực quan hóa quan hệ <code>needs</code> giữa các job — rất hữu ích để kiểm tra DAG có đúng ý đồ không.</li>
+        </ul>
+
+        <div class="callout warn">
+          <span class="callout-label">Đã bị gỡ bỏ</span>
+          <p><code>gitlab-runner exec</code> — lệnh từng dùng để giả lập chạy job ngay trên máy local — đã bị gỡ bỏ hoàn toàn khỏi GitLab Runner từ bản 17.0 (deprecated từ 15.7). Nhiều hướng dẫn cũ trên mạng vẫn nhắc tới lệnh này nhưng không còn dùng được. Công cụ thay thế phổ biến hiện nay là <strong>gitlab-ci-local</strong>, chạy trực tiếp <code>.gitlab-ci.yml</code> bằng Docker trên máy, không cần tài khoản hay runner thật.</p>
+        </div>
+
+        <h3>Checklist thực hành tốt</h3>
+        <ul class="checklist">
+          <li>Luôn dùng <code>rules</code> kết hợp <code>workflow:rules</code>, tránh <code>only</code>/<code>except</code>.</li>
+          <li>Đặt cache key theo nhánh (<code>$CI_COMMIT_REF_SLUG</code>), tách biệt theo từng công cụ build.</li>
+          <li>Dùng <code>needs</code> để loại bỏ thời gian chờ không cần thiết giữa các job độc lập.</li>
+          <li>Không hard-code secret trong YAML — luôn dùng CI/CD Variables kèm <code>masked</code> + <code>protected</code>.</li>
+          <li>Pin phiên bản image cụ thể (<code>node:20.11-alpine</code> thay vì <code>node:latest</code>) để build có thể lặp lại, tránh vỡ pipeline khi image gốc cập nhật đột ngột.</li>
+          <li>Với build nặng/lâu (Yocto, firmware lớn): self-hosted runner riêng tag, cache trên đĩa cục bộ, <code>timeout</code> phù hợp, cân nhắc <code>resource_group</code> khi nhiều job dùng chung thư mục cache.</li>
+          <li>Tách nhỏ cấu hình bằng <code>include</code> khi file quá dài; dùng CI/CD Components khi cần tái sử dụng giữa nhiều repository.</li>
+        </ul>
+      </section>
+
+      <!-- 13 REFERENCES -->
+      <section id="references">
+        <div class="section-head"><span class="idx">13</span><h2>Tài liệu tham khảo</h2></div>
+        <ul class="ref-list">
+          <li><a href="https://docs.gitlab.com/ci/yaml" target="_blank" rel="noopener">docs.gitlab.com/ci/yaml</a><span class="desc">CI/CD YAML syntax reference — danh sách đầy đủ mọi keyword.</span></li>
+          <li><a href="https://docs.gitlab.com/ci/jobs/job_rules/" target="_blank" rel="noopener">docs.gitlab.com/ci/jobs/job_rules</a><span class="desc">Chi tiết về rules, cách migrate từ only/except.</span></li>
+          <li><a href="https://docs.gitlab.com/ci/caching/examples/" target="_blank" rel="noopener">docs.gitlab.com/ci/caching/examples</a><span class="desc">Các chiến lược cache theo tình huống thực tế.</span></li>
+          <li><a href="https://docs.gitlab.com/ci/variables/" target="_blank" rel="noopener">docs.gitlab.com/ci/variables</a><span class="desc">CI/CD variables — precedence, masking, protected.</span></li>
+          <li><a href="https://docs.gitlab.com/ci/components" target="_blank" rel="noopener">docs.gitlab.com/ci/components</a><span class="desc">CI/CD Components &amp; Catalog.</span></li>
+        </ul>
+      </section>
+
+      <footer>gitlab-ci-cd-guide · cập nhật 31-08-2026</footer>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+<script>
+  if (window.hljs) {
+    document.querySelectorAll('pre code').forEach((el) => hljs.highlightElement(el));
+  }
+
+  // Copy-to-clipboard for code blocks
+  document.querySelectorAll('.code-copy').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const code = btn.closest('.code-block').querySelector('code').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const original = btn.textContent;
+        btn.textContent = 'Đã sao chép ✓';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = original;
+          btn.classList.remove('copied');
+        }, 1600);
+      }).catch(() => {});
+    });
+  });
+
+  // Scroll-spy for sidebar nav
+  const sections = document.querySelectorAll('main section[id]');
+  const navLinks = document.querySelectorAll('.sidebar-nav a');
+  const spyObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        navLinks.forEach((l) => l.classList.remove('active'));
+        const link = document.querySelector('.sidebar-nav a[href="#' + entry.target.id + '"]');
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+  sections.forEach((s) => spyObserver.observe(s));
+
+  // Hero pipeline: single orchestrated load animation
+  window.addEventListener('DOMContentLoaded', () => {
+    const nodes = document.querySelectorAll('.stage-node');
+    const connectors = document.querySelectorAll('.hero-connector');
+    nodes.forEach((node, i) => {
+      setTimeout(() => {
+        node.classList.add('is-live');
+        if (connectors[i]) connectors[i].classList.add('is-live');
+      }, 400 + i * 500);
+    });
+  });
+</script>
+</body>
+</html>
