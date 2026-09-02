@@ -136,11 +136,13 @@
       </div>
       <div class="nav-group">
         <p class="nav-group-label">Xử lý conflict</p>
+        <p class="nav-group-label">Xử lý conflict &amp; Sự cố</p>
         <a class="nav-link" href="#conflict-intro">Đọc hiểu conflict marker</a>
         <a class="nav-link" href="#conflict-merge">git merge</a>
         <a class="nav-link" href="#conflict-rebase">git rebase</a>
         <a class="nav-link" href="#conflict-cherrypick">git cherry-pick</a>
         <a class="nav-link" href="#conflict-pull">git pull</a>
+        <a class="nav-link" href="#ssh-auth">Xác thực GitHub &amp; SSH</a>
         <a class="nav-link" href="#tips">Mẹo xử lý nhanh</a>
       </div>
     </nav>
@@ -347,8 +349,18 @@ $ git rebase --continue</code></pre>
           <p>Nếu commit tiếp theo cũng conflict, quy trình lặp lại y hệt cho tới khi hết commit cần replay.</p>
         </li>
         <li>
+          <h4>Lỗi commit rỗng / trùng lặp (Empty / Redundant Commit)</h4>
+          <p>Nếu sau khi sửa conflict, thay đổi của commit đó đã có sẵn trên nhánh đích hoặc nội dung không còn diff nào mới, <code>git rebase --continue</code> sẽ dừng lại và nhắc nhở:</p>
+          <pre><code class="language-bash">The previous cherry-pick is now empty, possibly due to conflict resolution:
+    git commit --allow-empty
+
+Otherwise, please use 'git rebase --skip'</code></pre>
+          <p>Lúc này, hãy chạy <code>git rebase --skip</code> để bỏ qua commit rỗng đó và tiếp tục tiến trình. (Chỉ dùng <code>git commit --allow-empty</code> nếu bạn cố tình muốn tạo commit rỗng).</p>
+        </li>
+        <li>
           <h4>Các lối thoát khi cần</h4>
           <p><code>git rebase --skip</code> bỏ qua hẳn commit hiện tại (dùng khi thay đổi của nó đã có ở nơi khác rồi). <code>git rebase --abort</code> huỷ toàn bộ, quay về đúng trạng thái trước khi rebase.</p>
+          <p><code>git rebase --skip</code> bỏ qua hẳn commit hiện tại (khi rỗng hoặc đã có sẵn). <code>git rebase --abort</code> huỷ toàn bộ, quay về đúng trạng thái trước khi rebase.</p>
         </li>
       </ol>
       <div class="callout"><strong>Lưu ý:</strong> rebase viết lại hash của commit. Tránh rebase một nhánh đã push và đang có người khác cùng dùng, trừ khi cả team đã thống nhất — và khi push lại, ưu tiên <code>--force-with-lease</code> thay vì <code>--force</code>.</div>
@@ -408,6 +420,47 @@ error: could not apply 5c6d7e8... Update toolchain version</code></pre>
           <pre><code class="language-bash">$ git config --global pull.rebase true    # luôn rebase khi pull
 $ git config --global pull.rebase false   # luôn merge khi pull (mặc định)
 $ git config --global pull.ff only        # chỉ pull khi fast-forward được</code></pre>
+        </li>
+      </ol>
+    </section>
+
+    <section id="ssh-auth">
+      <h2>Xác thực GitHub &amp; Cấu hình SSH Key</h2>
+      <p class="intro">Từ tháng 08/2021, GitHub đã <strong>ngừng hỗ trợ mật khẩu tài khoản (Account Password)</strong> cho các thao tác Git qua HTTPS. Nếu nhập mật khẩu tài khoản khi push/pull, bạn sẽ gặp lỗi <code>fatal: Authentication failed / Password authentication is not supported for Git operations</code>.</p>
+
+      <div class="callout tip"><strong>Giải pháp tối ưu:</strong> Thiết lập <strong>SSH Key</strong> một lần duy nhất trên máy tính. Tất cả repo về sau sẽ tự động kết nối bảo mật mà không cần nhập lại username hay mật khẩu.</div>
+
+      <ol class="steps">
+        <li>
+          <h4>Tạo SSH Key trên máy (chỉ làm 1 lần duy nhất cho cả máy tính)</h4>
+          <p>Khuyến nghị dùng thuật toán <strong>Ed25519</strong> hiện đại, cực nhanh và bảo mật cao:</p>
+          <pre><code class="language-bash">$ ssh-keygen -t ed25519 -C "your_email@example.com"</code></pre>
+          <p>Nếu bắt buộc dùng <strong>RSA</strong>, phải chỉ định độ dài tối thiểu <strong>4096-bit</strong> (GitHub chặn các RSA key yếu dưới 3072-bit):</p>
+          <pre><code class="language-bash">$ ssh-keygen -t rsa -b 4096 -C "your_email@example.com"</code></pre>
+          <p>Nhấn <code>Enter</code> qua tất cả câu hỏi để lưu vào đường dẫn mặc định (<code>~/.ssh/id_ed25519</code> hoặc <code>~/.ssh/id_rsa</code>).</p>
+        </li>
+        <li>
+          <h4>Lấy Public Key và thêm vào GitHub</h4>
+          <p>In nội dung public key ra màn hình và copy toàn bộ chuỗi:</p>
+          <pre><code class="language-bash">$ cat ~/.ssh/id_ed25519.pub
+# Hoặc nếu dùng RSA:
+$ cat ~/.ssh/id_rsa.pub</code></pre>
+          <p>Trên trình duyệt: Vào GitHub &rarr; <strong>Settings</strong> (ở avatar) &rarr; <strong>SSH and GPG keys</strong> &rarr; nhấn <strong>New SSH key</strong> &rarr; dán toàn bộ key vừa copy vào ô Key &rarr; nhấn <strong>Add SSH key</strong>.</p>
+        </li>
+        <li>
+          <h4>Chuyển remote của repo sang giao thức SSH</h4>
+          <p>Đổi URL của remote <code>origin</code> từ HTTPS sang SSH:</p>
+          <pre><code class="language-bash">$ git remote set-url origin git@github.com:USERNAME/REPO.git</code></pre>
+          <p><em>(Lưu ý: Đối với các project mới sau này, bạn chỉ cần chọn link SSH ngay từ đầu khi clone hoặc add remote, không cần chạy lại lệnh <code>set-url</code> này nữa).</em></p>
+        </li>
+        <li>
+          <h4>Xác thực máy chủ GitHub lần đầu (Host Authenticity)</h4>
+          <p>Ở lần push/pull đầu tiên qua SSH, hệ thống sẽ hỏi xác thực dấu vân tay (fingerprint) của GitHub:</p>
+          <pre><code class="language-bash">$ git push
+The authenticity of host 'github.com (20.205.243.166)' can't be established.
+ED25519 key fingerprint is SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes</code></pre>
+          <p>Gõ <strong><code>yes</code></strong> rồi nhấn <code>Enter</code>. Máy tính sẽ ghi nhớ GitHub vào <code>~/.ssh/known_hosts</code> và các lần push sau sẽ tự động chạy mà không hỏi lại.</p>
         </li>
       </ol>
     </section>
