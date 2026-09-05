@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Camera CSI trên Yocto và LVGL – Raspberry Pi Zero 2W</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<style>
+  :root {
+    --bg: #12151a;
+    --surface: #1a1f28;
+    --surface-2: #212733;
+    --border: #2a3040;
+    --text: #dce2ea;
+    --muted: #8891a3;
+    --amber: #d9a54b;
+    --teal: #4fa6a6;
+    --warn: #c1543f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; line-height: 1.6; }
+  h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; color: var(--text); line-height: 1.25; font-weight: 600; }
+  code, pre { font-family: 'IBM Plex Mono', monospace; }
+  a { color: var(--teal); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+  .layout { display: grid; grid-template-columns: 260px minmax(0,1fr); min-height: 100vh; }
+
+  nav.sidebar { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; padding: 28px 20px; border-right: 1px solid var(--border); background: var(--surface); }
+  nav.sidebar .brand { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.92rem; color: var(--amber); margin-bottom: 22px; }
+  nav.sidebar ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
+  nav.sidebar a { display: block; padding: 7px 10px; border-radius: 6px; color: var(--muted); font-size: 0.86rem; }
+  nav.sidebar a:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
+  nav.sidebar a.active { color: var(--teal); background: var(--surface-2); }
+  nav.sidebar .step-num { display:inline-block; width:18px; color: var(--muted); font-family:'IBM Plex Mono',monospace; font-size:0.78rem; }
+  nav.sidebar .nav-group { color: var(--muted); font-size: 0.72rem; margin: 18px 0 6px; padding: 0 10px; opacity: 0.8; }
+  nav.sidebar .nav-group:first-child { margin-top: 0; }
+
+  main { padding: 40px clamp(20px, 5vw, 64px); max-width: 780px; }
+  header.hero { margin-bottom: 32px; }
+  header.hero .kicker { color: var(--muted); font-size: 0.85rem; margin: 0 0 10px; }
+  header.hero h1 { font-size: clamp(1.5rem, 4vw, 2.05rem); margin: 0 0 12px; }
+  header.hero p.lede { color: var(--muted); font-size: 1.05rem; max-width: 62ch; margin: 0; }
+
+  section { margin-bottom: 44px; scroll-margin-top: 16px; }
+  section h2 { font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 16px; display:flex; align-items:baseline; gap:10px; }
+  section h2 .num { color: var(--amber); font-family:'IBM Plex Mono',monospace; font-size:0.95rem; font-weight:500; }
+  section h3 { font-size: 1.0rem; color: var(--amber); margin: 22px 0 8px; }
+  p { max-width: 68ch; }
+  ul, ol { max-width: 68ch; }
+
+  .callout { border-left: 3px solid var(--teal); background: var(--surface); padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 16px 0; max-width: 68ch; }
+  .callout.warn { border-left-color: var(--warn); }
+  .callout strong { color: var(--text); }
+  .callout pre { margin: 10px 0 0; }
+
+  pre { position: relative; background: #0d1117 !important; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font-size: 0.83rem; }
+  code { background: var(--surface-2); padding: 1px 6px; border-radius: 4px; font-size: 0.88em; color: var(--amber); }
+  pre code { background: none; padding: 0; color: inherit; font-size: 1em; }
+
+  .copy-btn { position: absolute; top: 8px; right: 8px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); border-radius: 5px; padding: 3px 9px; font-size: 0.7rem; cursor: pointer; font-family: 'IBM Plex Sans', sans-serif; }
+  .copy-btn:hover { color: var(--text); border-color: var(--teal); }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; font-family: 'Space Grotesk', sans-serif; font-size: 0.8rem; }
+
+  .sensor-pick { border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin: 14px 0; background: var(--surface); }
+  .sensor-pick + .sensor-pick { margin-top: 10px; }
+  .sensor-pick .label { color: var(--teal); font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:0.92rem; margin-bottom:8px; }
+
+  footer { border-top: 1px solid var(--border); padding: 24px clamp(20px,5vw,64px) 60px; color: var(--muted); font-size: 0.85rem; }
+  footer a { color: var(--muted); }
+  footer ul { padding-left: 18px; }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.sidebar { position: sticky; top: 0; height: auto; width: 100%; border-right: none; border-bottom: 1px solid var(--border); z-index: 10; }
+    nav.sidebar ul { flex-direction: row; overflow-x: auto; gap: 4px; padding-bottom: 4px; }
+    nav.sidebar a { white-space: nowrap; }
+    nav.sidebar .brand { display: none; }
+    nav.sidebar .nav-group { display: none; }
+    main { padding: 24px 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="brand">Camera · Yocto · LVGL · Zero 2W</div>
+    <ul>
+      <li class="nav-group">Phần 1 — Build và bật camera</li>
+      <li><a href="#tomtat">Tóm tắt</a></li>
+      <li><a href="#cautruc">Cấu trúc thư mục</a></li>
+      <li><a href="#b1"><span class="step-num">1</span>Chuẩn bị phần cứng</a></li>
+      <li><a href="#b2"><span class="step-num">2</span>Thêm layer meta-openembedded</a></li>
+      <li><a href="#b3"><span class="step-num">3</span>Bật driver camera</a></li>
+      <li><a href="#b4"><span class="step-num">4</span>Thêm gói libcamera</a></li>
+      <li><a href="#b5"><span class="step-num">5</span>Kiểm tra trước khi build</a></li>
+      <li><a href="#b6"><span class="step-num">6</span>Build image</a></li>
+      <li><a href="#b7"><span class="step-num">7</span>Flash & lắp camera</a></li>
+      <li><a href="#b8"><span class="step-num">8</span>Boot & kiểm tra</a></li>
+      <li><a href="#debug">Debug</a></li>
+      <li class="nav-group">Phần 2 — Camera → LVGL</li>
+      <li><a href="#arch"><span class="step-num">9</span>Kiến trúc tổng quan</a></li>
+      <li><a href="#ycd"><span class="step-num">10</span>Link app với libcamera</a></li>
+      <li><a href="#capture"><span class="step-num">11</span>Bắt khung hình</a></li>
+      <li><a href="#canvas"><span class="step-num">12</span>Đưa vào canvas LVGL</a></li>
+      <li><a href="#queue"><span class="step-num">13</span>Nối qua queue</a></li>
+      <li><a href="#luuy">Lưu ý thêm</a></li>
+      <li class="nav-group">Phần 3 — Vì sao dùng queue</li>
+      <li><a href="#threadsafe">Vấn đề thread-safe</a></li>
+      <li><a href="#sosanh">Queue vs Mutex vs Semaphore</a></li>
+    </ul>
+  </nav>
+  <main>
+    <header class="hero">
+      <p class="kicker">Yocto · meta-raspberrypi · Raspberry Pi Zero 2W</p>
+      <h1>Thêm camera CSI vào Yocto và hiển thị lên LVGL</h1>
+      <p class="lede">13 bước: từ layer Yocto đến khung hình camera chạy trên canvas LVGL. Giả định bạn đã có sẵn build Yocto cho Zero 2W đang chạy (poky + meta-raspberrypi, machine đã đúng).</p>
+    </header>
+
+    <section id="tomtat">
+      <h2>Tóm tắt</h2>
+      <p><strong style="color:var(--text)">Phần 1</strong> (bước 1–8) đưa camera chạy được trong ảnh Yocto: nạp layer multimedia, khai báo overlay cảm biến, cài libcamera/rpicam-apps, build, flash. <strong style="color:var(--text)">Phần 2</strong> (bước 9–13) bắt khung hình bằng thư viện libcamera ngay trong app, rồi đẩy vào canvas LVGL để hiển thị trực tiếp trên UI. <strong style="color:var(--text)">Phần 3</strong> giải thích vì sao dùng hai queue thay vì mutex/semaphore, và so sánh ưu nhược điểm của cả ba.</p>
+    </section>
+
+    <section id="cautruc">
+      <h2>Cấu trúc thư mục dự án</h2>
+      <p>Vị trí các layer, recipe và file cấu hình tương ứng với từng bước ở trên:</p>
+      <pre><code class="language-text">~/yocto/
+├── poky/                             # Core Yocto — bitbake, oe-core
+├── meta-raspberrypi/                 # BSP cho RPi (có sẵn trước bước 1)
+│   └── dynamic-layers/multimedia-layer/   # recipe libcamera-apps (bước 4-5)
+├── meta-openembedded/                # Thêm ở bước 2
+│   ├── meta-oe/
+│   ├── meta-python/
+│   ├── meta-networking/
+│   └── meta-multimedia/              # cung cấp libcamera, libcamera-apps
+├── meta-&lt;ten-project&gt;/              # Layer riêng của bạn
+│   ├── conf/layer.conf
+│   └── recipes-app/your-lvgl-app/
+│       ├── your-lvgl-app.bb          # DEPENDS += "libcamera" (bước 10)
+│       └── files/src/                # main.cpp — capture + canvas (bước 11-13)
+└── build/                            # Tạo bởi oe-init-build-env
+    ├── conf/
+    │   ├── local.conf                # RASPBERRYPI_CAMERA_V2, IMAGE_INSTALL (bước 3-4)
+    │   └── bblayers.conf              # BBLAYERS (bước 2)
+    └── tmp/deploy/images/&lt;machine&gt;/  # ảnh .wic.bz2 để flash (bước 7)</code></pre>
+      <p>Layer <code>meta-&lt;ten-project&gt;</code> là chỗ đặt recipe cho app LVGL của riêng bạn — không sửa trực tiếp vào <code>meta-raspberrypi</code> hay <code>meta-openembedded</code>.</p>
+    </section>
+
+    <section id="b1">
+      <h2><span class="num">01</span>Chuẩn bị phần cứng</h2>
+      <table>
+        <thead><tr><th>Cảm biến</th><th>Tên thương mại</th><th>Overlay</th></tr></thead>
+        <tbody>
+          <tr><td>OV5647</td><td>Camera Module v1 / clone</td><td><code>ov5647</code></td></tr>
+          <tr><td>IMX219</td><td>Camera Module v2</td><td><code>imx219</code></td></tr>
+          <tr><td>IMX708</td><td>Camera Module v3 (AF)</td><td><code>imx708</code></td></tr>
+          <tr><td>IMX477</td><td>HQ Camera</td><td><code>imx477</code></td></tr>
+        </tbody>
+      </table>
+      <p>Đầu nối CSI trên Zero 2W là loại mini 22 chân, khác đầu 15 chân chuẩn — cần cáp chuyển 22-pin ↔ 15-pin nếu dùng module bán rời (thường ghi "camera cable for Pi Zero"). Mặt tiếp xúc kim loại của cáp lắp vào Zero ngược chiều so với các board Pi khác; ghi nhớ điều này trước khi lắp ở bước 7.</p>
+    </section>
+
+    <section id="b2">
+      <h2><span class="num">02</span>Thêm layer meta-openembedded</h2>
+      <p>Recipe libcamera-apps trong meta-raspberrypi chỉ được kích hoạt khi có layer multimedia. Kiểm tra layer hiện có:</p>
+      <pre><code class="language-bash">bitbake-layers show-layers</code></pre>
+      <p>Nếu chưa thấy <code>meta-oe</code>, <code>meta-multimedia</code>: clone meta-openembedded, đúng nhánh với poky/meta-raspberrypi đang dùng (lệch nhánh là nguyên nhân phổ biến gây lỗi parse/dependency):</p>
+      <pre><code class="language-bash">cd ~/yocto   # thư mục chứa poky và các layer của bạn
+git clone -b &lt;branch-cua-poky&gt; https://github.com/openembedded/meta-openembedded.git</code></pre>
+      <p>Thêm layer, theo đúng thứ tự (meta-multimedia phụ thuộc các layer trước nó):</p>
+      <pre><code class="language-bash">bitbake-layers add-layer ../meta-openembedded/meta-oe
+bitbake-layers add-layer ../meta-openembedded/meta-python
+bitbake-layers add-layer ../meta-openembedded/meta-networking
+bitbake-layers add-layer ../meta-openembedded/meta-multimedia</code></pre>
+      <p>Chạy lại <code>bitbake-layers show-layers</code> — phải thấy đủ 4 layer trên cùng <code>meta-raspberrypi</code>.</p>
+    </section>
+
+    <section id="b3">
+      <h2><span class="num">03</span>Bật driver camera trong local.conf</h2>
+      <p>Mở <code>build/conf/local.conf</code>. meta-raspberrypi không bật sẵn <code>bcm2835-unicam</code> vì nó chỉ phục vụ libcamera — thêm MỘT trong ba khối sau, tùy cảm biến ở bước 1:</p>
+
+      <div class="sensor-pick">
+        <div class="label">Camera Module v2 — IMX219</div>
+        <pre><code class="language-ini">RASPBERRYPI_CAMERA_V2 = "1"</code></pre>
+        <p style="margin-bottom:0">Tự thêm overlay <code>imx219</code> và cấu hình CMA cần thiết vào <code>cmdline.txt</code>.</p>
+      </div>
+
+      <div class="sensor-pick">
+        <div class="label">Camera Module v3 — IMX708</div>
+        <pre><code class="language-ini">RASPBERRYPI_CAMERA_V3 = "1"</code></pre>
+        <p style="margin:0 0 8px">Tự thêm overlay <code>imx708</code>.</p>
+        <div class="callout warn" style="margin:0">Nhánh meta-raspberrypi ra đời trước 2023 có thể chưa có biến này — dùng khối bên dưới thay thế.</div>
+      </div>
+
+      <div class="sensor-pick">
+        <div class="label">Cảm biến khác — OV5647 / IMX477…</div>
+        <p>Chưa có biến dựng sẵn, thêm thủ công:</p>
+        <pre><code class="language-ini">RPI_EXTRA_CONFIG = " \n \
+    dtoverlay=ov5647 \n \
+    cma=128M \n \
+    "</code></pre>
+        <p style="margin-bottom:0">Đổi <code>ov5647</code> thành overlay đúng cảm biến của bạn. Tăng <code>cma</code> nếu sau này libcamera báo lỗi cấp phát buffer ở độ phân giải cao.</p>
+      </div>
+    </section>
+
+    <section id="b4">
+      <h2><span class="num">04</span>Thêm gói libcamera / rpicam-apps</h2>
+      <p>Vẫn trong <code>local.conf</code>, thêm gói vào image:</p>
+      <pre><code class="language-ini">IMAGE_INSTALL:append = " libcamera libcamera-apps"</code></pre>
+      <div class="callout">
+        Raspberry Pi thượng nguồn đã đổi tên bộ CLI từ <code>libcamera-*</code> sang <code>rpicam-*</code> (<code>libcamera-still</code> → <code>rpicam-still</code>…), symlink tên cũ đã bị gỡ bỏ. Tên recipe trong meta-raspberrypi có thể vẫn là <code>libcamera-apps</code> hoặc đã đổi thành <code>rpi-libcamera-apps</code> tùy nhánh — bước 5 sẽ xác nhận chính xác tên trước khi build.
+      </div>
+    </section>
+
+    <section id="b5">
+      <h2><span class="num">05</span>Kiểm tra trước khi build</h2>
+      <p>Xác nhận recipe thực sự tồn tại và được cung cấp bởi layer nào, tránh build lỗi giữa chừng:</p>
+      <pre><code class="language-bash">bitbake-layers show-recipes '*camera*'</code></pre>
+      <p>Kết quả phải liệt kê <code>libcamera</code> và <code>libcamera-apps</code> (hoặc <code>rpi-libcamera-apps</code>) với layer cung cấp là <code>meta-raspberrypi</code>. Nếu tên trong output khác với dòng bạn viết ở bước 4, sửa lại <code>IMAGE_INSTALL:append</code> cho khớp.</p>
+    </section>
+
+    <section id="b6">
+      <h2><span class="num">06</span>Build image</h2>
+      <pre><code class="language-bash">bitbake &lt;tên-image-của-bạn&gt;</code></pre>
+      <div class="callout warn">
+        Trên nhánh scarthgap, có báo cáo build libcamera-apps cho <code>raspberrypi0-2w</code> lỗi QA liên quan file <code>rpicam_app.so.*</code> trùng giữa gói chính và gói -dev. Nếu gặp đúng lỗi này, đây là vấn đề đã biết ở meta-raspberrypi (issue #1393) chứ không phải do cấu hình của bạn — kiểm tra issue tracker của meta-raspberrypi để lấy bản vá/bbappend phù hợp với nhánh bạn dùng.
+      </div>
+    </section>
+
+    <section id="b7">
+      <h2><span class="num">07</span>Flash & lắp camera</h2>
+      <pre><code class="language-bash">cd tmp/deploy/images/&lt;machine&gt;/
+bmaptool copy &lt;tên-ảnh&gt;.wic.bz2 /dev/sdX</code></pre>
+      <p style="margin-top:-6px">Kiểm tra kỹ <code>/dev/sdX</code> đúng là thẻ SD trước khi chạy — ghi nhầm ổ đĩa là không thể hoàn tác.</p>
+      <p>Lắp cáp camera vào cổng CSI trên Zero 2W với mặt tiếp xúc kim loại quay đúng chiều (xem lại bước 1) trước khi cấp nguồn.</p>
+    </section>
+
+    <section id="b8">
+      <h2><span class="num">08</span>Boot & kiểm tra</h2>
+      <pre><code class="language-bash">dmesg | grep -i unicam
+v4l2-ctl --list-devices</code></pre>
+      <p>Thiết bị unicam phải xuất hiện. Sau đó thử chụp/preview:</p>
+      <pre><code class="language-bash"># có desktop/KMS rảnh để mở preview
+rpicam-hello -t 0
+
+# ảnh không có compositor rảnh (vd. LVGL đang chiếm màn hình) → test bằng file
+rpicam-still -o /tmp/test.jpg</code></pre>
+    </section>
+
+    <section id="debug">
+      <h2>Debug khi không nhận camera</h2>
+      <ul>
+        <li><code>dmesg | grep -i unicam</code> không thấy gì → driver chưa bind được cảm biến, kiểm tra lại bước 3.</li>
+        <li><code>i2cdetect -y 1</code> — cảm biến phải trả lời đúng địa chỉ I2C; im lặng thường là cáp lỏng hoặc cắm ngược chiều.</li>
+        <li>Overlay phải đúng tên chip cảm biến (<code>ov5647</code>/<code>imx219</code>…), không phải tên module bán lẻ.</li>
+        <li><code>cma</code> quá nhỏ → libcamera báo lỗi cấp phát buffer khi mở stream độ phân giải cao — tăng giá trị ở bước 3.</li>
+      </ul>
+    </section>
+
+    <section id="arch">
+      <h2><span class="num">09</span>Kiến trúc: camera → LVGL</h2>
+      <p>LVGL không biết gì về camera — nó chỉ vẽ lên một buffer pixel. Muốn có hình camera trên UI, phải tự bắt khung hình rồi nạp thủ công vào một widget, mỗi khung hình một lần.</p>
+      <div class="callout warn">
+        Không dùng <code>rpicam-hello</code>/<code>rpicam-vid</code> để lấy khung hình cho UI — hai tool đó tự mở cửa sổ preview riêng qua DRM/EGL. Nếu LVGL app đã giữ quyền vẽ màn hình (DRM master), hai tiến trình sẽ tranh nhau. Camera phải được bắt <strong>ngay trong process của LVGL app</strong>, bằng cách liên kết trực tiếp thư viện libcamera.
+      </div>
+      <div class="pipeline">
+        <div class="step">Cảm biến trên CSI</div>
+        <div class="arrow">→</div>
+        <div class="step">libcamera: ISP + pipeline handler, xuất RGB888</div>
+        <div class="arrow">→</div>
+        <div class="step">Request hoàn tất — callback trên thread nội bộ libcamera</div>
+        <div class="arrow">→</div>
+        <div class="step">Queue (kiểu FreeRTOS) giữa 2 task</div>
+        <div class="arrow">→</div>
+        <div class="step">Task LVGL: memcpy vào canvas → invalidate</div>
+      </div>
+      <p>Widget phù hợp là <code>lv_canvas</code> — thiết kế để chứa một buffer pixel ghi đè liên tục, khác <code>lv_img</code> vốn hướng tới ảnh tĩnh.</p>
+    </section>
+
+    <section id="ycd">
+      <h2><span class="num">10</span>Yocto: link app với libcamera</h2>
+      <p>App LVGL cần build cùng header/thư viện libcamera. Trong recipe <code>.bb</code> của app (không phải <code>local.conf</code>):</p>
+      <pre><code class="language-ini">DEPENDS += "libcamera"</code></pre>
+      <p>libcamera có cung cấp pkg-config, nên trong CMakeLists.txt chỉ cần:</p>
+      <pre><code class="language-cmake">find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBCAMERA REQUIRED libcamera)
+target_include_directories(your_app PRIVATE ${LIBCAMERA_INCLUDE_DIRS})
+target_link_libraries(your_app PRIVATE ${LIBCAMERA_LIBRARIES})</code></pre>
+      <p><code>DEPENDS</code> chỉ ảnh hưởng lúc build (đưa header/thư viện vào sysroot) — gói libcamera runtime trên target vẫn phải khai báo qua <code>IMAGE_INSTALL</code> như ở bước 4.</p>
+    </section>
+
+    <section id="capture">
+      <h2><span class="num">11</span>Bắt khung hình qua libcamera</h2>
+      <p>Luồng chuẩn: CameraManager → chọn Camera → cấu hình stream (role Viewfinder) → cấp buffer → tạo Request → nhận callback khi Request hoàn tất.</p>
+      <pre><code class="language-cpp">#include &lt;libcamera/libcamera.h&gt;
+using namespace libcamera;
+
+std::unique_ptr&lt;CameraManager&gt; cm = std::make_unique&lt;CameraManager&gt;();
+cm-&gt;start();
+std::shared_ptr&lt;Camera&gt; camera = cm-&gt;cameras()[0];
+camera-&gt;acquire();
+
+auto config = camera-&gt;generateConfiguration({ StreamRole::Viewfinder });
+StreamConfiguration &amp;streamConfig = config-&gt;at(0);
+streamConfig.pixelFormat = formats::RGB888;  // xin RGB thẳng, đỡ phải giải mã YUV
+streamConfig.size = { 640, 480 };
+config-&gt;validate();          // ISP có thể điều chỉnh lại pixelFormat/size — đọc lại streamConfig sau dòng này
+camera-&gt;configure(config.get());
+
+FrameBufferAllocator allocator(camera);
+Stream *stream = streamConfig.stream();
+allocator.allocate(stream);
+
+std::vector&lt;std::unique_ptr&lt;Request&gt;&gt; requests;
+for (const auto &amp;buffer : allocator.buffers(stream)) {
+    auto request = camera-&gt;createRequest();
+    request-&gt;addBuffer(stream, buffer.get());
+    requests.push_back(std::move(request));
+}
+
+camera-&gt;requestCompleted.connect(&amp;onRequestCompleted);
+camera-&gt;start();
+for (auto &amp;request : requests)
+    camera-&gt;queueRequest(request.get());</code></pre>
+      <div class="callout">
+        <code>onRequestCompleted</code> chạy trên thread nội bộ của libcamera, không phải thread bạn gọi — theo tài liệu chính thức, việc nặng phải chuyển sang thread khác, callback chỉ nên mmap và đẩy vào queue:
+        <pre><code class="language-cpp">void onRequestCompleted(Request *request) {
+    FrameBuffer *buffer = request-&gt;buffers().begin()-&gt;second;
+    const FrameBuffer::Plane &amp;plane = buffer-&gt;planes()[0];
+    void *data = mmap(nullptr, plane.length, PROT_READ, MAP_SHARED, plane.fd.get(), 0);
+
+    FrameMsg msg{ data, plane.length, request };
+    xQueueSend(frameQueue, &amp;msg, 0);   // cùng kiểu queue FreeRTOS bạn dùng cho các task khác
+}</code></pre>
+      </div>
+    </section>
+
+    <section id="canvas">
+      <h2><span class="num">12</span>Đưa khung hình vào canvas LVGL</h2>
+      <pre><code class="language-cpp">// Một lần lúc khởi tạo, trên chính thread sở hữu LVGL:
+static uint8_t canvas_buf[640 * 480 * 3];   // RGB888, khớp định dạng xin ở bước 11
+lv_obj_t *cam_canvas = lv_canvas_create(lv_screen_active());
+lv_canvas_set_buffer(cam_canvas, canvas_buf, 640, 480, LV_COLOR_FORMAT_RGB888);
+
+// Mỗi khi có khung hình mới — chạy trên thread LVGL, không phải thread capture:
+FrameMsg msg;
+if (xQueueReceive(frameQueue, &amp;msg, 0) == pdTRUE) {
+    memcpy(canvas_buf, msg.data, msg.length);
+    munmap(msg.data, msg.length);
+    xQueueSend(releaseQueue, &amp;msg.request, 0);  // báo capture task requeue — không tự gọi camera-&gt;... ở đây
+    lv_obj_invalidate(cam_canvas);
+}</code></pre>
+      <div class="callout warn">
+        Không gọi <code>camera-&gt;queueRequest()</code> thẳng từ thread LVGL — đối tượng <code>Camera</code> chỉ nên bị đụng vào từ đúng một thread (thread capture). Báo ngược qua <code>releaseQueue</code> để capture task tự requeue (chi tiết ở bước 13) — quên trả buffer là lỗi phổ biến nhất khiến capture treo sau vài khung hình. Nếu ISP trả về <code>streamConfig.stride</code> khác <code>width * 3</code> (có padding), phải copy từng hàng theo stride thay vì <code>memcpy</code> nguyên khối, nếu không ảnh sẽ bị lệch.
+      </div>
+    </section>
+
+    <section id="queue">
+      <h2><span class="num">13</span>Nối hai phía qua queue</h2>
+      <p>Hai chiều, hai queue riêng — không thread nào gọi thẳng sang API của thread kia:</p>
+      <ul>
+        <li><code>frameQueue</code> — capture task gửi khung hình mới sang cho task LVGL</li>
+        <li><code>releaseQueue</code> — task LVGL báo ngược "dùng xong buffer rồi", để capture task tự gọi <code>queueRequest()</code> trên đúng thread của nó</li>
+      </ul>
+      <pre><code class="language-cpp">// Trong vòng lặp của capture task — cùng thread với requestCompleted ở bước 11:
+Request *req;
+if (xQueueReceive(releaseQueue, &amp;req, 0) == pdTRUE) {
+    camera-&gt;queueRequest(req);   // chỉ capture task mới đụng vào camera-&gt;...
+}</code></pre>
+
+      <div style="margin:20px 0; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px; overflow-x:auto;">
+      <svg viewBox="0 0 680 550" style="width:100%; height:auto; min-width:560px; display:block;" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrowTeal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#4fa6a6"/>
+          </marker>
+          <marker id="arrowWarn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#c1543f"/>
+          </marker>
+        </defs>
+
+        <rect x="20" y="16" width="280" height="42" rx="8" fill="#212733" stroke="#2a3040"/>
+        <foreignObject x="20" y="16" width="280" height="42">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="height:100%;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;color:#d9a54b;">Task Camera (capture)</div>
+        </foreignObject>
+
+        <rect x="380" y="16" width="280" height="42" rx="8" fill="#212733" stroke="#2a3040"/>
+        <foreignObject x="380" y="16" width="280" height="42">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="height:100%;display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;color:#4fa6a6;">Task LVGL (UI)</div>
+        </foreignObject>
+
+        <rect x="20" y="76" width="280" height="52" rx="8" fill="#1a1f28" stroke="#d9a54b" stroke-opacity="0.5"/>
+        <foreignObject x="30" y="76" width="260" height="52">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="height:100%;display:flex;align-items:center;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;color:#dce2ea;">① Request hoàn tất — callback trên thread libcamera</div>
+        </foreignObject>
+
+        <rect x="20" y="142" width="280" height="52" rx="8" fill="#1a1f28" stroke="#d9a54b" stroke-opacity="0.5"/>
+        <foreignObject x="30" y="142" width="260" height="52">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="height:100%;display:flex;align-items:center;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;color:#dce2ea;">② mmap buffer, đóng gói FrameMsg</div>
+        </foreignObject>
+
+        <foreignObject x="20" y="280" width="280" height="40">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="height:100%;display:flex;align-items:center;justify-content:center;text-align:center;font-family:'IBM Plex Sans',sans-serif;font-size:11px;color:#8891a3;font-style:italic;">(chờ buffer được trả về qua releaseQueue)</div>
+        </foreignObject>
+
+        <rect x="20" y="470" width="280" height="56" rx="8" fill="#1a1f28" stroke="#d9a54b" stroke-opacity="0.5"/>
+        <foreignObject x="30" y="470" width="260" height="56">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="height:100%;display:flex;align-items:center;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;color:#dce2ea;">⑧ xQueueReceive(releaseQueue) → camera-&gt;queueRequest(req)</div>
+        </foreignObject>
+
+        <rect x="310" y="160" width="60" height="44" rx="6" fill="none" stroke="#8891a3" stroke-dasharray="4,3"/>
+        <foreignObject x="310" y="160" width="60" height="44">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="height:100%;display:flex;align-items:center;justify-content:center;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8891a3;">③<br/>frameQueue</div>
+        </foreignObject>
+
+        <rect x="310" y="422" width="60" height="44" rx="6" fill="none" stroke="#8891a3" stroke-dasharray="4,3"/>
+        <foreignObject x="310" y="422" width="60" height="44">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="height:100%;display:flex;align-items:center;justify-content:center;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#8891a3;">⑦<br/>releaseQueue</div>
+        </foreignObject>
+
+        <rect x="380" y="210" width="280" height="52" rx="8" fill="#1a1f28" stroke="#4fa6a6" stroke-opacity="0.5"/>
+        <foreignObject x="390" y="210" width="260" height="52">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="height:100%;display:flex;align-items:center;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;color:#dce2ea;">④ lv_timer: xQueueReceive(frameQueue, &amp;msg)</div>
+        </foreignObject>
+
+        <rect x="380" y="276" width="280" height="52" rx="8" fill="#1a1f28" stroke="#4fa6a6" stroke-opacity="0.5"/>
+        <foreignObject x="390" y="276" width="260" height="52">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="height:100%;display:flex;align-items:center;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;color:#dce2ea;">⑤ memcpy → canvas_buf; munmap(msg.data)</div>
+        </foreignObject>
+
+        <rect x="380" y="342" width="280" height="60" rx="8" fill="#1a1f28" stroke="#4fa6a6" stroke-opacity="0.5"/>
+        <foreignObject x="390" y="342" width="260" height="60">
+          <div xmlns="http://www.w3.org/1999/xhtml" style="height:100%;display:flex;align-items:center;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;color:#dce2ea;">⑥ xQueueSend(releaseQueue, &amp;msg.request); lv_obj_invalidate(canvas)</div>
+        </foreignObject>
+
+        <path d="M300,168 L345,168 L345,236 L380,236" fill="none" stroke="#4fa6a6" stroke-width="2" marker-end="url(#arrowTeal)"/>
+        <path d="M380,372 L345,372 L345,498 L300,498" fill="none" stroke="#c1543f" stroke-width="2" marker-end="url(#arrowWarn)"/>
+      </svg>
+      </div>
+      <p style="font-size:0.85rem;color:var(--muted)">Mũi tên xanh (③): khung hình đi từ capture task sang LVGL qua <code>frameQueue</code>. Mũi tên đỏ (⑦): buffer đã dùng xong đi ngược lại qua <code>releaseQueue</code> — thiếu chiều này là nguyên nhân phổ biến nhất khiến capture treo.</p>
+
+      <p>Producer (libcamera) là code Linux-specific, nhưng ranh giới hai queue này vẫn giữ nguyên nếu sau này nguồn khung hình đổi khác.</p>
+    </section>
+
+    <section id="luuy">
+      <h2>Lưu ý và tài liệu tham khảo thêm</h2>
+      <ul>
+        <li>LVGL không thread-safe mặc định: mọi lời gọi <code>lv_*</code> phải nằm trên đúng một thread (thread chạy <code>lv_timer_handler()</code>).</li>
+        <li>Muốn thử nhanh không cần viết C++ libcamera: đọc thô YUV420 từ pipe của <code>rpicam-vid</code> — chậm hơn, ít kiểm soát camera controls, nhưng dễ bắt đầu:
+          <pre><code class="language-bash">rpicam-vid -t 0 --codec yuv420 --width 640 --height 480 -o -</code></pre>
+        </li>
+        <li>Code mẫu đầy đủ hơn (có event loop hoàn chỉnh mà phần trên đã lược bớt): xem "simple-cam" trong tài liệu chính thức libcamera, và repo libcamera-opencv — cùng ý tưởng bắt khung hình rồi đẩy sang thư viện khác xử lý/hiển thị, chỉ khác đích đến là LVGL thay vì OpenCV.</li>
+      </ul>
+    </section>
+
+    <section id="threadsafe">
+      <h2>Vấn đề thread-safe và vì sao hai queue riêng</h2>
+      <p>Zero 2W chạy 4 lõi Cortex-A53 thật — capture task và LVGL task có thể chạy <strong style="color:var(--text)">đồng thời trên hai lõi khác nhau</strong>, không chỉ xen kẽ trên một lõi. Không đồng bộ, ba kiểu lỗi thường gặp:</p>
+      <ul>
+        <li><strong style="color:var(--text)">Xé hình (tearing)</strong> — LVGL đọc <code>canvas_buf</code> giữa lúc capture task đang <code>memcpy</code> dở vào đó → một phần khung cũ, một phần khung mới trong cùng một lần vẽ.</li>
+        <li><strong style="color:var(--text)">Use-after-free</strong> — buffer được requeue cho libcamera (ISP bắt đầu ghi đè cho khung tiếp theo) trong khi LVGL vẫn đang đọc từ vùng nhớ mmap cũ.</li>
+        <li><strong style="color:var(--text)">Compiler/CPU reorder</strong> — không có primitive đồng bộ thì không gì đảm bảo thread này thấy được giá trị mới nhất thread kia vừa ghi. Lỗi loại này im lặng, không crash ngay nên rất khó bắt.</li>
+      </ul>
+      <p>Vì sao không gộp chung một queue hai chiều? Sẽ phải gắn thêm một trường "loại message" (khung hình mới hay buffer trả lại), và cả hai task đều vừa gửi vừa nhận trên cùng queue — khó áp chính sách khác nhau cho từng chiều. Thực tế hai chiều cần chính sách khác hẳn nhau: chiều khung hình <em>được phép</em> bỏ qua bản cũ khi có bản mới hơn, còn chiều trả buffer thì <em>không bao giờ</em> được phép rớt message — rớt một cái là rò rỉ một buffer vĩnh viễn. Tách hai queue giữ mỗi kênh một trách nhiệm, dễ suy luận đúng-sai hơn.</p>
+    </section>
+
+    <section id="sosanh">
+      <h2>Queue, Mutex, Semaphore: chọn gì và vì sao</h2>
+      <table>
+        <thead><tr><th>Tiêu chí</th><th>Queue</th><th>Mutex</th><th>Semaphore</th></tr></thead>
+        <tbody>
+          <tr><td>Mang theo dữ liệu?</td><td>Có — copy message vào/ra</td><td>Không — chỉ khóa, dữ liệu vẫn là biến chung riêng</td><td>Không — chỉ đếm/tín hiệu</td></tr>
+          <tr><td>Tự đánh thức thread đang chờ?</td><td>Có, qua <code>xQueueReceive</code></td><td>Không — chỉ khóa/mở khóa, không có "chờ sự kiện"</td><td>Có, qua <code>xSemaphoreTake</code>, nhưng không mang dữ liệu</td></tr>
+          <tr><td>Khái niệm sở hữu</td><td>Không cần — message chuyển hẳn sang bên nhận</td><td>Có — hỗ trợ priority inheritance, tránh priority inversion</td><td>Không, kể cả loại nhị phân</td></tr>
+          <tr><td>Độ phức tạp tự thiết kế</td><td>Thấp — một lời gọi gói cả đồng bộ lẫn dữ liệu</td><td>Cao hơn — tự thiết kế state chung, tự đảm bảo mọi điểm truy cập đều lock</td><td>Trung bình — vẫn cần vùng nhớ chung riêng để mang dữ liệu</td></tr>
+          <tr><td>Rủi ro thường gặp</td><td>Ít hơn — đồng bộ nằm sẵn trong API gửi/nhận</td><td>Deadlock khi lock chéo nhau, quên unlock, giữ lock quá lâu</td><td>Đếm sai (mất/thừa tín hiệu), vẫn phải tự lo đồng bộ dữ liệu đi kèm</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Đổi sang mutex/semaphore có nhanh hơn không?</h3>
+      <p>Không đáng để đổi. Trong FreeRTOS, semaphore thực chất được cài đặt như một queue đặc biệt (độ dài 1, kích thước phần tử 0) — nghĩa là <code>xQueueSend</code>/<code>xQueueReceive</code> với message nhỏ như <code>FrameMsg</code> (vài từ máy: con trỏ, độ dài, con trỏ request) chạy trên gần như cùng cơ chế lõi với mutex + biến chung tự làm tay. Chênh lệch chỉ đáng kể nếu nhét nguyên khung hình (hàng trăm KB) qua queue theo giá trị — ở đây queue chỉ mang một "handle" nhỏ, dữ liệu ảnh vẫn nằm nguyên chỗ cũ và chỉ được trỏ tới.</p>
+
+      <h3>Ổn định có bằng queue không?</h3>
+      <p>Tự làm mutex/semaphore không ổn định hơn — thường ngược lại. Queue gói sẵn phần đồng bộ vào lời gọi gửi/nhận nên khó quên; tự dùng mutex nghĩa là bạn phải tự audit mọi điểm truy cập đều lock đúng chỗ, đúng thứ tự — dễ bỏ sót hơn.</p>
+
+      <div class="callout">
+        Một tinh chỉnh đáng làm: vì LVGL chỉ cần khung <em>mới nhất</em>, <code>frameQueue</code> nên dùng <code>xQueueOverwrite()</code> (queue độ dài 1, kiểu "hộp thư" luôn giữ giá trị mới nhất) thay vì FIFO nhiều phần tử. Nhưng phải cẩn thận: ghi đè một message chưa được LVGL xử lý sẽ làm request của message đó không bao giờ được trả lại cho libcamera. Cách đúng: trước khi gửi khung mới, capture task tự <code>xQueueReceive(frameQueue, &amp;old, 0)</code> (không chặn) để lấy message cũ nếu còn, tự <code>camera-&gt;queueRequest()</code> cho request đó ngay tại chỗ — vẫn trên thread capture, không phạm quy tắc — rồi mới gửi khung mới. <code>releaseQueue</code> thì giữ nguyên FIFO nhiều phần tử, không được phép rớt message nào.
+      </div>
+
+      <p style="font-size:0.85rem;color:var(--muted)">Một hướng khác — double-buffer khóa bằng mutex, chỉ đổi con trỏ dưới critical section cực ngắn — cũng dùng được và nhỉnh hơn chút về lý thuyết, nhưng đổi lại mất khả năng "chờ tới khi có dữ liệu" mà queue cho sẵn. Ở đây không cần khả năng đó (LVGL vốn đã poll theo timer tick đều đặn), nên queue vẫn là lựa chọn đơn giản và ít rủi ro hơn.</p>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <strong style="color:var(--text)">Tài liệu tham khảo</strong>
+  <ul>
+    <li><a href="https://meta-raspberrypi.readthedocs.io/en/latest/extra-build-config.html" target="_blank" rel="noopener">meta-raspberrypi — Optional build configuration</a></li>
+    <li><a href="https://www.raspberrypi.com/documentation/computers/camera_software.html" target="_blank" rel="noopener">Raspberry Pi — Camera software (libcamera/rpicam-apps)</a></li>
+    <li><a href="https://github.com/agherzan/meta-raspberrypi/issues/1393" target="_blank" rel="noopener">meta-raspberrypi issue #1393 — libcamera-apps build lỗi trên scarthgap/pi zero v2</a></li>
+    <li><a href="https://github.com/raspberrypi/rpicam-apps" target="_blank" rel="noopener">GitHub — raspberrypi/rpicam-apps</a></li>
+    <li><a href="https://libcamera.org/guides/application-developer.html" target="_blank" rel="noopener">libcamera — Using libcamera in a C++ application</a></li>
+    <li><a href="https://github.com/erasta/libcamera-opencv" target="_blank" rel="noopener">GitHub — libcamera-opencv (bắt khung hình, đẩy sang thư viện khác xử lý)</a></li>
+  </ul>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+  hljs.highlightAll();
+  document.querySelectorAll('pre').forEach(pre => {
+    const codeText = pre.innerText;
+    const btn = document.createElement('button');
+    btn.textContent = 'Copy';
+    btn.className = 'copy-btn';
+    btn.addEventListener('click', () => {
+      navigator.clipboard.writeText(codeText).then(() => {
+        btn.textContent = 'Copied';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+      });
+    });
+    pre.appendChild(btn);
+  });
+  const sections = document.querySelectorAll('main section[id]');
+  const links = document.querySelectorAll('nav.sidebar a');
+  const onScroll = () => {
+    let current = sections[0] ? sections[0].id : '';
+    sections.forEach(sec => { if (window.scrollY >= sec.offsetTop - 80) current = sec.id; });
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + current));
+  };
+  document.addEventListener('scroll', onScroll);
+  onScroll();
+</script>
+</body>
+</html>
