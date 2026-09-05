@@ -1,3 +1,6 @@
+#include <iostream>
+#include <string>
+
 // Existing incompatible class (Adaptee)
 class XmlLogger {
 public:

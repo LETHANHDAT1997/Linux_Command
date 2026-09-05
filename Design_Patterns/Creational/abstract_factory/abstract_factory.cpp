@@ -1,9 +1,13 @@
+#include <iostream>
+#include <memory>
+
 // Abstract Products
 class Button {
 public:
   virtual void paint() = 0;
   virtual ~Button() = default;
 };
+
 class Checkbox {
 public:
   virtual void paint() = 0;
@@ -12,17 +16,23 @@ public:
 
 // Concrete Products - Windows
 class WinButton : public Button {
+public:
   void paint() override { std::cout << "[WinButton]\n"; }
 };
+
 class WinCheckbox : public Checkbox {
+public:
   void paint() override { std::cout << "[WinCheckbox]\n"; }
 };
 
 // Concrete Products - Mac
 class MacButton : public Button {
+public:
   void paint() override { std::cout << "(MacButton)\n"; }
 };
+
 class MacCheckbox : public Checkbox {
+public:
   void paint() override { std::cout << "(MacCheckbox)\n"; }
 };
 
@@ -63,6 +73,7 @@ class Application {
 public:
   Application(std::unique_ptr<GUIFactory> f)
       : btn_(f->createButton()), chk_(f->createCheckbox()) {}
+
   void paint() {
     btn_->paint();
     chk_->paint();

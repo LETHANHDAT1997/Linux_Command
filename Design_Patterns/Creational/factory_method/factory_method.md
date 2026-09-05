@@ -78,3 +78,24 @@ classDiagram
 
 * **Simple Factory:** Chỉ là một lớp/phương thức duy nhất có chứa câu lệnh điều kiện (`if-else` hoặc `switch-case`) để trả về đối tượng tương ứng. Nhược điểm là vi phạm nguyên lý OCP vì mỗi lần thêm sản phẩm mới, ta phải sửa lại phương thức này.
 * **Factory Method:** Sử dụng **tính kế thừa và đa hình** để loại bỏ câu lệnh điều kiện tạo đối tượng, chuyển giao quyền quyết định khởi tạo cho các lớp con kế thừa.
+
+---
+
+## 5. Khi nào dùng
+
+* Lớp xử lý (`Dialog`) không nên `new` trực tiếp từng loại nút.
+* Loại sản phẩm phụ thuộc cấu hình / OS / plugin, quyết định ở lớp con.
+
+Không dùng khi chỉ có 1–2 loại cố định — Simple Factory hoặc `if` ở `main` đủ (như chỗ chọn `WindowsDialog` trong ví dụ).
+
+So với Abstract Factory: Factory Method tạo **một** product; Abstract Factory tạo **cả họ** product khớp nhau.
+
+---
+
+## 6. C++ trong ví dụ này
+
+* `createButton()` trả `std::unique_ptr<Button>`.
+* Destructor ảo trên `Button` và `Dialog`.
+* `currentOS` trong `main` chỉ để demo compile được; production lấy từ build flag hoặc runtime config.
+
+File: [`factory_method.cpp`](factory_method.cpp)

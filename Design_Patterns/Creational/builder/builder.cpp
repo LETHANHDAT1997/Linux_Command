@@ -1,3 +1,6 @@
+#include <iostream>
+#include <string>
+
 struct Pizza {
   std::string dough, sauce, topping;
   void show() const {
@@ -34,22 +37,22 @@ public:
   void buildTopping() override { pizza_.topping = "chicken+onion"; }
 };
 
-// Director
+// Director — không sở hữu builder, chỉ điều khiển thứ tự các bước
 class Cook {
-  PizzaBuilder *builder_;
+  PizzaBuilder &builder_;
 
 public:
-  Cook(PizzaBuilder *b) : builder_(b) {}
+  explicit Cook(PizzaBuilder &b) : builder_(b) {}
   void makePizza() {
-    builder_->buildDough();
-    builder_->buildSauce();
-    builder_->buildTopping();
+    builder_.buildDough();
+    builder_.buildSauce();
+    builder_.buildTopping();
   }
 };
 
 int main() {
   MargheritaBuilder mb;
-  Cook cook(&mb);
+  Cook cook(mb);
   cook.makePizza();
   mb.getResult().show();
   // Dough:thin Sauce:tomato Topping:mozzarella

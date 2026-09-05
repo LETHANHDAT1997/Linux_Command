@@ -1,3 +1,9 @@
+#include <algorithm>
+#include <iostream>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
 // Observer interface
 class EventListener {
 public:
@@ -5,22 +11,31 @@ public:
   virtual ~EventListener() = default;
 };
 
-// Subject
+// Subject — giữ con trỏ không sở hữu; listener phải sống lâu hơn emitter
 class EventEmitter {
   std::unordered_map<std::string, std::vector<EventListener *>> listeners_;
 
 public:
   void on(const std::string &event, EventListener *listener) {
+    if (!listener)
+      return;
     listeners_[event].push_back(listener);
   }
+
   void off(const std::string &event, EventListener *listener) {
-    auto &lst = listeners_[event];
+    auto it = listeners_.find(event);
+    if (it == listeners_.end())
+      return;
+    auto &lst = it->second;
     lst.erase(std::remove(lst.begin(), lst.end(), listener), lst.end());
   }
+
   void emit(const std::string &event, const std::string &data = "") {
-    if (listeners_.count(event))
-      for (auto *l : listeners_[event])
-        l->update(event, data);
+    auto it = listeners_.find(event);
+    if (it == listeners_.end())
+      return;
+    for (auto *l : it->second)
+      l->update(event, data);
   }
 };
 
@@ -36,7 +51,7 @@ class EmailAlert : public EventListener {
   std::string email_;
 
 public:
-  EmailAlert(const std::string &e) : email_(e) {}
+  explicit EmailAlert(const std::string &e) : email_(e) {}
   void update(const std::string &evt, const std::string &data) override {
     std::cout << "[EMAIL->" << email_ << "] " << evt << " - " << data << "\n";
   }

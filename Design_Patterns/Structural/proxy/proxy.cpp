@@ -1,3 +1,7 @@
+#include <iostream>
+#include <memory>
+#include <string>
+
 // Subject interface
 class Image {
 public:
@@ -23,7 +27,7 @@ class ImageProxy : public Image {
   mutable std::unique_ptr<HighResImage> realImage_;
 
 public:
-  ImageProxy(const std::string &f) : filename_(f) {}
+  explicit ImageProxy(const std::string &f) : filename_(f) {}
 
   void display() override {
     if (!realImage_) // load only when needed
@@ -54,4 +58,7 @@ int main() {
   std::cout << "Proxy created, no disk I/O yet\n";
   img.display(); // loading happens here
   img.display(); // uses cached real image
+
+  SecureImageProxy guest("secret.jpg", "guest");
+  guest.display(); // Access denied!
 }

@@ -1,3 +1,7 @@
+#include <iostream>
+#include <memory>
+#include <string>
+
 // Product interface
 class Button {
 public:
@@ -45,12 +49,14 @@ public:
   }
 };
 
-// Usage
 int main() {
+  const std::string currentOS = "Windows";
+
   std::unique_ptr<Dialog> dialog;
   if (currentOS == "Windows")
     dialog = std::make_unique<WindowsDialog>();
   else
     dialog = std::make_unique<MacDialog>();
+
   dialog->render();
 }
