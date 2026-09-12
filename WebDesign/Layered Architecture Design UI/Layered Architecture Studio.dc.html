@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="app">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #0d1117; }
+  * { box-sizing: border-box; }
+  input { font-family: inherit; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2a2d35; border-radius: 3px; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes scanV { 0% { transform: translateY(-100%); } 100% { transform: translateY(400%); } }
+  @keyframes blink { 0%,45% { opacity: 1; } 50%,95% { opacity: .18; } 100% { opacity: 1; } }
+  @keyframes drift { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+  @keyframes selGlow { 0%,100% { box-shadow: 0 0 0 1px rgba(255,255,255,.25); } 50% { box-shadow: 0 0 10px 1px rgba(255,255,255,.35); } }
+  @keyframes layerGlow { 0%,100% { box-shadow: 0 0 0 2px rgba(255,255,255,.35), 0 6px 26px rgba(0,0,0,.45); } 50% { box-shadow: 0 0 16px 2px rgba(255,255,255,.22), 0 6px 26px rgba(0,0,0,.45); } }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(12px) scale(.95); } to { opacity: 1; transform: none; } }
+  @keyframes tagIn { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: scale(1); } }
+</style>
+</helmet>
+<div style="height: 100vh; background: #0d1117; color: #e8e6e1; font-family: 'Space Grotesk', Helvetica, sans-serif; display: flex; flex-direction: column;">
+
+  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; padding: 14px 24px 10px;">
+    <div style="display: flex; flex-direction: column; gap: 5px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 10px; height: 3px; background: {{ accent }}; animation: blink 2.6s steps(1,end) infinite;"></div>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .22em; color: #555550;">SYS / LAYER&nbsp;ARCHITECTURE&nbsp;·&nbsp;GRID&nbsp;12</div>
+      </div>
+      <h1 style="margin: 0; font-size: 22px; font-weight: 500; letter-spacing: -.015em; color: #e8e6e1;">Layered Architecture Studio</h1>
+    </div>
+    <div style="display: flex; align-items: flex-end; gap: 22px; font-family: 'JetBrains Mono', monospace;">
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+        <div style="font-size: 9px; letter-spacing: .18em; color: #555550;">LEVELS</div>
+        <div style="font-size: 18px; color: #e8e6e1;">{{ rowCount }}</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+        <div style="font-size: 9px; letter-spacing: .18em; color: #555550;">LAYERS</div>
+        <div style="font-size: 18px; color: #e8e6e1;">{{ layerCount }}</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+        <div style="font-size: 9px; letter-spacing: .18em; color: #555550;">BLOCKS</div>
+        <div style="font-size: 18px; color: #e8e6e1;">{{ blockCount }}</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+        <div style="font-size: 9px; letter-spacing: .18em; color: #555550;">COMPONENTS</div>
+        <div style="font-size: 18px; color: {{ accent }};">{{ compCount }}</div>
+      </div>
+      <div onClick="{{ onAddLayerBottom }}" style="cursor: pointer; background: {{ accent }}; color: #fff; padding: 9px 14px; font-size: 10px; letter-spacing: .12em; border-radius: 4px;" style-hover="opacity: .85">+ ADD LAYER</div>
+    </div>
+  </header>
+
+  <div style="height: 1px; margin: 0 24px; background: #1e2128;"></div>
+
+  <main style="flex: 1 1 0; min-height: 0; display: flex; align-items: stretch; gap: 0; padding: 0;">
+
+    <section onClick="{{ onCanvasClick }}" style="flex: 1 1 0; min-width: 0; min-height: 0; overflow: auto; position: relative;">
+
+      <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 26px; z-index: 2; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 16px 0;">
+        <div style="writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: .3em; color: {{ accent }}; opacity: .6; animation: drift 6s ease-in-out infinite;">USER CODE ▼</div>
+        <div style="width: 1px; flex: 1; margin: 12px 0; background: linear-gradient(to bottom, {{ accent }}, transparent 30%, transparent 70%, #8a6a4e); opacity: .2; position: relative; overflow: hidden;">
+          <div style="position: absolute; inset: auto 0 auto 0; height: 18%; background: linear-gradient(to bottom, transparent, {{ accent }}, transparent); animation: scanV 8s ease-in-out infinite;"></div>
+        </div>
+        <div style="writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: .3em; color: #8a6a4e; opacity: .6; animation: drift 6s ease-in-out 3s infinite;">HARDWARE ▲</div>
+      </div>
+
+      <div style="padding: 12px 14px 16px 34px; display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: min-content; gap: 8px; align-items: stretch; min-width: 780px;">
+        <sc-for list="{{ gridLayers }}" as="layer" hint-placeholder-count="6">
+          <div onClick="{{ layer.onSelect }}" style="grid-column: {{ layer.gc }}; grid-row: {{ layer.gr }}; background: {{ layer.color }}; border: 1px solid {{ layer.border }}; animation: {{ layer.anim }}; cursor: pointer; border-radius: 8px; padding: 11px 13px 12px; display: flex; flex-direction: column; gap: 7px; transition: border-color .15s;" style-hover="border-color: rgba(255,255,255,.3)">
+
+            <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: .2em; color: rgba(255,255,255,.35);">{{ layer.code }}</div>
+              <div style="font-size: 12px; font-weight: 500; letter-spacing: .07em; color: rgba(255,255,255,.92);">{{ layer.name }}</div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: .08em; color: rgba(255,255,255,.4);">{{ layer.subtitle }}</div>
+              <div style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: .1em; color: rgba(255,255,255,.3);">{{ layer.sizeLabel }}</div>
+            </div>
+
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,.5); margin-top: -3px;">{{ layer.path }}</div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+              <sc-for list="{{ layer.blocks }}" as="block" hint-placeholder-count="2">
+                <div onClick="{{ block.onClick }}" onMouseEnter="{{ block.onHover }}" style="cursor: pointer; flex: 1 1 auto; min-width: 150px; background: {{ block.bg }}; border: 1px solid {{ block.border }}; border-radius: 5px; padding: 7px 9px; animation: {{ block.selAnim }}; transition: background .15s, border-color .15s;" style-hover="background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.2)">
+                  <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                    <div style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: .14em; color: rgba(255,255,255,.45);">{{ block.name }}</div>
+                    <div style="font-family: 'JetBrains Mono', monospace; font-size: 8px; color: rgba(255,255,255,.22);">{{ block.countLabel }}</div>
+                  </div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                    <sc-for list="{{ block.comps }}" as="comp" hint-placeholder-count="3">
+                      <div style="padding: 3px 8px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.09); border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,.8); white-space: nowrap; animation: tagIn .3s ease both; animation-delay: {{ comp.delay }}s;">{{ comp.name }}</div>
+                    </sc-for>
+                  </div>
+                  <sc-if value="{{ block.empty }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgba(255,255,255,.25);">// empty block</div>
+                  </sc-if>
+                </div>
+              </sc-for>
+              <sc-if value="{{ layer.noBlocks }}" hint-placeholder-val="{{ false }}">
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: rgba(255,255,255,.3); padding: 6px 2px;">// empty layer — select it and press + BLOCK</div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <aside style="flex: 0 1 336px; min-width: 290px; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 14px 8px; border-left: 1px solid #1e2128;">
+
+      <!-- ─── LAYER PANEL ─────────────────────────────── -->
+      <sc-if value="{{ isLayerSel }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 13px; background: #151820; border-radius: 6px; padding: 16px; animation: riseIn .35s cubic-bezier(.2,.9,.2,1) both;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .2em; color: {{ accent }};">LAYER {{ selLayerCode }} · LEVEL {{ selLayerRow }}</div>
+            <div onClick="{{ onClear }}" style="cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #555550; padding: 0 4px;" style-hover="color: #e8e6e1">ESC</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <input ref="{{ nameRef }}" value="{{ selLayerName }}" onChange="{{ onLayerName }}" placeholder="Layer name…" style="border: none; outline: none; background: #1e2128; padding: 8px 10px; font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 500; color: #e8e6e1; border-radius: 4px;" style-focus="background: #252830">
+            <input value="{{ selLayerSubtitle }}" onChange="{{ onLayerSubtitle }}" placeholder="Subtitle…" style="border: none; outline: none; background: #1e2128; padding: 7px 10px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .1em; color: #9a9a92; border-radius: 4px;" style-focus="background: #252830">
+            <input value="{{ selLayerPath }}" onChange="{{ onLayerPath }}" placeholder="path/" style="border: none; outline: none; background: #1e2128; padding: 7px 10px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #9a9a92; border-radius: 4px;" style-focus="background: #252830">
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .18em; color: #555550;">COLOR</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+              <sc-for list="{{ palette }}" as="p" hint-placeholder-count="12">
+                <div onClick="{{ p.onPick }}" style="cursor: pointer; width: 22px; height: 22px; border-radius: 4px; background: {{ p.color }}; border: 1px solid {{ p.border }};" style-hover="transform: scale(1.12)"></div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .18em; color: #555550;">GEOMETRY · {{ selLayerSize }}</div>
+            <div style="display: flex; gap: 6px;">
+              <div style="flex: 1; display: flex; align-items: center; gap: 4px; background: #1e2128; border-radius: 4px; padding: 4px;">
+                <div onClick="{{ onWidthDown }}" style="cursor: pointer; flex: none; width: 26px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #7a7a72;" style-hover="color: #e8e6e1">−</div>
+                <div style="flex: 1; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .1em; color: #9a9a92;">WIDTH {{ selLayerSpan }}/12</div>
+                <div onClick="{{ onWidthUp }}" style="cursor: pointer; flex: none; width: 26px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #7a7a72;" style-hover="color: #e8e6e1">+</div>
+              </div>
+              <div style="flex: 1; display: flex; align-items: center; gap: 4px; background: #1e2128; border-radius: 4px; padding: 4px;">
+                <div onClick="{{ onHeightDown }}" style="cursor: pointer; flex: none; width: 26px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #7a7a72;" style-hover="color: #e8e6e1">−</div>
+                <div style="flex: 1; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .1em; color: #9a9a92;">HEIGHT {{ selLayerRowSpan }}</div>
+                <div onClick="{{ onHeightUp }}" style="cursor: pointer; flex: none; width: 26px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #7a7a72;" style-hover="color: #e8e6e1">+</div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <div onClick="{{ onMoveLeft }}" style="cursor: pointer; flex: 1; text-align: center; background: #1e2128; color: #7a7a72; padding: 7px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .1em; border-radius: 4px;" style-hover="background: #252830; color: #e8e6e1">◀ MOVE</div>
+              <div onClick="{{ onMoveUp }}" style="cursor: pointer; flex: 1; text-align: center; background: #1e2128; color: #7a7a72; padding: 7px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .1em; border-radius: 4px;" style-hover="background: #252830; color: #e8e6e1">▲ LEVEL</div>
+              <div onClick="{{ onMoveDown }}" style="cursor: pointer; flex: 1; text-align: center; background: #1e2128; color: #7a7a72; padding: 7px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .1em; border-radius: 4px;" style-hover="background: #252830; color: #e8e6e1">▼ LEVEL</div>
+              <div onClick="{{ onMoveRight }}" style="cursor: pointer; flex: 1; text-align: center; background: #1e2128; color: #7a7a72; padding: 7px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .1em; border-radius: 4px;" style-hover="background: #252830; color: #e8e6e1">MOVE ▶</div>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .18em; color: #555550;">ADD LAYER</div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;">
+              <div></div>
+              <div onClick="{{ onAddAbove }}" style="cursor: pointer; text-align: center; background: #1e2128; color: #9a9a92; padding: 8px 4px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .06em; border-radius: 4px;" style-hover="background: #2a5a38; color: #fff">▲ ABOVE</div>
+              <div></div>
+              <div onClick="{{ onAddLeft }}" style="cursor: pointer; text-align: center; background: #1e2128; color: #9a9a92; padding: 8px 4px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .06em; border-radius: 4px;" style-hover="background: #2a5a38; color: #fff">◀ LEFT</div>
+              <div style="display: flex; align-items: center; justify-content: center; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 7.5px; line-height: 1.4; letter-spacing: .08em; color: #555550;">SAME<br>LEVEL</div>
+              <div onClick="{{ onAddRight }}" style="cursor: pointer; text-align: center; background: #1e2128; color: #9a9a92; padding: 8px 4px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .06em; border-radius: 4px;" style-hover="background: #2a5a38; color: #fff">RIGHT ▶</div>
+              <div></div>
+              <div onClick="{{ onAddBelow }}" style="cursor: pointer; text-align: center; background: #1e2128; color: #9a9a92; padding: 8px 4px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .06em; border-radius: 4px;" style-hover="background: #2a5a38; color: #fff">▼ BELOW</div>
+              <div></div>
+            </div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; line-height: 1.5; color: #555550;">LEFT/RIGHT = cùng level (chiều ngang) · ABOVE/BELOW = level mới (chiều dọc)</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 5px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .18em; color: #555550;">BLOCKS · {{ selLayerBlockCount }}</div>
+            <sc-for list="{{ selLayerBlocks }}" as="lb" hint-placeholder-count="3">
+              <div onClick="{{ lb.onClick }}" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #1e2128; padding: 8px 11px; border-radius: 4px;" style-hover="background: #252830">
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: #e8e6e1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ lb.name }}</div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #555550;">{{ lb.count }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display: flex; gap: 6px; padding-top: 2px;">
+            <div onClick="{{ onAddBlockToLayer }}" style="cursor: pointer; flex: 1; text-align: center; background: #1e2128; color: #7a7a72; padding: 9px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: .1em; border-radius: 4px;" style-hover="background: #252830; color: #e8e6e1">+ BLOCK</div>
+            <div onClick="{{ onDeleteLayer }}" style="cursor: pointer; text-align: center; background: #1e2128; color: #8a4a44; padding: 9px 12px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: .1em; border-radius: 4px;" style-hover="background: #3a1e1e; color: #e8867c">DELETE LAYER</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ─── BLOCK PANEL ─────────────────────────────── -->
+      <sc-if value="{{ isBlockSel }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 13px; background: #151820; border-radius: 6px; padding: 16px; animation: riseIn .35s cubic-bezier(.2,.9,.2,1) both;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;">
+            <div onClick="{{ onSelectParentLayer }}" style="cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .2em; color: {{ accent }};" style-hover="opacity: .7">↰ {{ selLayerCode }} · {{ selLayerNameUp }}</div>
+            <div onClick="{{ onClear }}" style="cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #555550; padding: 0 4px;" style-hover="color: #e8e6e1">ESC</div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 7px;">
+            <input ref="{{ nameRef }}" value="{{ selBlockName }}" onChange="{{ onRename }}" placeholder="Block name…" style="flex: 1; min-width: 0; border: none; outline: none; background: #1e2128; padding: 7px 9px; font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 500; color: #e8e6e1; border-radius: 4px;" style-focus="background: #252830">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: .14em; color: #555550;">RENAME</div>
+          </div>
+
+          <div style="font-size: 12px; line-height: 1.55; color: #7a7a72;">{{ selLayerHint }}</div>
+
+          <div style="display: flex; gap: 6px;">
+            <input value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onDraftKey }}" placeholder="Component name…" style="flex: 1; min-width: 0; border: none; outline: none; background: #1e2128; padding: 10px 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #e8e6e1; border-radius: 4px;">
+            <div onClick="{{ onAdd }}" style="cursor: pointer; background: {{ accent }}; color: #fff; padding: 10px 14px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: .1em; border-radius: 4px;" style-hover="opacity: .85">ADD</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 5px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .18em; color: #555550;">COMPONENTS · {{ selCompCount }}</div>
+            <sc-for list="{{ selComps }}" as="c" hint-placeholder-count="3">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #1e2128; padding: 9px 11px; border-radius: 4px; animation: riseIn .3s ease both;">
+                <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                  <div style="width: 5px; height: 5px; flex: none; background: {{ accent }}; border-radius: 1px;"></div>
+                  <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #e8e6e1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ c.name }}</div>
+                </div>
+                <div onClick="{{ c.onRemove }}" style="cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #555550; padding: 0 3px;" style-hover="color: #e8e6e1">×</div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ selEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #555550; padding: 8px 0;">// empty — add the first component</div>
+            </sc-if>
+          </div>
+
+          <div style="display: flex; gap: 6px; padding-top: 2px;">
+            <div onClick="{{ onAddBlock }}" style="cursor: pointer; flex: 1; text-align: center; background: #1e2128; color: #7a7a72; padding: 9px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: .1em; border-radius: 4px;" style-hover="background: #252830; color: #e8e6e1">+ BLOCK</div>
+            <div onClick="{{ onRemoveBlock }}" style="cursor: pointer; text-align: center; background: #1e2128; color: #8a4a44; padding: 9px 12px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: .1em; border-radius: 4px;" style-hover="background: #3a1e1e; color: #e8867c">DELETE</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ─── OVERVIEW ────────────────────────────────── -->
+      <sc-if value="{{ noSel }}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; gap: 12px; background: #151820; border-radius: 6px; padding: 16px; animation: riseIn .35s cubic-bezier(.2,.9,.2,1) both;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .2em; color: #555550;">OVERVIEW</div>
+          <div style="font-size: 12.5px; line-height: 1.6; color: #7a7a72;">Bấm vào nền một layer để sửa layer (tên, màu, kích thước, thêm layer mới). Bấm vào một block để sửa components bên trong.</div>
+          <div style="display: flex; flex-direction: column; gap: 5px;">
+            <sc-for list="{{ layerSummary }}" as="ls" hint-placeholder-count="9">
+              <div onClick="{{ ls.onClick }}" style="cursor: pointer; display: flex; align-items: center; gap: 10px; background: #1e2128; padding: 9px 12px; border-radius: 4px; border-left: 3px solid {{ ls.color }};" style-hover="background: #252830">
+                <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                  <div style="font-size: 12px; font-weight: 500; color: #e8e6e1;">{{ ls.name }}</div>
+                  <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #555550; letter-spacing: .08em;">LVL {{ ls.row }} · {{ ls.size }} · {{ ls.blockCount }}B · {{ ls.compCount }}C</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="background: #151820; border-radius: 6px; padding: 13px 16px; display: flex; flex-direction: column; gap: 7px; animation: riseIn .45s ease .1s both;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .2em; color: #555550;">DEPENDENCY FLOW · BY LEVEL</div>
+        <div style="display: flex; flex-direction: column; gap: 3px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: #7a7a72;">
+          <sc-for list="{{ depFlow }}" as="df" hint-placeholder-count="6">
+            <sc-if value="{{ df.arrow }}" hint-placeholder-val="{{ false }}">
+              <div style="color: {{ accent }}; font-size: 8px; opacity: .5;">▼</div>
+            </sc-if>
+            <div>{{ df.label }}</div>
+          </sc-for>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <div style="height: 1px; margin: 0 24px; background: #1e2128;"></div>
+
+  <footer style="display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 9px 24px 14px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .14em; color: #555550;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="width: 5px; height: 5px; border-radius: 999px; background: {{ accent }}; animation: blink 1.8s steps(1,end) infinite;"></div>
+      <span>SYNCED · {{ compCount }} COMPONENTS ACROSS {{ blockCount }} BLOCKS</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <div onClick="{{ onExport }}" style="cursor: pointer; padding: 5px 11px; background: #1e2128; color: #7a7a72; letter-spacing: .1em; border-radius: 3px;" style-hover="background: #252830; color: #e8e6e1">⬇ EXPORT</div>
+      <div onClick="{{ onImportClick }}" style="cursor: pointer; padding: 5px 11px; background: #1e2128; color: #7a7a72; letter-spacing: .1em; border-radius: 3px;" style-hover="background: #252830; color: #e8e6e1">⬆ IMPORT</div>
+      <div onClick="{{ onReset }}" style="cursor: pointer; padding: 5px 11px; background: #1e2128; color: #7a7a72; letter-spacing: .1em; border-radius: 3px;" style-hover="background: #252830; color: #e8e6e1">↺ RESET</div>
+      <input ref="{{ fileRef }}" type="file" accept=".json" onChange="{{ onFileLoad }}" style="display: none;">
+    </div>
+    <div style="animation: drift 6s ease-in-out infinite;">LAYER-CORE v1.1 · EMBEDDED SYSTEMS</div>
+  </footer>
+
+  <sc-if value="{{ toastVisible }}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 9999; padding: 11px 22px; background: {{ toastBg }}; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: .08em; border-radius: 5px; box-shadow: 0 8px 32px rgba(0,0,0,.4); animation: toastIn .3s cubic-bezier(.2,.9,.2,1) both;">{{ toastMsg }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;accent&quot;: { &quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#4a9a5e&quot;, &quot;tsType&quot;: &quot;string&quot;,
+    &quot;options&quot;: [&quot;#4a9a5e&quot;, &quot;#5a8a9a&quot;, &quot;#9a7a4a&quot;, &quot;#7a5a9a&quot;] }
+}">
+
+// ═══════════════════════════════════════════════════════════
+//  GRID MODEL
+//  rows : [[layerId, layerId, ...], ...]   → vertical levels
+//  defs : { layerId: { span (1..12), rowSpan (1..8), ... } }
+//  Layout is packed onto a 12-column CSS grid, so layers can sit
+//  side-by-side on the same level and span several levels tall.
+// ═══════════════════════════════════════════════════════════
+
+const COLS = 12;
+
+const PALETTE = [
+  '#4a1527', '#26215c', '#04342c', '#4a1b0c', '#412402', '#042c53',
+  '#173404', '#50501d', '#1a1a18', '#3d1f4a', '#0f3d45', '#4a3a10'
+];
+
+// rows of the seed architecture (matches the reference diagram)
+const SEED = [
+  [
+    { id: 'ui_ux', name: 'UI/UX', subtitle: '· HOST APPLICATIONS & CONFIGURATION', path: 'user_interface/ · Tools/', color: '#4a1527', span: 8, rowSpan: 1,
+      hint: 'User-facing host applications — dashboards, configurators, and debug tools running on a PC or mobile device.',
+      blocks: [
+        { name: 'GUI Tools', comps: ['PC_Configurator (Python/C++)', 'Web_Dashboard (React/Vue)', 'Mobile_App (Flutter/Android)', 'Debug_Tools_GUI (C++/Python/GDB)', 'Serial_Log_GUI (Python/Tkinter)'] },
+        { name: 'CLI Tools', comps: ['Debug_Tools_CLI (C++/Python/GDB)', 'Serial_CLI (Python)'] }
+      ] },
+    { id: 'libraries', name: 'UTILITY LIBRARIES', subtitle: '· HELPERS & MATH', path: 'libraries/', color: '#50501d', span: 4, rowSpan: 5,
+      hint: 'Pure utility functions callable from any layer — math algorithms, timers, data structures. No side effects.',
+      blocks: [
+        { name: 'LIBMATH (Algorithms)', comps: ['Kalman_Filter_Algorithms', 'MadgwickAHRS', 'PID_Algorithms', 'Utility_Algorithms', 'Macros Algorithms'] },
+        { name: 'LIBUTILITY (Helpers)', comps: ['Elapsed Time', 'Ring Buffer (FIFO)', 'Macros Time', 'Libraries Support'] }
+      ] }
+  ],
+  [
+    { id: 'application', name: 'APPLICATION', subtitle: '· USER FIRMWARE', path: 'application/', color: '#26215c', span: 8, rowSpan: 1,
+      hint: 'Concrete firmware applications — each project implements a specific embedded use case on top of shared services.',
+      blocks: [
+        { name: 'Robotics', comps: ['Self_Balancing_Robot', 'Autonomous_Mini_Rover'] },
+        { name: 'IoT & Sensors', comps: ['Wireless_Sensor_Node', 'Smart_Weather_Station', 'GPS_Data_Logger', 'Air_Quality_Monitor'] },
+        { name: 'Access & Industry', comps: ['RFID_Smart_Lock', 'Industrial_Gateway', 'Smart_Agriculture', 'USB_Data_Acquisition'] }
+      ] }
+  ],
+  [
+    { id: 'services', name: 'SERVICE LAYER', subtitle: '· DEVICE ABSTRACTIONS', path: 'services/', color: '#04342c', span: 8, rowSpan: 1,
+      hint: 'High-level device abstractions — application code calls these modules instead of raw peripheral drivers.',
+      blocks: [
+        { name: 'Wireless', comps: ['LoRA_Module', 'Bluetooth_Module', 'WiFi_Module', 'Radio_Module'] },
+        { name: 'Navigation & ID', comps: ['Orientation_Sensor', 'GPS_Module', 'RFID_Module'] },
+        { name: 'IO & Actuators', comps: ['SDCard_Drive', 'USB_Drive', 'Motor_Drive', 'Led_Drive', 'Display_Drive', 'Touch_Drive', 'Encoder_Drive'] }
+      ] }
+  ],
+  [
+    { id: 'devices', name: 'DEVICE LAYER', subtitle: '· PERIPHERAL ICS', path: 'devices/', color: '#4a1b0c', span: 5, rowSpan: 1,
+      hint: 'Low-level drivers for specific hardware chips — each driver talks the chip native protocol (SPI, I2C, UART).',
+      blocks: [
+        { name: 'Sensors', comps: ['DHT22', 'HMC5883L', 'MPU6050', 'QMC5883L', 'GPS'] },
+        { name: 'Communication ICs', comps: ['RC522', 'RF24L01', 'SX1278', 'CC1101', 'nRF24L01'] },
+        { name: 'Storage & IO', comps: ['SDCard', 'USB_Host'] },
+        { name: 'Display & Touch', comps: ['ST7789', 'SSD1306', 'ILI9341', 'ILI9488', 'FT6236', 'GT911'] }
+      ] },
+    { id: 'middleware', name: 'MIDDLEWARE', subtitle: '· CROSS-CUTTING FIRMWARE', path: 'middlewares/', color: '#412402', span: 3, rowSpan: 1,
+      hint: 'Shared firmware services used across multiple layers — filesystems, security, logging, and cryptography.',
+      blocks: [
+        { name: 'Middleware', comps: ['FAT Filesystem Module', 'Secure Boot', 'Micro Console Log', 'TinyCrypt Library'] }
+      ] }
+  ],
+  [
+    { id: 'platform', name: 'PLATFORM LAYER', subtitle: '· HAL & RTOS SUPPORT', path: 'platform/', color: '#042c53', span: 5, rowSpan: 1,
+      hint: 'Hardware abstraction and real-time OS — a portable interface to the silicon so upper layers stay chip-agnostic.',
+      blocks: [
+        { name: 'HAL & BSP', comps: ['BSP', 'CMSIS', 'HAL Driver', 'LL Driver', 'Vendor HAL', 'Extended hardware library'] },
+        { name: 'RTOS', comps: ['RTOS'] }
+      ] },
+    { id: 'system_startup', name: 'SYSTEM STARTUP', subtitle: '· RESET VECTOR & INIT', path: 'system startup/', color: '#173404', span: 3, rowSpan: 1,
+      hint: 'Boot sequence — reset vector, clock configuration, and peripheral init before the RTOS scheduler starts.',
+      blocks: [
+        { name: 'Startup', comps: ['Startup Config', 'System Manager'] }
+      ] }
+  ],
+  [
+    { id: 'build_infra', name: 'BUILD INFRASTRUCTURE', subtitle: '· CROSS-CUTTING', path: 'environment/ · build/', color: '#1a1a18', span: 12, rowSpan: 1,
+      hint: 'Development toolchain, testing, and documentation — supports the whole lifecycle but is not deployed to target.',
+      blocks: [
+        { name: 'Toolchain', comps: ['GNU Arm-Toolchain', 'Build Tools'] },
+        { name: 'Debug & Flash', comps: ['Flash Low Level Tools', 'Debug Low Level Tools'] },
+        { name: 'Quality & Docs', comps: ['Version Control', 'Unit Test Tools', 'Documentation Tools'] }
+      ] }
+  ]
+];
+
+// ─── grid packing ────────────────────────────────────────────
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function packGrid(rows, defs) {
+  const occ = [];
+  const place = {};
+  const ensure = (r) => { while (occ.length <= r) occ.push(new Array(COLS).fill(false)); };
+  const freeRun = (r, span) => {
+    ensure(r);
+    for (let c = 0; c + span <= COLS; c++) {
+      let ok = true;
+      for (let k = 0; k < span; k++) { if (occ[r][c + k]) { ok = false; break; } }
+      if (ok) return c;
+    }
+    return -1;
+  };
+  rows.forEach((rowIds, r) => {
+    ensure(r);
+    rowIds.forEach((id) => {
+      const d = defs[id]; if (!d) return;
+      const span = clamp(d.span || COLS, 1, COLS);
+      const rowSpan = clamp(d.rowSpan || 1, 1, 8);
+      let rr = r, col = freeRun(rr, span);
+      let guard = 0;
+      while (col < 0 && guard++ < 40) { rr++; col = freeRun(rr, span); }
+      if (col < 0) { rr = r; col = 0; }
+      for (let y = rr; y < rr + rowSpan; y++) {
+        ensure(y);
+        for (let k = 0; k < span; k++) occ[y][col + k] = true;
+      }
+      place[id] = { col: col + 1, span, row: rr + 1, rowSpan };
+    });
+  });
+  return { place, occ };
+}
+
+function maxFreeRun(occRow) {
+  if (!occRow) return COLS;
+  let best = 0, cur = 0;
+  for (let c = 0; c < COLS; c++) {
+    if (occRow[c]) cur = 0; else { cur++; if (cur > best) best = cur; }
+  }
+  return best;
+}
+
+function buildFromRows(seedRows) {
+  const defs = {}; const rows = []; const blocks = {}; const comps = {};
+  let bseq = 0, cseq = 0, lseq = 0;
+  seedRows.forEach((rowArr) => {
+    const ids = [];
+    rowArr.forEach((L) => {
+      lseq++;
+      const id = L.id || ('layer_' + lseq);
+      defs[id] = {
+        id: id, name: L.name, subtitle: L.subtitle || '', path: L.path || '',
+        color: L.color || PALETTE[lseq % PALETTE.length], hint: L.hint || '',
+        span: clamp(L.span || COLS, 1, COLS), rowSpan: clamp(L.rowSpan || 1, 1, 8)
+      };
+      blocks[id] = (L.blocks || []).map((b) => {
+        const bid = 'b' + (++bseq);
+        comps[bid] = (b.comps || b.components || []).map((n) => ({ id: ++cseq, name: String(n) }));
+        return { id: bid, name: b.name || 'Unnamed' };
+      });
+      ids.push(id);
+    });
+    if (ids.length) rows.push(ids);
+  });
+  return { defs, rows, blocks, comps, bseq, cseq, lseq };
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const base = buildFromRows(SEED);
+    this.state = Object.assign({}, base, { sel: null, draft: '', toast: null });
+    this._audioCtx = null;
+    this._lastHoverTime = 0;
+    this._fileInput = React.createRef();
+    this._nameEl = React.createRef();
+  }
+
+  // ─── audio ───────────────────────────────────────────────
+  _getAudioCtx() {
+    if (!this._audioCtx) { this._audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    if (this._audioCtx.state === 'suspended') { this._audioCtx.resume(); }
+    return this._audioCtx;
+  }
+
+  playHoverSound = (layerIdx) => {
+    const now = performance.now();
+    if (now - this._lastHoverTime < 60) return;
+    this._lastHoverTime = now;
+    try {
+      const ctx = this._getAudioCtx();
+      const t = ctx.currentTime;
+      const maxLayers = Object.keys(this.state.defs).length;
+      const baseFreq = 800 - (layerIdx / Math.max(1, maxLayers - 1)) * 500;
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(baseFreq, t);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.15, t + 0.04);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.92, t + 0.1);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.05, t + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(t); osc.stop(t + 0.13);
+    } catch(e) {}
+  }
+
+  playClickSound = (high) => {
+    try {
+      const ctx = this._getAudioCtx();
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(high ? 1100 : 620, t);
+      osc.frequency.exponentialRampToValueAtTime(high ? 500 : 320, t + 0.08);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.07, t + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(t); osc.stop(t + 0.16);
+    } catch(e) {}
+  }
+
+  showToast = (msg, isError) => {
+    this.setState({ toast: { msg: msg, isError: isError } });
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => this.setState({ toast: null }), 2600);
+  }
+
+  // ─── selection ───────────────────────────────────────────
+  selectLayer = (lid) => { this.playClickSound(false); this.setState({ sel: { kind: 'layer', id: lid }, draft: '' }); }
+  selectBlock = (bid) => { this.playClickSound(true); this.setState({ sel: { kind: 'block', id: bid }, draft: '' }); }
+  clear = () => this.setState({ sel: null, draft: '' });
+
+  orderedIds = () => {
+    const out = [];
+    this.state.rows.forEach((r) => r.forEach((id) => out.push(id)));
+    return out;
+  }
+
+  layerIdOfBlock = (bid) => {
+    const blocks = this.state.blocks;
+    let found = null;
+    Object.keys(blocks).forEach((lid) => { if (blocks[lid].some((b) => b.id === bid)) found = lid; });
+    return found;
+  }
+
+  currentLayerId = () => {
+    const sel = this.state.sel;
+    if (!sel) return null;
+    return sel.kind === 'layer' ? sel.id : this.layerIdOfBlock(sel.id);
+  }
+
+  rowIndexOf = (lid) => {
+    let r = -1;
+    this.state.rows.forEach((row, i) => { if (row.indexOf(lid) >= 0) r = i; });
+    return r;
+  }
+
+  blockObj = (bid) => {
+    let out = null;
+    Object.keys(this.state.blocks).forEach((lid) => {
+      const f = this.state.blocks[lid].find((b) => b.id === bid); if (f) out = f;
+    });
+    return out;
+  }
+
+  // ─── layer ops ───────────────────────────────────────────
+  updateLayer = (lid, patch) => this.setState((s) => {
+    const defs = Object.assign({}, s.defs);
+    defs[lid] = Object.assign({}, defs[lid], patch);
+    return { defs: defs };
+  });
+
+  resizeLayer = (lid, dSpan, dRow) => this.setState((s) => {
+    const d = s.defs[lid]; if (!d) return {};
+    const defs = Object.assign({}, s.defs);
+    defs[lid] = Object.assign({}, d, {
+      span: clamp((d.span || COLS) + dSpan, 1, COLS),
+      rowSpan: clamp((d.rowSpan || 1) + dRow, 1, 8)
+    });
+    return { defs: defs };
+  });
+
+  moveLayer = (lid, dir) => this.setState((s) => {
+    const rows = s.rows.map((r) => r.slice());
+    let r = -1, i = -1;
+    rows.forEach((row, ri) => { const ii = row.indexOf(lid); if (ii >= 0) { r = ri; i = ii; } });
+    if (r < 0) return {};
+    if (dir === 'left' || dir === 'right') {
+      const j = dir === 'left' ? i - 1 : i + 1;
+      if (j < 0 || j >= rows[r].length) return {};
+      const tmp = rows[r][i]; rows[r][i] = rows[r][j]; rows[r][j] = tmp;
+      return { rows: rows };
+    }
+    const j = dir === 'up' ? r - 1 : r + 1;
+    if (j < 0 || j >= rows.length) return {};
+    const tmp = rows[r]; rows[r] = rows[j]; rows[j] = tmp;
+    return { rows: rows };
+  });
+
+  addLayer = (dir) => {
+    this.playClickSound(true);
+    this.setState((s) => {
+      const rows = s.rows.map((r) => r.slice());
+      const defs = Object.assign({}, s.defs);
+      const lseq = s.lseq + 1;
+      const lid = 'layer_' + lseq;
+      const bid = 'b' + (s.bseq + 1);
+      const refId = this.currentLayerId();
+      const horizontal = (dir === 'left' || dir === 'right') && !!refId;
+      let span = COLS;
+
+      if (horizontal) {
+        let r = -1, i = -1;
+        rows.forEach((row, ri) => { const ii = row.indexOf(refId); if (ii >= 0) { r = ri; i = ii; } });
+        if (r >= 0) {
+          let free = maxFreeRun(packGrid(rows, defs).occ[r]);
+          let guard = 24;
+          while (free < 3 && guard-- > 0) {
+            let big = null;
+            rows[r].forEach((id) => { if (!big || (defs[id].span || 0) > (defs[big].span || 0)) big = id; });
+            if (!big || (defs[big].span || COLS) <= 2) break;
+            defs[big] = Object.assign({}, defs[big], { span: defs[big].span - 1 });
+            free = maxFreeRun(packGrid(rows, defs).occ[r]);
+          }
+          span = clamp(Math.min(6, free), 2, COLS);
+          rows[r].splice(dir === 'left' ? i : i + 1, 0, lid);
+        }
+      } else {
+        let r = rows.length;
+        if (refId) {
+          rows.forEach((row, ri) => { if (row.indexOf(refId) >= 0) r = ri; });
+          if (dir === 'below') r = r + 1;
+        } else if (dir === 'above') { r = 0; }
+        r = clamp(r, 0, rows.length);
+        rows.splice(r, 0, []);
+        const probe = packGrid(rows, defs);
+        span = clamp(maxFreeRun(probe.occ[r]), 2, COLS);
+        rows[r] = [lid];
+      }
+
+      defs[lid] = {
+        id: lid, name: 'NEW LAYER', subtitle: '· DESCRIPTION', path: 'new_layer/',
+        color: PALETTE[lseq % PALETTE.length], hint: 'Describe the responsibility of this layer.',
+        span: span, rowSpan: 1
+      };
+      this._focusName = true;
+      return {
+        rows: rows, defs: defs, lseq: lseq, bseq: s.bseq + 1,
+        blocks: Object.assign({}, s.blocks, { [lid]: [{ id: bid, name: 'New Block' }] }),
+        comps: Object.assign({}, s.comps, { [bid]: [] }),
+        sel: { kind: 'layer', id: lid }, draft: ''
+      };
+    });
+  }
+
+  deleteLayer = (lid) => this.setState((s) => {
+    const flat = []; s.rows.forEach((r) => r.forEach((id) => flat.push(id)));
+    if (flat.length <= 1) { this.showToast('CANNOT DELETE — last layer', true); return {}; }
+    const rows = s.rows.map((r) => r.filter((id) => id !== lid)).filter((r) => r.length);
+    const defs = Object.assign({}, s.defs); delete defs[lid];
+    const blocks = Object.assign({}, s.blocks);
+    const comps = Object.assign({}, s.comps);
+    (blocks[lid] || []).forEach((b) => { delete comps[b.id]; });
+    delete blocks[lid];
+    return { rows: rows, defs: defs, blocks: blocks, comps: comps, sel: null, draft: '' };
+  });
+
+  // ─── block / component ops ───────────────────────────────
+  renameBlock = (bid, name) => this.setState((s) => {
+    const blocks = {};
+    Object.keys(s.blocks).forEach((lid) => {
+      blocks[lid] = s.blocks[lid].map((b) => (b.id === bid ? { id: b.id, name: name } : b));
+    });
+    return { blocks: blocks };
+  });
+
+  addBlock = (layerId) => this.setState((s) => {
+    const bid = 'b' + (s.bseq + 1);
+    this._focusName = true;
+    return {
+      bseq: s.bseq + 1,
+      blocks: Object.assign({}, s.blocks, { [layerId]: (s.blocks[layerId] || []).concat([{ id: bid, name: 'New Block' }]) }),
+      comps: Object.assign({}, s.comps, { [bid]: [] }),
+      sel: { kind: 'block', id: bid }, draft: ''
+    };
+  });
+
+  removeBlock = (layerId, bid) => this.setState((s) => {
+    const list = (s.blocks[layerId] || []).filter((b) => b.id !== bid);
+    const comps = Object.assign({}, s.comps); delete comps[bid];
+    return {
+      blocks: Object.assign({}, s.blocks, { [layerId]: list }),
+      comps: comps, sel: { kind: 'layer', id: layerId }, draft: ''
+    };
+  });
+
+  addComp = (name) => {
+    const n = String(name || '').trim();
+    const sel = this.state.sel;
+    if (!n || !sel || sel.kind !== 'block') return;
+    const bid = sel.id;
+    this.setState((s) => ({
+      comps: Object.assign({}, s.comps, { [bid]: (s.comps[bid] || []).concat([{ id: s.cseq + 1, name: n }]) }),
+      cseq: s.cseq + 1, draft: ''
+    }));
+  };
+
+  removeComp = (bid, cid) => this.setState((s) => ({
+    comps: Object.assign({}, s.comps, { [bid]: (s.comps[bid] || []).filter((c) => c.id !== cid) })
+  }));
+
+  componentDidUpdate() {
+    if (this._focusName && this._nameEl.current) {
+      this._focusName = false;
+      this._nameEl.current.focus();
+      this._nameEl.current.select();
+    }
+  }
+
+  // ─── export / import ─────────────────────────────────────
+  toArchJSON = () => {
+    const s = this.state;
+    const now = new Date().toISOString();
+    const layers = [];
+    s.rows.forEach((row, r) => {
+      row.forEach((id) => {
+        const d = s.defs[id];
+        layers.push({
+          id: d.id, name: d.name, subtitle: d.subtitle, path: d.path, color: d.color, hint: d.hint,
+          row: r, span: d.span, rowSpan: d.rowSpan,
+          blocks: (s.blocks[id] || []).map((b) => ({
+            name: b.name, components: (s.comps[b.id] || []).map((c) => c.name)
+          }))
+        });
+      });
+    });
+    return {
+      '$schema': 'layered-architecture/v1.1',
+      metadata: { name: 'Embedded Systems Architecture', created_at: now, updated_at: now },
+      settings: { accent: this.props.accent || '#4a9a5e', columns: COLS },
+      layers: layers
+    };
+  }
+
+  exportJSON = () => {
+    try {
+      const json = JSON.stringify(this.toArchJSON(), null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'layered_architecture.json';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      this.showToast('EXPORTED — layered_architecture.json', false);
+    } catch(e) { this.showToast('EXPORT FAILED — ' + e.message, true); }
+  }
+
+  fromArchJSON = (data) => {
+    if (!data || !Array.isArray(data.layers)) throw new Error('Invalid schema: missing layers array');
+    const buckets = [];
+    data.layers.forEach((L, idx) => {
+      const r = (typeof L.row === 'number') ? L.row : idx;   // v1.0 files → one layer per level
+      while (buckets.length <= r) buckets.push([]);
+      buckets[r].push({
+        id: L.id || ('layer_' + idx), name: L.name || 'LAYER', subtitle: L.subtitle || '',
+        path: L.path || '', color: L.color, hint: L.hint || '',
+        span: L.span || COLS, rowSpan: L.rowSpan || 1,
+        blocks: L.blocks || []
+      });
+    });
+    const built = buildFromRows(buckets.filter((b) => b.length));
+    this.setState(Object.assign({}, built, { sel: null, draft: '' }));
+  }
+
+  importFile = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        this.fromArchJSON(data);
+        const name = (data.metadata && data.metadata.name) || file.name;
+        this.showToast('IMPORTED — ' + name, false);
+      } catch(err) { this.showToast('IMPORT FAILED — ' + err.message, true); }
+    };
+    reader.onerror = () => this.showToast('IMPORT FAILED — cannot read file', true);
+    reader.readAsText(file);
+  }
+
+  resetSeed = () => {
+    this.setState(Object.assign({}, buildFromRows(SEED), { sel: null, draft: '' }));
+    this.showToast('RESET — reference architecture', false);
+  }
+
+  // ─── render ──────────────────────────────────────────────
+  renderVals() {
+    const accent = this.props.accent || '#4a9a5e';
+    const s = this.state;
+    const sel = s.sel;
+    const packed = packGrid(s.rows, s.defs);
+    const selLayerId = this.currentLayerId();
+
+    let totalBlocks = 0, totalComps = 0, tagDelay = 0, li = -1;
+
+    const gridLayers = [];
+    s.rows.forEach((row, r) => {
+      row.forEach((lid) => {
+        li++;
+        const d = s.defs[lid];
+        const p = packed.place[lid] || { col: 1, span: COLS, row: r + 1, rowSpan: 1 };
+        const isLayerSelected = !!sel && sel.kind === 'layer' && sel.id === lid;
+        const idx = li;
+        const layerBlocks = (s.blocks[lid] || []).map((b) => {
+          totalBlocks++;
+          const bComps = s.comps[b.id] || [];
+          totalComps += bComps.length;
+          const isSel = !!sel && sel.kind === 'block' && sel.id === b.id;
+          return {
+            id: b.id,
+            name: String(b.name).toUpperCase(),
+            countLabel: '· ' + bComps.length,
+            empty: bComps.length === 0,
+            comps: bComps.map((c) => {
+              tagDelay += 0.012;
+              return { name: c.name, delay: Math.min(tagDelay, 1.6).toFixed(3) };
+            }),
+            bg: isSel ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.04)',
+            border: isSel ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.08)',
+            selAnim: isSel ? 'selGlow 2.4s ease-in-out infinite' : 'tagIn .3s ease both',
+            onClick: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.selectBlock(b.id); },
+            onHover: () => this.playHoverSound(idx)
+          };
+        });
+
+        gridLayers.push({
+          id: lid,
+          code: 'L' + idx,
+          name: d.name,
+          subtitle: d.subtitle,
+          path: d.path,
+          color: d.color,
+          gc: p.col + ' / span ' + p.span,
+          gr: p.row + ' / span ' + p.rowSpan,
+          sizeLabel: 'W' + p.span + ' · H' + p.rowSpan,
+          border: isLayerSelected ? 'rgba(255,255,255,.65)' : 'rgba(255,255,255,.08)',
+          anim: isLayerSelected ? 'layerGlow 2.6s ease-in-out infinite' : 'riseIn .45s cubic-bezier(.2,.85,.2,1) both',
+          blocks: layerBlocks,
+          noBlocks: layerBlocks.length === 0,
+          onSelect: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.selectLayer(lid); }
+        });
+      });
+    });
+
+    const orderedIds = gridLayers.map((g) => g.id);
+    const selLayer = selLayerId ? s.defs[selLayerId] : null;
+    const selBlock = sel && sel.kind === 'block' ? this.blockObj(sel.id) : null;
+    const selList = selBlock ? (s.comps[sel.id] || []) : [];
+
+    const depFlow = s.rows.map((row, r) => ({
+      label: row.map((id) => s.defs[id].name).join('  ‖  '),
+      arrow: r > 0
+    }));
+
+    const layerSummary = [];
+    s.rows.forEach((row, r) => {
+      row.forEach((id) => {
+        const d = s.defs[id];
+        const lb = s.blocks[id] || [];
+        let cc = 0; lb.forEach((b) => { cc += (s.comps[b.id] || []).length; });
+        layerSummary.push({
+          name: d.name, color: d.color, row: r + 1,
+          size: 'W' + d.span + '·H' + d.rowSpan,
+          blockCount: lb.length, compCount: cc,
+          onClick: () => this.selectLayer(id)
+        });
+      });
+    });
+
+    const palette = PALETTE.map((c) => ({
+      color: c,
+      border: selLayer && selLayer.color === c ? 'rgba(255,255,255,.8)' : 'rgba(255,255,255,.12)',
+      onPick: () => selLayerId && this.updateLayer(selLayerId, { color: c })
+    }));
+
+    return {
+      accent: accent,
+      gridLayers: gridLayers,
+      rowCount: String(s.rows.length).padStart(2, '0'),
+      layerCount: String(orderedIds.length).padStart(2, '0'),
+      blockCount: totalBlocks,
+      compCount: totalComps,
+      depFlow: depFlow,
+      layerSummary: layerSummary,
+      palette: palette,
+
+      isLayerSel: !!sel && sel.kind === 'layer',
+      isBlockSel: !!sel && sel.kind === 'block' && !!selBlock,
+      noSel: !sel,
+
+      selLayerCode: selLayerId ? 'L' + orderedIds.indexOf(selLayerId) : '',
+      selLayerRow: selLayerId ? this.rowIndexOf(selLayerId) + 1 : '',
+      selLayerName: selLayer ? selLayer.name : '',
+      selLayerNameUp: selLayer ? String(selLayer.name).toUpperCase() : '',
+      selLayerSubtitle: selLayer ? selLayer.subtitle : '',
+      selLayerPath: selLayer ? selLayer.path : '',
+      selLayerHint: selLayer ? selLayer.hint : '',
+      selLayerSpan: selLayer ? selLayer.span : '',
+      selLayerRowSpan: selLayer ? selLayer.rowSpan : '',
+      selLayerSize: selLayer ? ('W' + selLayer.span + ' · H' + selLayer.rowSpan) : '',
+      selLayerBlockCount: selLayerId ? (s.blocks[selLayerId] || []).length : 0,
+      selLayerBlocks: selLayerId ? (s.blocks[selLayerId] || []).map((b) => ({
+        name: b.name,
+        count: (s.comps[b.id] || []).length + ' COMP',
+        onClick: () => this.selectBlock(b.id)
+      })) : [],
+
+      selBlockName: selBlock ? selBlock.name : '',
+      selCompCount: selList.length,
+      selEmpty: selList.length === 0,
+      selComps: selList.map((c) => ({ name: c.name, onRemove: () => this.removeComp(sel.id, c.id) })),
+
+      nameRef: this._nameEl,
+      onCanvasClick: () => this.clear(),
+      onClear: this.clear,
+      onSelectParentLayer: () => selLayerId && this.selectLayer(selLayerId),
+
+      onLayerName: (e) => selLayerId && this.updateLayer(selLayerId, { name: e.target.value }),
+      onLayerSubtitle: (e) => selLayerId && this.updateLayer(selLayerId, { subtitle: e.target.value }),
+      onLayerPath: (e) => selLayerId && this.updateLayer(selLayerId, { path: e.target.value }),
+      onWidthUp: () => selLayerId && this.resizeLayer(selLayerId, 1, 0),
+      onWidthDown: () => selLayerId && this.resizeLayer(selLayerId, -1, 0),
+      onHeightUp: () => selLayerId && this.resizeLayer(selLayerId, 0, 1),
+      onHeightDown: () => selLayerId && this.resizeLayer(selLayerId, 0, -1),
+      onMoveLeft: () => selLayerId && this.moveLayer(selLayerId, 'left'),
+      onMoveRight: () => selLayerId && this.moveLayer(selLayerId, 'right'),
+      onMoveUp: () => selLayerId && this.moveLayer(selLayerId, 'up'),
+      onMoveDown: () => selLayerId && this.moveLayer(selLayerId, 'down'),
+      onAddLeft: () => this.addLayer('left'),
+      onAddRight: () => this.addLayer('right'),
+      onAddAbove: () => this.addLayer('above'),
+      onAddBelow: () => this.addLayer('below'),
+      onAddLayerBottom: () => { this.clear(); setTimeout(() => this.addLayer('below'), 0); },
+      onDeleteLayer: () => selLayerId && this.deleteLayer(selLayerId),
+      onAddBlockToLayer: () => selLayerId && this.addBlock(selLayerId),
+
+      onRename: (e) => sel && sel.kind === 'block' && this.renameBlock(sel.id, e.target.value),
+      onAddBlock: () => selLayerId && this.addBlock(selLayerId),
+      onRemoveBlock: () => selLayerId && sel && sel.kind === 'block' && this.removeBlock(selLayerId, sel.id),
+      draft: s.draft,
+      onDraft: (e) => this.setState({ draft: e.target.value }),
+      onDraftKey: (e) => { if (e.key === 'Enter') this.addComp(this.state.draft); },
+      onAdd: () => this.addComp(this.state.draft),
+
+      onExport: () => this.exportJSON(),
+      onImportClick: () => { if (this._fileInput.current) this._fileInput.current.click(); },
+      onReset: () => this.resetSeed(),
+      fileRef: this._fileInput,
+      onFileLoad: (e) => { this.importFile(e.target.files[0]); if (this._fileInput.current) this._fileInput.current.value = ''; },
+
+      toastVisible: !!s.toast,
+      toastMsg: s.toast ? s.toast.msg : '',
+      toastBg: s.toast ? (s.toast.isError ? '#c0392b' : '#27ae60') : '#27ae60'
+    };
+  }
+}
+</script>
+</body>
+</html>

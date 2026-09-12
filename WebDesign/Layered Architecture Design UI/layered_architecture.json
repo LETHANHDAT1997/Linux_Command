@@ -1,0 +1,314 @@
+{
+  "$schema": "layered-architecture/v1.1",
+  "metadata": {
+    "name": "Embedded Systems Architecture",
+    "created_at": "2026-09-12T16:33:25.898Z",
+    "updated_at": "2026-09-12T16:33:25.898Z"
+  },
+  "settings": {
+    "accent": "#4a9a5e",
+    "columns": 12
+  },
+  "layers": [
+    {
+      "id": "ui_ux",
+      "name": "UI/UX",
+      "subtitle": "· HOST APPLICATIONS & CONFIGURATION",
+      "path": "user_interface/ · Tools/",
+      "color": "#4a1527",
+      "hint": "User-facing host applications — dashboards, configurators, and debug tools running on a PC or mobile device.",
+      "row": 0,
+      "span": 8,
+      "rowSpan": 1,
+      "blocks": [
+        {
+          "name": "GUI Tools",
+          "components": [
+            "PC_Configurator (Python/C++)",
+            "Web_Dashboard (React/Vue)",
+            "Mobile_App (Flutter/Android)",
+            "Debug_Tools_GUI (C++/Python/GDB)",
+            "Serial_Log_GUI (Python/Tkinter)"
+          ]
+        },
+        {
+          "name": "CLI Tools",
+          "components": [
+            "Debug_Tools_CLI (C++/Python/GDB)",
+            "Serial_CLI (Python)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "libraries",
+      "name": "UTILITY LIBRARIES",
+      "subtitle": "· HELPERS & MATH",
+      "path": "libraries/",
+      "color": "#50501d",
+      "hint": "Pure utility functions callable from any layer — math algorithms, timers, data structures. No side effects.",
+      "row": 0,
+      "span": 4,
+      "rowSpan": 5,
+      "blocks": [
+        {
+          "name": "LIBMATH (Algorithms)",
+          "components": [
+            "Kalman_Filter_Algorithms",
+            "MadgwickAHRS",
+            "PID_Algorithms",
+            "Utility_Algorithms",
+            "Macros Algorithms"
+          ]
+        },
+        {
+          "name": "LIBUTILITY (Helpers)",
+          "components": [
+            "Elapsed Time",
+            "Ring Buffer (FIFO)",
+            "Macros Time",
+            "Libraries Support"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "application",
+      "name": "APPLICATION",
+      "subtitle": "· USER FIRMWARE",
+      "path": "application/",
+      "color": "#26215c",
+      "hint": "Concrete firmware applications — each project implements a specific embedded use case on top of shared services.",
+      "row": 1,
+      "span": 8,
+      "rowSpan": 1,
+      "blocks": [
+        {
+          "name": "Robotics",
+          "components": [
+            "Self_Balancing_Robot",
+            "Autonomous_Mini_Rover"
+          ]
+        },
+        {
+          "name": "IoT & Sensors",
+          "components": [
+            "Wireless_Sensor_Node",
+            "Smart_Weather_Station",
+            "GPS_Data_Logger",
+            "Air_Quality_Monitor"
+          ]
+        },
+        {
+          "name": "Access & Industry",
+          "components": [
+            "RFID_Smart_Lock",
+            "Industrial_Gateway",
+            "Smart_Agriculture",
+            "USB_Data_Acquisition"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "services",
+      "name": "SERVICE LAYER",
+      "subtitle": "· DEVICE ABSTRACTIONS",
+      "path": "services/",
+      "color": "#04342c",
+      "hint": "High-level device abstractions — application code calls these modules instead of raw peripheral drivers.",
+      "row": 2,
+      "span": 8,
+      "rowSpan": 1,
+      "blocks": [
+        {
+          "name": "Wireless",
+          "components": [
+            "LoRA_Module",
+            "Bluetooth_Module",
+            "WiFi_Module",
+            "Radio_Module"
+          ]
+        },
+        {
+          "name": "Navigation & ID",
+          "components": [
+            "Orientation_Sensor",
+            "GPS_Module",
+            "RFID_Module"
+          ]
+        },
+        {
+          "name": "IO & Actuators",
+          "components": [
+            "SDCard_Drive",
+            "USB_Drive",
+            "Motor_Drive",
+            "Led_Drive",
+            "Display_Drive",
+            "Touch_Drive",
+            "Encoder_Drive"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "devices",
+      "name": "DEVICE LAYER",
+      "subtitle": "· PERIPHERAL ICS",
+      "path": "devices/",
+      "color": "#4a1b0c",
+      "hint": "Low-level drivers for specific hardware chips — each driver talks the chip native protocol (SPI, I2C, UART).",
+      "row": 3,
+      "span": 5,
+      "rowSpan": 1,
+      "blocks": [
+        {
+          "name": "Sensors",
+          "components": [
+            "DHT22",
+            "HMC5883L",
+            "MPU6050",
+            "QMC5883L",
+            "GPS"
+          ]
+        },
+        {
+          "name": "Communication ICs",
+          "components": [
+            "RC522",
+            "RF24L01",
+            "SX1278",
+            "CC1101",
+            "nRF24L01"
+          ]
+        },
+        {
+          "name": "Storage & IO",
+          "components": [
+            "SDCard",
+            "USB_Host"
+          ]
+        },
+        {
+          "name": "Display & Touch",
+          "components": [
+            "ST7789",
+            "SSD1306",
+            "ILI9341",
+            "ILI9488",
+            "FT6236",
+            "GT911"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "middleware",
+      "name": "MIDDLEWARE",
+      "subtitle": "· CROSS-CUTTING FIRMWARE",
+      "path": "middlewares/",
+      "color": "#412402",
+      "hint": "Shared firmware services used across multiple layers — filesystems, security, logging, and cryptography.",
+      "row": 3,
+      "span": 3,
+      "rowSpan": 1,
+      "blocks": [
+        {
+          "name": "Middleware",
+          "components": [
+            "FAT Filesystem Module",
+            "Secure Boot",
+            "Micro Console Log",
+            "TinyCrypt Library"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "platform",
+      "name": "PLATFORM LAYER",
+      "subtitle": "· HAL & RTOS SUPPORT",
+      "path": "platform/",
+      "color": "#042c53",
+      "hint": "Hardware abstraction and real-time OS — a portable interface to the silicon so upper layers stay chip-agnostic.",
+      "row": 4,
+      "span": 5,
+      "rowSpan": 1,
+      "blocks": [
+        {
+          "name": "HAL & BSP",
+          "components": [
+            "BSP",
+            "CMSIS",
+            "HAL Driver",
+            "LL Driver",
+            "Vendor HAL",
+            "Extended hardware library"
+          ]
+        },
+        {
+          "name": "RTOS",
+          "components": [
+            "RTOS"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "system_startup",
+      "name": "SYSTEM STARTUP",
+      "subtitle": "· RESET VECTOR & INIT",
+      "path": "system startup/",
+      "color": "#173404",
+      "hint": "Boot sequence — reset vector, clock configuration, and peripheral init before the RTOS scheduler starts.",
+      "row": 4,
+      "span": 3,
+      "rowSpan": 1,
+      "blocks": [
+        {
+          "name": "Startup",
+          "components": [
+            "Startup Config",
+            "System Manager"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "build_infra",
+      "name": "BUILD INFRASTRUCTURE",
+      "subtitle": "· CROSS-CUTTING",
+      "path": "environment/ · build/",
+      "color": "#1a1a18",
+      "hint": "Development toolchain, testing, and documentation — supports the whole lifecycle but is not deployed to target.",
+      "row": 5,
+      "span": 12,
+      "rowSpan": 1,
+      "blocks": [
+        {
+          "name": "Toolchain",
+          "components": [
+            "GNU Arm-Toolchain",
+            "Build Tools"
+          ]
+        },
+        {
+          "name": "Debug & Flash",
+          "components": [
+            "Flash Low Level Tools",
+            "Debug Low Level Tools"
+          ]
+        },
+        {
+          "name": "Quality & Docs",
+          "components": [
+            "Version Control",
+            "Unit Test Tools",
+            "Documentation Tools"
+          ]
+        }
+      ]
+    }
+  ]
+}

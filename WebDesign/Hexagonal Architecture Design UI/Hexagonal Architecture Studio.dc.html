@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="app">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #f8f8f6; }
+  * { box-sizing: border-box; }
+  a { color: #2e7d9a; text-decoration: none; }
+  a:hover { color: #1d5d75; }
+  input { font-family: inherit; }
+  @keyframes sectorIn { from { opacity: 0; transform: scale(.86); } to { opacity: 1; transform: scale(1); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes riseIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes spinRev { to { transform: rotate(-360deg); } }
+  @keyframes pulseOut { 0% { opacity: .34; transform: scale(1); } 70% { opacity: 0; transform: scale(2.55); } 100% { opacity: 0; transform: scale(2.55); } }
+  @keyframes corePulse { 0%,100% { opacity: .5; transform: scale(1); } 50% { opacity: .95; transform: scale(1.05); } }
+  @keyframes selPulse { 0%,100% { opacity: .5; } 50% { opacity: 1; } }
+  @keyframes scan { 0% { transform: translateX(-100%); } 100% { transform: translateX(320%); } }
+  @keyframes blink { 0%,45% { opacity: 1; } 50%,95% { opacity: .18; } 100% { opacity: 1; } }
+  @keyframes drift { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  @keyframes tickGlow { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
+  @keyframes spinSlow { to { transform: rotate(360deg); } }
+  @keyframes spinSlowRev { to { transform: rotate(-360deg); } }
+  @keyframes toastIn { from { opacity: 0; transform: translateY(12px) scale(.95); } to { opacity: 1; transform: none; } }
+  @keyframes toastOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-8px) scale(.95); } }
+</style>
+</helmet>
+<div style="height: 100vh; background: #f8f8f6; color: #2a2a28; font-family: 'Space Grotesk', Helvetica, sans-serif; display: flex; flex-direction: column;">
+
+  <header style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; padding: 18px 28px 12px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 10px; height: 10px; background: {{ accent }}; clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); animation: blink 2.6s steps(1,end) infinite;"></div>
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .22em; color: #8a8a84;">SYS / ARCHITECTURE&nbsp;CONSOLE</div>
+      </div>
+      <h1 style="margin: 0; font-size: 26px; font-weight: 500; letter-spacing: -.015em;">Hexagonal Architecture Studio</h1>
+    </div>
+    <div style="display: flex; gap: 26px; font-family: 'JetBrains Mono', monospace;">
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+        <div style="font-size: 9px; letter-spacing: .18em; color: #a3a39c;">LAYERS</div>
+        <div style="font-size: 20px; color: #2a2a28;">{{ layerCount }}</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+        <div style="font-size: 9px; letter-spacing: .18em; color: #a3a39c;">SECTORS</div>
+        <div style="font-size: 20px; color: #2a2a28;">{{ sectorCount }}</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+        <div style="font-size: 9px; letter-spacing: .18em; color: #a3a39c;">COMPONENTS</div>
+        <div style="font-size: 20px; color: {{ accent }};">{{ compCount }}</div>
+      </div>
+    </div>
+  </header>
+
+  <div style="height: 2px; margin: 0 28px; background: #ececE8; position: relative; overflow: hidden;">
+    <div style="position: absolute; inset: 0 auto 0 0; width: 22%; background: linear-gradient(90deg, transparent, {{ accent }}, transparent); animation: scan 7s ease-in-out infinite;"></div>
+  </div>
+
+  <main style="flex: 1 1 0; min-height: 0; display: flex; align-items: stretch; gap: 8px; padding: 8px 20px 12px;">
+
+    <section style="flex: 1 1 520px; min-width: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+      <div style="position: relative; flex: 1 1 0; min-height: 0; height: 100%; width: auto; aspect-ratio: 1 / 1; margin: 0 auto; container-type: size;">
+        <svg viewBox="-500 -500 1000 1000" width="100%" height="100%" style="display: block; overflow: visible;">
+          <defs>
+            <radialGradient id="sweepGrad" cx="0" cy="0" r="1">
+              <stop offset="0%" stop-color="{{ accent }}" stop-opacity="0"></stop>
+              <stop offset="55%" stop-color="{{ accent }}" stop-opacity="0.16"></stop>
+              <stop offset="100%" stop-color="{{ accent }}" stop-opacity="0"></stop>
+            </radialGradient>
+          </defs>
+
+          <rect x="-500" y="-500" width="1000" height="1000" fill="transparent" onClick="{{ onClear }}"></rect>
+
+          <!-- Outer rotating tick ring (accent glow, counter-clockwise) -->
+          <g style="transform-origin: 0px 0px; animation: fadeIn 1.4s ease .3s both, spinSlowRev 90s linear infinite;">
+            <sc-for list="{{ ticksOuter }}" as="to" hint-placeholder-count="12">
+              <line x1="{{ to.x1 }}" y1="{{ to.y1 }}" x2="{{ to.x2 }}" y2="{{ to.y2 }}" stroke="{{ accent }}" stroke-opacity="{{ to.op }}" stroke-width="{{ to.w }}" stroke-linecap="round"></line>
+            </sc-for>
+          </g>
+          <!-- Main rotating tick ring (clockwise) -->
+          <g style="transform-origin: 0px 0px; animation: fadeIn 1.4s ease .5s both, spinSlow 60s linear infinite;">
+            <sc-for list="{{ ticks }}" as="t" hint-placeholder-count="12">
+              <line x1="{{ t.x1 }}" y1="{{ t.y1 }}" x2="{{ t.x2 }}" y2="{{ t.y2 }}" stroke="{{ t.color }}" stroke-width="{{ t.w }}" stroke-linecap="round"></line>
+            </sc-for>
+          </g>
+
+          <sc-if value="{{ sweepOn }}" hint-placeholder-val="{{ true }}">
+            <g style="animation: spin 24s linear infinite; transform-origin: 0px 0px;">
+              <path d="{{ sweepPath }}" fill="url(#sweepGrad)"></path>
+            </g>
+          </sc-if>
+
+          <g>
+            <path d="{{ corePulsePath }}" fill="none" stroke="{{ accent }}" stroke-width="1.4" style="transform-origin: 0px 0px; animation: pulseOut 6s ease-out infinite;"></path>
+            <path d="{{ corePulsePath }}" fill="none" stroke="{{ accent }}" stroke-width="1.4" style="transform-origin: 0px 0px; animation: pulseOut 6s ease-out 3s infinite;"></path>
+          </g>
+
+          <g>
+            <sc-for list="{{ sectors }}" as="s" hint-placeholder-count="18">
+              <path d="{{ s.d }}" fill="{{ s.fill }}" stroke="{{ s.fill }}" stroke-width="8" stroke-linejoin="round" onClick="{{ s.onClick }}" onMouseEnter="{{ s.onHover }}" style="cursor: pointer; transform-box: fill-box; transform-origin: center; animation: sectorIn .8s cubic-bezier(.2,.85,.2,1) both; animation-delay: {{ s.delay }}s;" style-hover="opacity: .78"></path>
+            </sc-for>
+          </g>
+
+          <sc-if value="{{ selPath }}" hint-placeholder-val="{{ false }}">
+            <path d="{{ selPath }}" fill="{{ accent }}" fill-opacity="0.24" stroke="{{ accent }}" stroke-opacity="0.24" stroke-width="8" stroke-linejoin="round" style="pointer-events: none; animation: selPulse 2.4s ease-in-out infinite;"></path>
+          </sc-if>
+
+          <g style="transform-origin: 0px 0px; animation: corePulse 4.2s ease-in-out infinite;">
+            <path d="{{ coreGlyph }}" fill="{{ accent }}" fill-opacity="0.18"></path>
+          </g>
+
+          <sc-if value="{{ orbitsOn }}" hint-placeholder-val="{{ true }}">
+            <g>
+              <g style="transform-origin: 0px 0px; animation: spin 18s linear infinite;">
+                <circle cx="{{ orbA }}" cy="0" r="4.5" fill="{{ accent }}"></circle>
+              </g>
+              <g style="transform-origin: 0px 0px; animation: spinRev 27s linear infinite;">
+                <circle cx="{{ orbB }}" cy="0" r="3.5" fill="{{ accent }}" fill-opacity="0.55"></circle>
+              </g>
+              <g style="transform-origin: 0px 0px; animation: spin 34s linear infinite;">
+                <circle cx="{{ orbC }}" cy="0" r="3" fill="#b9b9b1"></circle>
+              </g>
+            </g>
+          </sc-if>
+        </svg>
+
+        <div style="position: absolute; inset: 0; pointer-events: none;">
+          <sc-for list="{{ sectors }}" as="s" hint-placeholder-count="18">
+            <div style="position: absolute; left: {{ s.lx }}%; top: {{ s.ly }}%; width: {{ s.lw }}%; transform: {{ s.rot }}; font-family: 'JetBrains Mono', monospace; font-size: {{ s.fcq }}; line-height: 1.18; letter-spacing: .1em; text-transform: uppercase; text-align: center; color: #55554f; animation: fadeIn .9s ease both; animation-delay: {{ s.labelDelay }}s;">
+              <sc-for list="{{ s.lines }}" as="ln" hint-placeholder-count="1">
+                <div>{{ ln.s }}</div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="flex: 0 0 auto; display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: .12em; color: #9a9a93;">
+        <sc-for list="{{ legend }}" as="l" hint-placeholder-count="4">
+          <div style="display: flex; align-items: center; gap: 7px;">
+            <div style="width: 9px; height: 9px; background: {{ l.fill }}; clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);"></div>
+            <span>{{ l.code }} {{ l.upper }} · {{ l.sectorCount }} BLOCKS · {{ l.count }} COMP</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <aside style="flex: 0 1 340px; min-width: 290px; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+
+      <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 14px; background: #ffffff; padding: 20px; animation: riseIn .45s cubic-bezier(.2,.9,.2,1) both;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+            <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1;">
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .2em; color: {{ accent }};">{{ selLayerCode }} · {{ selLayerUpper }}</div>
+              <div style="display: flex; align-items: center; gap: 7px;">
+                <input ref="{{ nameRef }}" value="{{ selName }}" onChange="{{ onRename }}" placeholder="Block name…" style="flex: 1; min-width: 0; border: none; outline: none; background: #f4f4f1; padding: 7px 9px; font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 500; letter-spacing: -.01em; color: #2a2a28;" style-focus="background: #eaeae5"></input>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: .14em; color: #b5b5ad;">RENAME</div>
+              </div>
+            </div>
+            <div onClick="{{ onClear }}" style="cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #a3a39c; padding: 2px 6px;" style-hover="color: #2a2a28">ESC</div>
+          </div>
+
+          <div style="font-size: 12.5px; line-height: 1.55; color: #6f6f68;">{{ selHint }}</div>
+
+          <div style="display: flex; gap: 6px;">
+            <input value="{{ draft }}" onChange="{{ onDraft }}" onKeyDown="{{ onDraftKey }}" placeholder="Component name…" style="flex: 1; min-width: 0; border: none; outline: none; background: #f4f4f1; padding: 11px 12px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #2a2a28;">
+            <div style="display: flex; background: {{ accent }};">
+              <div onClick="{{ onAdd }}" style="cursor: pointer; color: #ffffff; padding: 11px 15px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .1em;" style-hover="opacity: .85">ADD</div>
+            </div>
+          </div>
+
+          <sc-if value="{{ hasPresets }}" hint-placeholder-val="{{ false }}">
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <sc-for list="{{ presets }}" as="p" hint-placeholder-count="3">
+                <div onClick="{{ p.onClick }}" style="cursor: pointer; flex: 0 0 auto; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; padding: 6px 10px; background: #f4f4f1; color: #55554f;" style-hover="background: #eaeae5">{{ p.name }}</div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .18em; color: #a3a39c;">COMPONENTS · {{ selCount }}</div>
+            <sc-for list="{{ selComps }}" as="c" hint-placeholder-count="2">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #f8f8f6; padding: 10px 12px; animation: riseIn .35s ease both;">
+                <div style="display: flex; align-items: center; gap: 9px; min-width: 0;">
+                  <div style="width: 7px; height: 7px; flex: none; background: {{ accent }}; clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);"></div>
+                  <div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: #2a2a28; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ c.name }}</div>
+                </div>
+                <div onClick="{{ c.onRemove }}" style="cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #b5b5ad; padding: 0 3px;" style-hover="color: #2a2a28">×</div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ selEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: #b5b5ad; padding: 8px 0;">// empty — add the first component</div>
+            </sc-if>
+          </div>
+
+          <div style="display: flex; gap: 8px; padding-top: 4px;">
+            <div onClick="{{ onAddSector }}" style="cursor: pointer; flex: 1; text-align: center; background: #f4f4f1; color: #55554f; padding: 10px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .12em;" style-hover="background: #eaeae5">+ BLOCK IN LAYER</div>
+            <div onClick="{{ onRemoveSector }}" style="cursor: pointer; text-align: center; background: #f4f4f1; color: #a3a39c; padding: 10px 12px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .12em;" style-hover="color: #2a2a28">DELETE</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ noSel }}" hint-placeholder-val="{{ true }}">
+        <div style="display: flex; flex-direction: column; gap: 16px; background: #ffffff; padding: 20px; animation: riseIn .5s cubic-bezier(.2,.9,.2,1) both;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .2em; color: #a3a39c;">OVERVIEW</div>
+          <div style="font-size: 13px; line-height: 1.6; color: #6f6f68;">Pick a block to rename it and list its components. Every ring splits into as many blocks as you need — use + to grow a layer.</div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <sc-for list="{{ legend }}" as="l" hint-placeholder-count="4">
+              <div style="display: flex; align-items: stretch; gap: 4px;">
+                <div onClick="{{ l.onClick }}" style="cursor: pointer; flex: 1; min-width: 0; display: flex; align-items: center; gap: 11px; background: #f8f8f6; padding: 12px 13px;" style-hover="background: #f1f1ec">
+                  <div style="width: 12px; height: 12px; flex: none; background: {{ l.fill }}; clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);"></div>
+                  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                    <div style="font-size: 13px; font-weight: 500;">{{ l.name }}</div>
+                    <div style="font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: #a3a39c; letter-spacing: .08em;">{{ l.sectorCount }} BLOCKS · {{ l.count }} COMPONENTS</div>
+                  </div>
+                </div>
+                <div onClick="{{ l.onAdd }}" style="cursor: pointer; display: flex; align-items: center; justify-content: center; width: 38px; background: #f8f8f6; color: #a3a39c; font-family: 'JetBrains Mono', monospace; font-size: 14px;" style-hover="color: #2a2a28">+</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="background: #ffffff; padding: 16px 20px; display: flex; flex-direction: column; gap: 9px; animation: riseIn .6s ease .1s both;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .2em; color: #a3a39c;">DEPENDENCY RULE</div>
+        <div style="display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #55554f; flex-wrap: wrap;">
+          <sc-for list="{{ depRule }}" as="dr" hint-placeholder-count="4">
+            <sc-if value="{{ dr.arrow }}" hint-placeholder-val="{{ false }}"><span style="color: {{ accent }};">→</span></sc-if>
+            <span style="color: {{ dr.color }};">{{ dr.label }}</span>
+          </sc-for>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <footer style="display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; padding: 10px 28px 18px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: .14em; color: #a3a39c;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="width: 6px; height: 6px; border-radius: 999px; background: {{ accent }}; animation: blink 1.8s steps(1,end) infinite;"></div>
+      <span>MODEL SYNCED · {{ compCount }} COMPONENTS ACROSS {{ sectorCount }} BLOCKS</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <div onClick="{{ onExport }}" style="cursor: pointer; padding: 5px 12px; background: #f0f0ec; color: #55554f; letter-spacing: .1em; transition: all .15s;" style-hover="background: #e4e4df; color: #2a2a28">⬇ EXPORT</div>
+      <div onClick="{{ onImportClick }}" style="cursor: pointer; padding: 5px 12px; background: #f0f0ec; color: #55554f; letter-spacing: .1em; transition: all .15s;" style-hover="background: #e4e4df; color: #2a2a28">⬆ IMPORT</div>
+      <input ref="{{ fileRef }}" type="file" accept=".json" onChange="{{ onFileLoad }}" style="display: none;">
+    </div>
+    <div style="animation: drift 6s ease-in-out infinite;">HEX-CORE v0.5 · PORTS &amp; ADAPTERS</div>
+  </footer>
+
+  <sc-if value="{{ toastVisible }}" hint-placeholder-val="{{ false }}">
+    <div style="position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 9999; padding: 12px 24px; background: {{ toastBg }}; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .08em; box-shadow: 0 8px 32px rgba(0,0,0,.18); animation: toastIn .3s cubic-bezier(.2,.9,.2,1) both;">{{ toastMsg }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;accent&quot;: { &quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#2e7d9a&quot;, &quot;tsType&quot;: &quot;string&quot;,
+    &quot;options&quot;: [&quot;#2e7d9a&quot;, &quot;#4a6f8a&quot;, &quot;#7a6a9c&quot;, &quot;#8a6a4e&quot;] },
+  &quot;sweep&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Motion&quot; },
+  &quot;orbits&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Motion&quot; },
+  &quot;tileGap&quot;: { &quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 9, &quot;min&quot;: 4, &quot;max&quot;: 20, &quot;step&quot;: 1, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Geometry&quot; }
+}">
+const DEFAULT_LAYERS = [
+  { id: 'domain', name: 'Domain', code: 'L0', rot: 0,
+    hint: 'Pure business model. No framework, no I/O — nothing outside knows about it.' },
+  { id: 'application', name: 'Application', code: 'L1', rot: 60,
+    hint: 'Orchestrates the domain and declares the ports the outside world must satisfy.' },
+  { id: 'adapters', name: 'Adapters', code: 'L2', rot: 0,
+    hint: 'Translates between an outside protocol and a port. Driving on one side, driven on the other.' },
+  { id: 'infrastructure', name: 'Infrastructure', code: 'L3', rot: 30,
+    hint: 'Concrete technology. Replaceable without touching anything further in.' }
+];
+
+const DEFAULT_FILLS = { domain: null, application: '#f1f1ed', adapters: '#e9e9e4', infrastructure: '#dededa' };
+
+// Compute radii dynamically based on layer count
+function computeLayerRadii(layerCount) {
+  const coreMin = 48;
+  const outerMax = 432;
+  const gap = 12;
+  const totalGaps = (layerCount - 1) * gap;
+  const ringSpace = (outerMax - coreMin - totalGaps) / layerCount;
+  const result = [];
+  for (let i = 0; i < layerCount; i++) {
+    const r0 = coreMin + i * (ringSpace + gap);
+    const r1 = r0 + ringSpace;
+    result.push({ r0: Math.round(r0), r1: Math.round(r1) });
+  }
+  return result;
+}
+
+const PRESETS = {
+  'Entities': ['Order', 'Customer', 'Invoice'],
+  'Value Objects': ['Money', 'Address', 'EmailAddress'],
+  'Domain Services': ['PricingPolicy', 'StockRule'],
+  'Use Cases': ['PlaceOrder', 'CancelOrder', 'GetOrder'],
+  'Input Ports': ['PlaceOrderPort', 'OrderQueryPort'],
+  'Output Ports': ['OrderRepository', 'PaymentGateway', 'EventPublisher'],
+  'REST': ['OrderController', 'WebhookRoute'],
+  'GraphQL': ['OrderResolver', 'SchemaModule'],
+  'CLI': ['ImportCommand', 'SeedCommand'],
+  'Persistence': ['SqlOrderRepo', 'MongoOrderRepo'],
+  'Messaging': ['KafkaConsumer', 'OutboxPublisher'],
+  'External API': ['StripeClient', 'ShippingClient'],
+  'Database': ['PostgreSQL', 'Redis'],
+  'Broker': ['Kafka', 'RabbitMQ'],
+  'Cache': ['Redis Cluster'],
+  'Config': ['EnvLoader', 'FeatureFlags'],
+  'Observability': ['OpenTelemetry', 'Grafana'],
+  'Identity': ['OAuth2Server', 'JwtIssuer']
+};
+
+const SEED = {
+  domain: ['Entities', 'Value Objects', 'Domain Services'],
+  application: ['Use Cases', 'Input Ports', 'Output Ports'],
+  adapters: ['REST', 'GraphQL', 'CLI', 'Persistence', 'Messaging', 'External API'],
+  infrastructure: ['Database', 'Broker', 'Cache', 'Config', 'Observability', 'Identity']
+};
+
+function hexToRgb(h) {
+  const s = String(h || '').replace('#', '');
+  const f = s.length === 3 ? s.split('').map(c => c + c).join('') : s;
+  return [parseInt(f.slice(0, 2), 16) || 0, parseInt(f.slice(2, 4), 16) || 0, parseInt(f.slice(4, 6), 16) || 0];
+}
+function mix(a, b, t) {
+  const A = hexToRgb(a), B = hexToRgb(b);
+  return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join('');
+}
+const RAD = Math.PI / 180;
+// radius of the hexagon outline (circumradius r) at an arbitrary angle
+function hexR(r, phi) {
+  if (!r) return 0;
+  const p = ((phi % 60) + 60) % 60;
+  return r * Math.cos(30 * RAD) / Math.cos((p - 30) * RAD);
+}
+function hexPt(r, phi) {
+  const R = hexR(r, phi);
+  return [R * Math.cos(phi * RAD), R * Math.sin(phi * RAD)];
+}
+// samples the hexagon outline from a0 to a1, keeping every corner in between
+function edge(r, a0, a1) {
+  const pts = [hexPt(r, a0)];
+  for (let k = Math.floor(a0 / 60) + 1; k * 60 < a1; k++) pts.push(hexPt(r, k * 60));
+  pts.push(hexPt(r, a1));
+  return pts;
+}
+function blockPoly(a0, a1, r0, r1) {
+  return edge(r1, a0, a1).concat(edge(r0, a0, a1).reverse());
+}
+function blockPath(a0, a1, r0, r1) {
+  return 'M' + blockPoly(a0, a1, r0, r1).map(p => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('L') + 'Z';
+}
+// half-extent inside `poly` on the line y = yy, measured from x = cx (even-odd, picks
+// the interval containing cx so ring holes are respected)
+function halfSpanAt(poly, cx, yy) {
+  const xs = [];
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    if ((a[1] <= yy && b[1] > yy) || (b[1] <= yy && a[1] > yy)) {
+      xs.push(a[0] + (yy - a[1]) / (b[1] - a[1]) * (b[0] - a[0]));
+    }
+  }
+  xs.sort((p, q) => p - q);
+  for (let i = 0; i + 1 < xs.length; i += 2) {
+    if (cx >= xs[i] - 0.5 && cx <= xs[i + 1] + 0.5) return Math.min(cx - xs[i], xs[i + 1] - cx);
+  }
+  return 0;
+}
+// room along the text's own axis: rotate the block into that frame, then scanline the
+// horizontal band the text will occupy — respects hexagon facet boundaries exactly
+function roomAlongAxis(poly, angDeg, cx, cy, h) {
+  const t = -angDeg * RAD, c = Math.cos(t), s = Math.sin(t);
+  const rp = poly.map(p => [p[0] * c - p[1] * s, p[0] * s + p[1] * c]);
+  const rx = cx * c - cy * s, ry = cx * s + cy * c;
+  let w = Infinity;
+  for (let k = 0; k <= 4; k++) w = Math.min(w, halfSpanAt(rp, rx, ry - h / 2 + (h * k) / 4));
+  return Math.max(0, w * 2);
+}
+// Largest font size + line split whose rotated text box fits inside the block.
+// A candidate is accepted only when the measured room really holds it; there is no
+// "give up and use the max size" path.
+function fitLabel(text, poly, axis, cx, cy) {
+  const words = String(text).toUpperCase().split(/\s+/);
+  const wrap = cap => {
+    const lines = [];
+    let cur = '';
+    for (const w of words) {
+      if (w.length > cap) return null;
+      if (!cur) cur = w;
+      else if ((cur + ' ' + w).length <= cap) cur += ' ' + w;
+      else { lines.push(cur); cur = w; }
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  };
+  const widest = lines => Math.max.apply(null, lines.map(l => l.length));
+  for (let fs = 30; fs >= 14; fs -= 1) {
+    for (let n = 1; n <= 3; n++) {
+      const h = n * fs * 1.18;
+      const room = roomAlongAxis(poly, axis, cx, cy, h) * 0.9;
+      if (room < fs * 2.1) continue;
+      const cap = Math.floor(room / (fs * 0.70));
+      if (cap < 3) continue;
+      const lines = wrap(cap);
+      if (lines && lines.length <= n && widest(lines) * fs * 0.70 <= room) {
+        return { fs, lines, boxW: room };
+      }
+    }
+  }
+  // last resort: smallest size, text clipped to whatever the block truly holds
+  const fs = 14;
+  const room = roomAlongAxis(poly, axis, cx, cy, fs * 1.18 * 3) * 0.9;
+  const cap = Math.max(2, Math.floor(room / (fs * 0.70)));
+  const src = String(text).toUpperCase();
+  const lines = [];
+  for (let i = 0; i < src.length && lines.length < 3; i += cap) lines.push(src.substr(i, cap));
+  return { fs, lines: lines.length ? lines : [src.substr(0, cap)], boxW: Math.max(room, fs * 2) };
+}
+const VB = 500;
+const pct = v => ((v + VB) / (VB * 2)) * 100;
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const sectorLayers = {}; let n = 0;
+    Object.keys(SEED).forEach(id => { sectorLayers[id] = SEED[id].map(name => ({ id: 's' + (++n), name })); });
+    this.state = {
+      layerDefs: DEFAULT_LAYERS.map(l => ({ ...l })),
+      fills: Object.assign({}, DEFAULT_FILLS),
+      layers: sectorLayers, seq: n,
+      sel: sectorLayers.domain[0].id,
+      draft: '',
+      comps: { s1: [{ id: 1, name: 'Order' }, { id: 2, name: 'Customer' }], s2: [{ id: 3, name: 'Money' }], s4: [{ id: 4, name: 'PlaceOrder' }], s10: [{ id: 5, name: 'SqlOrderRepo' }], s13: [{ id: 6, name: 'PostgreSQL' }] },
+      cseq: 100,
+      toast: null
+    };
+    this._audioCtx = null;
+    this._lastHoverTime = 0;
+    this._fileInput = React.createRef();
+  }
+
+  _getAudioCtx() {
+    if (!this._audioCtx) {
+      this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (this._audioCtx.state === 'suspended') {
+      this._audioCtx.resume();
+    }
+    return this._audioCtx;
+  }
+
+  playHoverSound = (layerIndex) => {
+    const now = performance.now();
+    if (now - this._lastHoverTime < 60) return; // throttle rapid hovers
+    this._lastHoverTime = now;
+    try {
+      const ctx = this._getAudioCtx();
+      const t = ctx.currentTime;
+      // Each layer gets a distinct pitch: Domain=880Hz, App=660Hz, Adapters=520Hz, Infra=400Hz
+      const freqs = [880, 660, 520, 400];
+      const baseFreq = freqs[layerIndex] || 600;
+      // Main tone
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(baseFreq, t);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.25, t + 0.04);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.9, t + 0.1);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.08, t + 0.01);
+      gain.gain.linearRampToValueAtTime(0.05, t + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.13);
+      // Harmonic overtone for richer sound
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(baseFreq * 2.5, t);
+      osc2.frequency.exponentialRampToValueAtTime(baseFreq * 1.8, t + 0.08);
+      const gain2 = ctx.createGain();
+      gain2.gain.setValueAtTime(0, t);
+      gain2.gain.linearRampToValueAtTime(0.025, t + 0.008);
+      gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(t);
+      osc2.stop(t + 0.1);
+    } catch(e) { /* audio not available */ }
+  }
+
+  playClickSound = () => {
+    try {
+      const ctx = this._getAudioCtx();
+      const t = ctx.currentTime;
+      // Click: short descending blip
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1200, t);
+      osc.frequency.exponentialRampToValueAtTime(600, t + 0.06);
+      osc.frequency.exponentialRampToValueAtTime(400, t + 0.15);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.1, t + 0.005);
+      gain.gain.linearRampToValueAtTime(0.07, t + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.2);
+      // Sub bass thud
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(120, t);
+      osc2.frequency.exponentialRampToValueAtTime(60, t + 0.1);
+      const gain2 = ctx.createGain();
+      gain2.gain.setValueAtTime(0, t);
+      gain2.gain.linearRampToValueAtTime(0.06, t + 0.005);
+      gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(t);
+      osc2.stop(t + 0.13);
+    } catch(e) { /* audio not available */ }
+  }
+
+  layerOf = sid => this.state.layerDefs.find(L => (this.state.layers[L.id] || []).some(s => s.id === sid));
+  sectorOf = sid => {
+    let out = null;
+    Object.keys(this.state.layers).forEach(id => {
+      const f = this.state.layers[id].find(s => s.id === sid);
+      if (f) out = f;
+    });
+    return out;
+  };
+
+  // ─── Toast ─────────────────────────────────────────
+  showToast = (msg, isError) => {
+    this.setState({ toast: { msg, isError } });
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => this.setState({ toast: null }), 3000);
+  }
+
+  // ─── Export ────────────────────────────────────────
+  toArchJSON = () => {
+    const { layerDefs, fills, layers, comps } = this.state;
+    const now = new Date().toISOString();
+    return {
+      '$schema': 'hexagonal-architecture/v1.0',
+      metadata: {
+        name: 'Untitled Architecture',
+        created_at: now,
+        updated_at: now
+      },
+      settings: {
+        accent: this.props.accent || '#2e7d9a',
+        tile_gap: this.props.tileGap == null ? 9 : this.props.tileGap
+      },
+      layers: layerDefs.map(L => ({
+        id: L.id,
+        name: L.name,
+        code: L.code,
+        hint: L.hint || '',
+        fill: fills[L.id] || null,
+        blocks: (layers[L.id] || []).map(sec => ({
+          name: sec.name,
+          components: (comps[sec.id] || []).map(c => c.name)
+        }))
+      }))
+    };
+  }
+
+  exportJSON = () => {
+    try {
+      const data = this.toArchJSON();
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'architecture.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      this.showToast('EXPORTED — architecture.json', false);
+    } catch(e) {
+      this.showToast('EXPORT FAILED — ' + e.message, true);
+    }
+  }
+
+  // ─── Import ────────────────────────────────────────
+  fromArchJSON = (data) => {
+    if (!data || !data.layers || !Array.isArray(data.layers)) {
+      throw new Error('Invalid schema: missing layers array');
+    }
+    const schema = data['$schema'] || '';
+    if (schema && !schema.startsWith('hexagonal-architecture/')) {
+      throw new Error('Unknown schema: ' + schema);
+    }
+    const layerDefs = [];
+    const fills = {};
+    const sectorLayers = {};
+    const comps = {};
+    let seq = 0, cseq = 0;
+
+    data.layers.forEach((layerData, idx) => {
+      const id = layerData.id || ('layer_' + idx);
+      const defaultL = DEFAULT_LAYERS.find(d => d.id === id);
+      layerDefs.push({
+        id: id,
+        name: layerData.name || id,
+        code: layerData.code || ('L' + idx),
+        hint: layerData.hint || (defaultL ? defaultL.hint : ''),
+        rot: defaultL ? defaultL.rot : (idx % 2 === 0 ? 0 : 60)
+      });
+      fills[id] = layerData.fill !== undefined ? layerData.fill : (DEFAULT_FILLS[id] || null);
+      sectorLayers[id] = (layerData.blocks || []).map(block => {
+        const sid = 's' + (++seq);
+        comps[sid] = (block.components || []).map(name => ({ id: ++cseq, name: String(name) }));
+        return { id: sid, name: block.name || 'Unnamed' };
+      });
+    });
+
+    this.setState({
+      layerDefs, fills, layers: sectorLayers, comps,
+      seq, cseq, sel: null, draft: ''
+    });
+  }
+
+  importFile = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        this.fromArchJSON(data);
+        const name = (data.metadata && data.metadata.name) || file.name;
+        this.showToast('IMPORTED — ' + name, false);
+      } catch(err) {
+        this.showToast('IMPORT FAILED — ' + err.message, true);
+      }
+    };
+    reader.onerror = () => this.showToast('IMPORT FAILED — cannot read file', true);
+    reader.readAsText(file);
+  }
+
+  select = sid => this.setState({ sel: sid, draft: '' });
+  clear = () => this.setState({ sel: null, draft: '' });
+
+  rename = (sid, name) => this.setState(s => {
+    const layers = {};
+    Object.keys(s.layers).forEach(id => { layers[id] = s.layers[id].map(x => x.id === sid ? { id: x.id, name } : x); });
+    return { layers };
+  });
+
+  nameEl = React.createRef();
+
+  componentDidUpdate() {
+    if (this.focusName && this.nameEl.current) {
+      this.focusName = false;
+      this.nameEl.current.focus();
+      this.nameEl.current.select();
+    }
+  }
+
+  addSector = layerId => this.setState(s => {
+    const id = 's' + (s.seq + 1);
+    this.focusName = true;
+    return {
+      seq: s.seq + 1,
+      layers: Object.assign({}, s.layers, { [layerId]: (s.layers[layerId] || []).concat([{ id, name: 'New Block' }]) }),
+      sel: id, draft: ''
+    };
+  });
+
+  removeSector = (layerId, sid) => this.setState(s => {
+    const list = (s.layers[layerId] || []).filter(x => x.id !== sid);
+    if (!list.length) return {};
+    const comps = Object.assign({}, s.comps); delete comps[sid];
+    return { layers: Object.assign({}, s.layers, { [layerId]: list }), comps, sel: null, draft: '' };
+  });
+
+  add = name => {
+    const n = String(name || '').trim();
+    const key = this.state.sel;
+    if (!n || !key) return;
+    this.setState(s => ({
+      comps: Object.assign({}, s.comps, { [key]: (s.comps[key] || []).concat([{ id: s.cseq + 1, name: n }]) }),
+      cseq: s.cseq + 1, draft: ''
+    }));
+  };
+
+  remove = (key, id) => this.setState(s => ({
+    comps: Object.assign({}, s.comps, { [key]: (s.comps[key] || []).filter(c => c.id !== id) })
+  }));
+
+  renderVals() {
+    const accent = this.props.accent || '#2e7d9a';
+    const pad = this.props.tileGap == null ? 9 : this.props.tileGap;
+    const { comps, layers, sel, layerDefs, fills } = this.state;
+
+    // Compute radii dynamically
+    const radii = computeLayerRadii(layerDefs.length);
+    const LAYERS_COMPUTED = layerDefs.map((L, i) => ({
+      ...L, r0: radii[i].r0, r1: radii[i].r1
+    }));
+
+    const sectors = [];
+    const legend = [];
+    let prevMids = [];
+    LAYERS_COMPUTED.forEach((L, li) => {
+      const list = layers[L.id] || [];
+      const fill = fills[L.id] || mix('#f1f1ed', accent, 0.2);
+      const span = 360 / Math.max(1, list.length);
+      // Rotate each ring so its label rays sit near flat-edge midpoints (30+60k), where the
+      // hexagon is widest — vertex rays pinch to a point and horizontal text spills out.
+      // Secondary goal: stay clear of the neighbouring ring's label rays.
+      const midsFor = r => list.map((_, i) => (((r + i * span + span / 2) % 360) + 360) % 360);
+      const vertexDist = mids => Math.min.apply(null, mids.map(m => {
+        const p = ((m % 60) + 60) % 60; return Math.min(p, 60 - p);
+      }));
+      const neighbourDist = mids => prevMids.length ? Math.min.apply(null, mids.map(m =>
+        Math.min.apply(null, prevMids.map(p => { const d = Math.abs(m - p); return Math.min(d, 360 - d); }))
+      )) : 180;
+      let rot = L.rot, best = -1;
+      for (let r = 0; r < span; r += 2) {
+        const mids = midsFor(r);
+        const score = vertexDist(mids) * 4 + Math.min(30, neighbourDist(mids));
+        if (score > best) { best = score; rot = r; }
+      }
+      prevMids = midsFor(rot);
+      const rMid = (L.r0 + L.r1) / 2;
+      const dA = (pad / rMid) / RAD;
+      let count = 0;
+      list.forEach((sec, si) => {
+        count += (comps[sec.id] || []).length;
+        const a0 = rot + si * span, a1 = a0 + span;
+        const mid = (a0 + a1) / 2;
+        const lr = (hexR(L.r0, mid) + hexR(L.r1, mid)) / 2;
+        const cx = lr * Math.cos(mid * RAD), cy = lr * Math.sin(mid * RAD);
+        const poly = blockPoly(a0 + dA, a1 - dA, L.r0 + pad, L.r1 - pad);
+        const axis = mid + 90;
+        const fit = fitLabel(sec.name, poly, axis, cx, cy);
+        let rotDeg = axis;
+        while (rotDeg > 90) rotDeg -= 180;
+        while (rotDeg < -90) rotDeg += 180;
+        sectors.push({
+          key: sec.id, name: sec.name, fill,
+          d: blockPath(a0 + dA, a1 - dA, L.r0 + pad, L.r1 - pad),
+          lx: pct(cx), ly: pct(cy),
+          lw: (fit.boxW / (VB * 2) * 100).toFixed(2),
+          rot: 'translate(-50%, -50%) rotate(' + rotDeg.toFixed(1) + 'deg)',
+          fcq: (fit.fs / (VB * 2) * 100).toFixed(3) + 'cqw',
+          lines: fit.lines.map(s => ({ s })),
+          delay: (li * 0.13 + si * 0.05).toFixed(2),
+          labelDelay: (0.5 + li * 0.13 + si * 0.05).toFixed(2),
+          onHover: () => this.playHoverSound(li),
+          onClick: () => { this.playClickSound(); this.select(sec.id); }
+        });
+      });
+      legend.push({
+        name: L.name, upper: L.name.toUpperCase(), code: L.code, fill, count,
+        sectorCount: list.length,
+        onClick: () => this.select((list[0] || {}).id),
+        onAdd: () => this.addSector(L.id)
+      });
+    });
+
+    // Main ticks - bolder, more visible
+    const ticks = [];
+    for (let i = 0; i < 72; i++) {
+      const a = i * 5 * RAD, major = i % 6 === 0, mid = i % 3 === 0 && !major;
+      const r0 = 446, r1 = major ? 466 : (mid ? 459 : 454);
+      ticks.push({
+        x1: (r0 * Math.cos(a)).toFixed(1), y1: (r0 * Math.sin(a)).toFixed(1),
+        x2: (r1 * Math.cos(a)).toFixed(1), y2: (r1 * Math.sin(a)).toFixed(1),
+        w: major ? 2.8 : (mid ? 1.8 : 1.2),
+        color: major ? '#8a8a80' : (mid ? '#a5a59e' : '#b8b8b0')
+      });
+    }
+    // Outer accent ticks - glowing ring
+    const ticksOuter = [];
+    for (let i = 0; i < 120; i++) {
+      const a = i * 3 * RAD, major = i % 10 === 0, mid = i % 5 === 0 && !major;
+      const r0 = 468, r1 = major ? 482 : (mid ? 477 : 473);
+      ticksOuter.push({
+        x1: (r0 * Math.cos(a)).toFixed(1), y1: (r0 * Math.sin(a)).toFixed(1),
+        x2: (r1 * Math.cos(a)).toFixed(1), y2: (r1 * Math.sin(a)).toFixed(1),
+        w: major ? 2.2 : (mid ? 1.4 : 0.8),
+        op: major ? '0.85' : (mid ? '0.55' : '0.3')
+      });
+    }
+    let sweep = 'M0 0';
+    for (let a = -26; a <= 26; a += 6.5) sweep += 'L' + (440 * Math.cos(a * RAD)).toFixed(1) + ' ' + (440 * Math.sin(a * RAD)).toFixed(1);
+
+    const selSector = sel ? this.sectorOf(sel) : null;
+    const selEntry = sectors.find(s => s.key === sel);
+    const selLayer = sel ? this.layerOf(sel) : null;
+    const selList = sel ? (comps[sel] || []) : [];
+    const presetNames = selSector ? (PRESETS[selSector.name] || []).filter(n => !selList.some(c => c.name === n)) : [];
+
+    // Build dependency rule chain: outer → ... → inner (core)
+    const depRule = [];
+    const reversed = [...layerDefs].reverse();
+    reversed.forEach((L, i) => {
+      depRule.push({ label: L.name.toUpperCase(), color: i === reversed.length - 1 ? '#2a2a28' : '#55554f', arrow: i > 0 });
+    });
+
+    return {
+      accent,
+      sweepOn: this.props.sweep !== false,
+      orbitsOn: this.props.orbits !== false,
+      sweepPath: sweep + 'Z',
+      corePulsePath: blockPath(0, 360, 0, 150),
+      orbA: 252, orbB: 350, orbC: 440,
+      coreGlyph: blockPath(0, 360, 0, 34),
+      sectors, legend, ticks, ticksOuter, depRule,
+      layerCount: String(layerDefs.length).padStart(2, '0'),
+      sectorCount: sectors.length,
+      compCount: Object.keys(comps).reduce((n, k) => n + comps[k].length, 0),
+      hasSel: !!selSector, noSel: !selSector,
+      selName: selSector ? selSector.name : '',
+      selLayerCode: selLayer ? selLayer.code : '',
+      selLayerUpper: selLayer ? selLayer.name.toUpperCase() : '',
+      selHint: selLayer ? selLayer.hint : '',
+      selCount: selList.length,
+      selEmpty: selList.length === 0,
+      selPath: selEntry ? selEntry.d : false,
+      selComps: selList.map(c => ({ name: c.name, onRemove: () => this.remove(sel, c.id) })),
+      hasPresets: presetNames.length > 0,
+      presets: presetNames.map(n => ({ name: '+ ' + n, onClick: () => this.add(n) })),
+      draft: this.state.draft,
+      onDraft: e => this.setState({ draft: e.target.value }),
+      onDraftKey: e => { if (e.key === 'Enter') this.add(this.state.draft); },
+      onAdd: () => this.add(this.state.draft),
+      nameRef: this.nameEl,
+      onRename: e => this.rename(sel, e.target.value),
+      onAddSector: () => selLayer && this.addSector(selLayer.id),
+      onRemoveSector: () => selLayer && this.removeSector(selLayer.id, sel),
+      onClear: this.clear,
+      // Export/Import
+      onExport: () => this.exportJSON(),
+      onImportClick: () => { if (this._fileInput.current) this._fileInput.current.click(); },
+      fileRef: this._fileInput,
+      onFileLoad: (e) => { this.importFile(e.target.files[0]); if (this._fileInput.current) this._fileInput.current.value = ''; },
+      // Toast
+      toastVisible: !!this.state.toast,
+      toastMsg: this.state.toast ? this.state.toast.msg : '',
+      toastBg: this.state.toast ? (this.state.toast.isError ? '#c0392b' : '#27ae60') : '#27ae60'
+    };
+  }
+}
+</script>
+</body>
+</html>
