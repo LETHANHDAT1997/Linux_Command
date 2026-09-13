@@ -58,6 +58,14 @@
         <div style="font-size: 9px; letter-spacing: .18em; color: #555550;">COMPONENTS</div>
         <div style="font-size: 18px; color: {{ accent }};">{{ compCount }}</div>
       </div>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+        <div style="font-size: 9px; letter-spacing: .18em; color: #555550;">ISSUES</div>
+        <div style="font-size: 18px; color: {{ issueColor }};">{{ openIssueCount }}</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+        <div style="font-size: 9px; letter-spacing: .18em; color: #555550;">DONE</div>
+        <div style="font-size: 18px; color: #4a9a5e;">{{ donePct }}%</div>
+      </div>
       <div onClick="{{ onAddLayerBottom }}" style="cursor: pointer; background: {{ accent }}; color: #fff; padding: 9px 14px; font-size: 10px; letter-spacing: .12em; border-radius: 4px;" style-hover="opacity: .85">+ ADD LAYER</div>
     </div>
   </header>
@@ -84,7 +92,16 @@
               <div style="font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: .2em; color: rgba(255,255,255,.35);">{{ layer.code }}</div>
               <div style="font-size: 12px; font-weight: 500; letter-spacing: .07em; color: rgba(255,255,255,.92);">{{ layer.name }}</div>
               <div style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: .08em; color: rgba(255,255,255,.4);">{{ layer.subtitle }}</div>
-              <div style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: .1em; color: rgba(255,255,255,.3);">{{ layer.sizeLabel }}</div>
+              <div style="margin-left: auto; display: flex; align-items: center; gap: 7px;">
+                <sc-if value="{{ layer.hasIssues }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: .06em; color: #f08a80;">⚠ {{ layer.issueCount }}</div>
+                </sc-if>
+                <div style="display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 999px; background: rgba(0,0,0,.28); border: 1px solid {{ layer.statusColor }};">
+                  <div style="width: 5px; height: 5px; border-radius: 999px; background: {{ layer.statusColor }};"></div>
+                  <div style="font-family: 'JetBrains Mono', monospace; font-size: 7.5px; letter-spacing: .12em; color: {{ layer.statusColor }};">{{ layer.statusShort }}</div>
+                </div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: .1em; color: rgba(255,255,255,.3);">{{ layer.sizeLabel }}</div>
+              </div>
             </div>
 
             <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,.5); margin-top: -3px;">{{ layer.path }}</div>
@@ -93,8 +110,12 @@
               <sc-for list="{{ layer.blocks }}" as="block" hint-placeholder-count="2">
                 <div onClick="{{ block.onClick }}" onMouseEnter="{{ block.onHover }}" style="cursor: pointer; flex: 1 1 auto; min-width: 150px; background: {{ block.bg }}; border: 1px solid {{ block.border }}; border-radius: 5px; padding: 7px 9px; animation: {{ block.selAnim }}; transition: background .15s, border-color .15s;" style-hover="background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.2)">
                   <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                    <div style="width: 5px; height: 5px; flex: none; border-radius: 999px; background: {{ block.statusColor }};"></div>
                     <div style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: .14em; color: rgba(255,255,255,.45);">{{ block.name }}</div>
                     <div style="font-family: 'JetBrains Mono', monospace; font-size: 8px; color: rgba(255,255,255,.22);">{{ block.countLabel }}</div>
+                    <sc-if value="{{ block.hasIssues }}" hint-placeholder-val="{{ false }}">
+                      <div style="margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 8px; color: #f08a80;">⚠ {{ block.issueCount }}</div>
+                    </sc-if>
                   </div>
                   <div style="display: flex; flex-wrap: wrap; gap: 4px;">
                     <sc-for list="{{ block.comps }}" as="comp" hint-placeholder-count="3">
@@ -116,6 +137,31 @@
     </section>
 
     <aside style="flex: 0 1 336px; min-width: 290px; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 14px 8px; border-left: 1px solid #1e2128;">
+
+      <!-- ─── SUMMARY CARD (top — above every create control) ─── -->
+      <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 9px; background: #151820; border-radius: 6px; padding: 14px 16px; border-top: 2px solid {{ mgmtStatusColor }}; animation: riseIn .35s cubic-bezier(.2,.9,.2,1) both;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .2em; color: {{ accent }};">SUMMARY</div>
+            <div style="margin-left: auto; display: flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,.04); border: 1px solid {{ mgmtStatusColor }};">
+              <div style="width: 5px; height: 5px; border-radius: 999px; background: {{ mgmtStatusColor }};"></div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 7.5px; letter-spacing: .12em; color: {{ mgmtStatusColor }};">{{ mgmtStatusShort }}</div>
+            </div>
+            <div onClick="{{ onToggleSummaryEdit }}" style="cursor: pointer; padding: 3px 9px; border-radius: 4px; background: {{ summaryToggleBg }}; border: 1px solid {{ summaryToggleBorder }}; font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: .1em; color: {{ summaryToggleFg }};" style-hover="opacity: .8">{{ summaryToggleLabel }}</div>
+          </div>
+
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: .1em; color: #555550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ mgmtTarget }}</div>
+
+          <sc-if value="{{ summaryEditing }}" hint-placeholder-val="{{ false }}">
+            <textarea ref="{{ summaryRef }}" value="{{ mgmtSummary }}" onChange="{{ onMgmtSummary }}" onKeyDown="{{ onSummaryKey }}" rows="4" placeholder="Thông tin chung / phạm vi / người phụ trách / ghi chú…" style="border: none; outline: none; resize: vertical; background: #1e2128; padding: 10px 11px; font-family: 'Space Grotesk', sans-serif; font-size: 12px; line-height: 1.55; color: #e8e6e1; border-radius: 4px; min-height: 74px;" style-focus="background: #252830"></textarea>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: .08em; color: #555550;">EDIT MODE · Esc hoặc bấm VIEW để xem</div>
+          </sc-if>
+
+          <sc-if value="{{ summaryReading }}" hint-placeholder-val="{{ true }}">
+            <div style="white-space: pre-wrap; word-break: break-word; background: transparent; border: none; padding: 2px 1px 4px; font-size: 12px; line-height: 1.55; color: {{ summaryColor }}; min-height: 20px; user-select: text;">{{ mgmtSummaryDisplay }}</div>
+          </sc-if>
+        </div>
+      </sc-if>
 
       <!-- ─── LAYER PANEL ─────────────────────────────── -->
       <sc-if value="{{ isLayerSel }}" hint-placeholder-val="{{ false }}">
@@ -256,6 +302,93 @@
         </div>
       </sc-if>
 
+      <!-- ─── MANAGEMENT CARD ─────────────────────────── -->
+      <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 13px; background: #151820; border-radius: 6px; padding: 16px; border-top: 2px solid {{ mgmtStatusColor }}; animation: riseIn .35s cubic-bezier(.2,.9,.2,1) both;">
+
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 10px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .2em; color: {{ accent }};">MANAGEMENT</div>
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: .1em; color: #555550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ mgmtTarget }}</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 5px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .18em; color: #555550;">STATUS</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+              <sc-for list="{{ statusOptions }}" as="st" hint-placeholder-count="5">
+                <div onClick="{{ st.onPick }}" style="cursor: pointer; flex: 1 1 auto; text-align: center; padding: 7px 8px; border-radius: 4px; background: {{ st.bg }}; border: 1px solid {{ st.border }}; font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: .1em; color: {{ st.fg }};" style-hover="opacity: .8">{{ st.label }}</div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .18em; color: #555550;">PROBLEMS · {{ mgmtOpenCount }} OPEN / {{ mgmtProblemCount }}</div>
+
+            <input value="{{ pDraft }}" onChange="{{ onPDraft }}" onKeyDown="{{ onPDraftKey }}" placeholder="Vấn đề đang gặp phải…" style="border: none; outline: none; background: #1e2128; padding: 9px 11px; font-family: 'Space Grotesk', sans-serif; font-size: 12px; color: #e8e6e1; border-radius: 4px;" style-focus="background: #252830">
+
+            <div style="display: flex; gap: 4px;">
+              <sc-for list="{{ sevOptions }}" as="sv" hint-placeholder-count="3">
+                <div onClick="{{ sv.onPick }}" style="cursor: pointer; padding: 7px 9px; border-radius: 4px; background: {{ sv.bg }}; border: 1px solid {{ sv.border }}; font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: .08em; color: {{ sv.fg }};" style-hover="opacity: .8">{{ sv.label }}</div>
+              </sc-for>
+              <input value="{{ pAuthor }}" onChange="{{ onPAuthor }}" onKeyDown="{{ onPDraftKey }}" placeholder="Người báo…" style="flex: 1; min-width: 0; border: none; outline: none; background: #1e2128; padding: 7px 9px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #9a9a92; border-radius: 4px;" style-focus="background: #252830">
+              <div onClick="{{ onAddProblem }}" style="cursor: pointer; background: {{ accent }}; color: #fff; padding: 7px 12px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .1em; border-radius: 4px;" style-hover="opacity: .85">ADD</div>
+            </div>
+
+            <sc-for list="{{ mgmtProblems }}" as="pr" hint-placeholder-count="2">
+              <div style="display: flex; align-items: flex-start; gap: 8px; background: #1e2128; padding: 9px 10px; border-radius: 4px; border-left: 2px solid {{ pr.color }}; opacity: {{ pr.opacity }}; animation: riseIn .3s ease both;">
+                <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;">
+                  <div style="font-size: 11.5px; line-height: 1.45; color: #e8e6e1; word-break: break-word; text-decoration: {{ pr.deco }};">{{ pr.text }}</div>
+                  <div style="font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: .06em; color: #555550;">{{ pr.meta }}</div>
+                </div>
+                <div onClick="{{ pr.onToggle }}" style="cursor: pointer; flex: none; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: {{ pr.toggleColor }}; padding: 0 2px;" style-hover="opacity: .7">✓</div>
+                <div onClick="{{ pr.onRemove }}" style="cursor: pointer; flex: none; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #555550; padding: 0 2px;" style-hover="color: #e8867c">×</div>
+              </div>
+            </sc-for>
+
+            <sc-if value="{{ mgmtNoProblems }}" hint-placeholder-val="{{ true }}">
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #555550; padding: 4px 0;">// chưa có vấn đề nào được báo cáo</div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ─── STATUS BOARD ────────────────────────────── -->
+      <div style="background: #151820; border-radius: 6px; padding: 13px 16px; display: flex; flex-direction: column; gap: 9px; animation: riseIn .45s ease .08s both;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .2em; color: #555550;">STATUS BOARD · {{ entityCount }} ITEMS</div>
+
+        <div style="display: flex; gap: 4px;">
+          <sc-for list="{{ statusBoard }}" as="sb" hint-placeholder-count="5">
+            <div style="flex: 1 1 0; min-width: 0; background: #1e2128; border-radius: 4px; padding: 7px 6px; border-top: 2px solid {{ sb.color }}; display: flex; flex-direction: column; gap: 2px;">
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #e8e6e1;">{{ sb.count }}</div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 7px; letter-spacing: .08em; color: #555550;">{{ sb.label }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div style="display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 8.5px; letter-spacing: .1em; color: #555550;">
+            <span>PROGRESS</span><span>{{ donePct }}%</span>
+          </div>
+          <div style="height: 4px; background: #1e2128; border-radius: 999px; overflow: hidden;">
+            <div style="height: 100%; width: {{ donePct }}%; background: #4a9a5e; border-radius: 999px; transition: width .3s;"></div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .18em; color: #555550;">OPEN ISSUES · {{ openIssueCount }}</div>
+          <sc-for list="{{ openIssues }}" as="oi" hint-placeholder-count="3">
+            <div onClick="{{ oi.onClick }}" style="cursor: pointer; display: flex; align-items: flex-start; gap: 7px; background: #1e2128; padding: 7px 10px; border-radius: 4px; border-left: 2px solid {{ oi.color }};" style-hover="background: #252830">
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                <div style="font-size: 11px; color: #e8e6e1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ oi.text }}</div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: .06em; color: #555550;">{{ oi.where }}</div>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ noOpenIssues }}" hint-placeholder-val="{{ true }}">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #555550;">// không có vấn đề nào đang mở</div>
+          </sc-if>
+        </div>
+      </div>
+
       <div style="background: #151820; border-radius: 6px; padding: 13px 16px; display: flex; flex-direction: column; gap: 7px; animation: riseIn .45s ease .1s both;">
         <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .2em; color: #555550;">DEPENDENCY FLOW · BY LEVEL</div>
         <div style="display: flex; flex-direction: column; gap: 3px; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: #7a7a72;">
@@ -384,6 +517,52 @@ const SEED = [
   ]
 ];
 
+// ─── management model ────────────────────────────────────────
+// Every layer AND every block owns a management record:
+//   { summary: string, status: <STATUS id>, problems: [{id,text,author,severity,resolved,at}] }
+const STATUS = [
+  { id: 'planned',     label: 'PLANNED', short: 'PLAN',  color: '#6b6b64' },
+  { id: 'in_progress', label: 'WIP',     short: 'WIP',   color: '#d08a2c' },
+  { id: 'testing',     label: 'TESTING', short: 'TEST',  color: '#3d8fd0' },
+  { id: 'done',        label: 'DONE',    short: 'DONE',  color: '#4a9a5e' },
+  { id: 'blocked',     label: 'BLOCKED', short: 'BLOCK', color: '#c0392b' }
+];
+const SEVERITY = [
+  { id: 'low',  label: 'LOW',  color: '#6b8f4a' },
+  { id: 'med',  label: 'MED',  color: '#d08a2c' },
+  { id: 'high', label: 'HIGH', color: '#c0392b' }
+];
+
+function statusDef(id) { return STATUS.find((s) => s.id === id) || STATUS[0]; }
+function severityDef(id) { return SEVERITY.find((s) => s.id === id) || SEVERITY[1]; }
+
+function emptyMeta(summary) {
+  return { summary: summary || '', status: 'planned', problems: [] };
+}
+function normalizeMeta(m, fallbackSummary) {
+  if (!m || typeof m !== 'object') return emptyMeta(fallbackSummary);
+  return {
+    summary: typeof m.summary === 'string' ? m.summary : (fallbackSummary || ''),
+    status: statusDef(m.status).id,
+    problems: (Array.isArray(m.problems) ? m.problems : []).map((p, i) => ({
+      id: p.id || (i + 1),
+      text: String(p.text || ''),
+      author: String(p.author || ''),
+      severity: severityDef(p.severity).id,
+      resolved: !!p.resolved,
+      at: p.at || ''
+    }))
+  };
+}
+function openProblems(m) {
+  return m ? m.problems.filter((p) => !p.resolved).length : 0;
+}
+function stamp() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
 // ─── grid packing ────────────────────────────────────────────
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
@@ -430,8 +609,8 @@ function maxFreeRun(occRow) {
 }
 
 function buildFromRows(seedRows) {
-  const defs = {}; const rows = []; const blocks = {}; const comps = {};
-  let bseq = 0, cseq = 0, lseq = 0;
+  const defs = {}; const rows = []; const blocks = {}; const comps = {}; const meta = {};
+  let bseq = 0, cseq = 0, lseq = 0, pseq = 0;
   seedRows.forEach((rowArr) => {
     const ids = [];
     rowArr.forEach((L) => {
@@ -442,27 +621,35 @@ function buildFromRows(seedRows) {
         color: L.color || PALETTE[lseq % PALETTE.length], hint: L.hint || '',
         span: clamp(L.span || COLS, 1, COLS), rowSpan: clamp(L.rowSpan || 1, 1, 8)
       };
+      meta[id] = normalizeMeta(L.management, L.hint || '');
+      meta[id].problems.forEach((p) => { pseq++; p.id = pseq; });
       blocks[id] = (L.blocks || []).map((b) => {
         const bid = 'b' + (++bseq);
         comps[bid] = (b.comps || b.components || []).map((n) => ({ id: ++cseq, name: String(n) }));
+        meta[bid] = normalizeMeta(b.management, '');
+        meta[bid].problems.forEach((p) => { pseq++; p.id = pseq; });
         return { id: bid, name: b.name || 'Unnamed' };
       });
       ids.push(id);
     });
     if (ids.length) rows.push(ids);
   });
-  return { defs, rows, blocks, comps, bseq, cseq, lseq };
+  return { defs, rows, blocks, comps, meta, bseq, cseq, lseq, pseq };
 }
 
 class Component extends DCLogic {
   constructor(props) {
     super(props);
     const base = buildFromRows(SEED);
-    this.state = Object.assign({}, base, { sel: null, draft: '', toast: null });
+    this.state = Object.assign({}, base, {
+      sel: null, draft: '', toast: null,
+      pDraft: '', pAuthor: '', pSeverity: 'med', sumEdit: false
+    });
     this._audioCtx = null;
     this._lastHoverTime = 0;
     this._fileInput = React.createRef();
     this._nameEl = React.createRef();
+    this._sumEl = React.createRef();
   }
 
   // ─── audio ───────────────────────────────────────────────
@@ -519,9 +706,15 @@ class Component extends DCLogic {
   }
 
   // ─── selection ───────────────────────────────────────────
-  selectLayer = (lid) => { this.playClickSound(false); this.setState({ sel: { kind: 'layer', id: lid }, draft: '' }); }
-  selectBlock = (bid) => { this.playClickSound(true); this.setState({ sel: { kind: 'block', id: bid }, draft: '' }); }
-  clear = () => this.setState({ sel: null, draft: '' });
+  selectLayer = (lid) => { this.playClickSound(false); this.setState({ sel: { kind: 'layer', id: lid }, draft: '', sumEdit: false }); }
+  selectBlock = (bid) => { this.playClickSound(true); this.setState({ sel: { kind: 'block', id: bid }, draft: '', sumEdit: false }); }
+  clear = () => this.setState({ sel: null, draft: '', sumEdit: false });
+
+  // SUMMARY read-only  <->  editable
+  toggleSummaryEdit = () => this.setState((s) => {
+    if (!s.sumEdit) this._focusSummary = true;
+    return { sumEdit: !s.sumEdit };
+  });
 
   orderedIds = () => {
     const out = [];
@@ -641,6 +834,7 @@ class Component extends DCLogic {
         rows: rows, defs: defs, lseq: lseq, bseq: s.bseq + 1,
         blocks: Object.assign({}, s.blocks, { [lid]: [{ id: bid, name: 'New Block' }] }),
         comps: Object.assign({}, s.comps, { [bid]: [] }),
+        meta: Object.assign({}, s.meta, { [lid]: emptyMeta(''), [bid]: emptyMeta('') }),
         sel: { kind: 'layer', id: lid }, draft: ''
       };
     });
@@ -653,9 +847,10 @@ class Component extends DCLogic {
     const defs = Object.assign({}, s.defs); delete defs[lid];
     const blocks = Object.assign({}, s.blocks);
     const comps = Object.assign({}, s.comps);
-    (blocks[lid] || []).forEach((b) => { delete comps[b.id]; });
-    delete blocks[lid];
-    return { rows: rows, defs: defs, blocks: blocks, comps: comps, sel: null, draft: '' };
+    const meta = Object.assign({}, s.meta);
+    (blocks[lid] || []).forEach((b) => { delete comps[b.id]; delete meta[b.id]; });
+    delete blocks[lid]; delete meta[lid];
+    return { rows: rows, defs: defs, blocks: blocks, comps: comps, meta: meta, sel: null, draft: '' };
   });
 
   // ─── block / component ops ───────────────────────────────
@@ -674,6 +869,7 @@ class Component extends DCLogic {
       bseq: s.bseq + 1,
       blocks: Object.assign({}, s.blocks, { [layerId]: (s.blocks[layerId] || []).concat([{ id: bid, name: 'New Block' }]) }),
       comps: Object.assign({}, s.comps, { [bid]: [] }),
+      meta: Object.assign({}, s.meta, { [bid]: emptyMeta('') }),
       sel: { kind: 'block', id: bid }, draft: ''
     };
   });
@@ -681,9 +877,10 @@ class Component extends DCLogic {
   removeBlock = (layerId, bid) => this.setState((s) => {
     const list = (s.blocks[layerId] || []).filter((b) => b.id !== bid);
     const comps = Object.assign({}, s.comps); delete comps[bid];
+    const meta = Object.assign({}, s.meta); delete meta[bid];
     return {
       blocks: Object.assign({}, s.blocks, { [layerId]: list }),
-      comps: comps, sel: { kind: 'layer', id: layerId }, draft: ''
+      comps: comps, meta: meta, sel: { kind: 'layer', id: layerId }, draft: ''
     };
   });
 
@@ -702,7 +899,72 @@ class Component extends DCLogic {
     comps: Object.assign({}, s.comps, { [bid]: (s.comps[bid] || []).filter((c) => c.id !== cid) })
   }));
 
+  // ─── management ops ──────────────────────────────────────
+  metaOf = (id) => (id && this.state.meta[id]) ? this.state.meta[id] : null;
+
+  selectedId = () => {
+    const sel = this.state.sel;
+    return sel ? sel.id : null;   // a layer id or a block id — both carry a record
+  }
+
+  setMeta = (id, patch) => this.setState((s) => {
+    const cur = s.meta[id] || emptyMeta('');
+    return { meta: Object.assign({}, s.meta, { [id]: Object.assign({}, cur, patch) }) };
+  });
+
+  setStatus = (id, status) => { this.playClickSound(true); this.setMeta(id, { status: statusDef(status).id }); }
+
+  addProblem = () => {
+    const id = this.selectedId();
+    const text = String(this.state.pDraft || '').trim();
+    if (!id || !text) return;
+    this.setState((s) => {
+      const cur = s.meta[id] || emptyMeta('');
+      const pid = s.pseq + 1;
+      const problem = {
+        id: pid, text: text,
+        author: String(s.pAuthor || '').trim(),
+        severity: severityDef(s.pSeverity).id,
+        resolved: false, at: stamp()
+      };
+      return {
+        pseq: pid,
+        meta: Object.assign({}, s.meta, {
+          [id]: Object.assign({}, cur, { problems: cur.problems.concat([problem]) })
+        }),
+        pDraft: ''
+      };
+    });
+  }
+
+  toggleProblem = (id, pid) => this.setState((s) => {
+    const cur = s.meta[id] || emptyMeta('');
+    return {
+      meta: Object.assign({}, s.meta, {
+        [id]: Object.assign({}, cur, {
+          problems: cur.problems.map((p) => (p.id === pid ? Object.assign({}, p, { resolved: !p.resolved }) : p))
+        })
+      })
+    };
+  });
+
+  removeProblem = (id, pid) => this.setState((s) => {
+    const cur = s.meta[id] || emptyMeta('');
+    return {
+      meta: Object.assign({}, s.meta, {
+        [id]: Object.assign({}, cur, { problems: cur.problems.filter((p) => p.id !== pid) })
+      })
+    };
+  });
+
   componentDidUpdate() {
+    if (this._focusSummary && this._sumEl.current) {
+      this._focusSummary = false;
+      const el = this._sumEl.current;
+      el.focus();
+      const n = el.value.length;
+      try { el.setSelectionRange(n, n); } catch(e) {}
+    }
     if (this._focusName && this._nameEl.current) {
       this._focusName = false;
       this._nameEl.current.focus();
@@ -714,23 +976,46 @@ class Component extends DCLogic {
   toArchJSON = () => {
     const s = this.state;
     const now = new Date().toISOString();
+    const mgmt = (id) => {
+      const m = s.meta[id] || emptyMeta('');
+      return {
+        summary: m.summary,
+        status: m.status,
+        problems: m.problems.map((p) => ({
+          text: p.text, author: p.author, severity: p.severity, resolved: p.resolved, at: p.at
+        }))
+      };
+    };
+    let open = 0, done = 0, total = 0;
     const layers = [];
     s.rows.forEach((row, r) => {
       row.forEach((id) => {
         const d = s.defs[id];
+        total++; open += openProblems(s.meta[id]);
+        if ((s.meta[id] || {}).status === 'done') done++;
         layers.push({
           id: d.id, name: d.name, subtitle: d.subtitle, path: d.path, color: d.color, hint: d.hint,
           row: r, span: d.span, rowSpan: d.rowSpan,
-          blocks: (s.blocks[id] || []).map((b) => ({
-            name: b.name, components: (s.comps[b.id] || []).map((c) => c.name)
-          }))
+          management: mgmt(id),
+          blocks: (s.blocks[id] || []).map((b) => {
+            total++; open += openProblems(s.meta[b.id]);
+            if ((s.meta[b.id] || {}).status === 'done') done++;
+            return {
+              name: b.name,
+              components: (s.comps[b.id] || []).map((c) => c.name),
+              management: mgmt(b.id)
+            };
+          })
         });
       });
     });
     return {
-      '$schema': 'layered-architecture/v1.1',
+      '$schema': 'layered-architecture/v1.2',
       metadata: { name: 'Embedded Systems Architecture', created_at: now, updated_at: now },
       settings: { accent: this.props.accent || '#4a9a5e', columns: COLS },
+      statusOptions: STATUS.map((x) => x.id),
+      severityOptions: SEVERITY.map((x) => x.id),
+      report: { items: total, done: done, open_problems: open, done_pct: total ? Math.round((done / total) * 100) : 0 },
       layers: layers
     };
   }
@@ -758,7 +1043,10 @@ class Component extends DCLogic {
         id: L.id || ('layer_' + idx), name: L.name || 'LAYER', subtitle: L.subtitle || '',
         path: L.path || '', color: L.color, hint: L.hint || '',
         span: L.span || COLS, rowSpan: L.rowSpan || 1,
-        blocks: L.blocks || []
+        management: L.management,
+        blocks: (L.blocks || []).map((b) => ({
+          name: b.name, components: b.components || b.comps || [], management: b.management
+        }))
       });
     });
     const built = buildFromRows(buckets.filter((b) => b.length));
@@ -808,10 +1096,15 @@ class Component extends DCLogic {
           const bComps = s.comps[b.id] || [];
           totalComps += bComps.length;
           const isSel = !!sel && sel.kind === 'block' && sel.id === b.id;
+          const bm = s.meta[b.id] || emptyMeta('');
+          const bOpen = openProblems(bm);
           return {
             id: b.id,
             name: String(b.name).toUpperCase(),
             countLabel: '· ' + bComps.length,
+            statusColor: statusDef(bm.status).color,
+            hasIssues: bOpen > 0,
+            issueCount: bOpen,
             empty: bComps.length === 0,
             comps: bComps.map((c) => {
               tagDelay += 0.012;
@@ -825,9 +1118,15 @@ class Component extends DCLogic {
           };
         });
 
+        const lm = s.meta[lid] || emptyMeta('');
+        const lOpen = openProblems(lm);
         gridLayers.push({
           id: lid,
           code: 'L' + idx,
+          statusColor: statusDef(lm.status).color,
+          statusShort: statusDef(lm.status).short,
+          hasIssues: lOpen > 0,
+          issueCount: lOpen,
           name: d.name,
           subtitle: d.subtitle,
           path: d.path,
@@ -860,14 +1159,86 @@ class Component extends DCLogic {
         const d = s.defs[id];
         const lb = s.blocks[id] || [];
         let cc = 0; lb.forEach((b) => { cc += (s.comps[b.id] || []).length; });
+        const lm2 = s.meta[id] || emptyMeta('');
+        const lo2 = openProblems(lm2);
         layerSummary.push({
-          name: d.name, color: d.color, row: r + 1,
-          size: 'W' + d.span + '·H' + d.rowSpan,
+          name: d.name, color: statusDef(lm2.status).color, row: r + 1,
+          size: statusDef(lm2.status).short + (lo2 ? ' ⚠' + lo2 : ''),
           blockCount: lb.length, compCount: cc,
           onClick: () => this.selectLayer(id)
         });
       });
     });
+
+    // ── management view data ──────────────────────────────
+    const selId = sel ? sel.id : null;
+    const selMeta = selId ? (s.meta[selId] || emptyMeta('')) : null;
+
+    const statusCounts = {};
+    STATUS.forEach((st) => { statusCounts[st.id] = 0; });
+    let entityCount = 0, openIssueCount = 0, doneCount = 0;
+    const openIssues = [];
+    const pushEntity = (id, label) => {
+      const m = s.meta[id] || emptyMeta('');
+      entityCount++;
+      statusCounts[statusDef(m.status).id]++;
+      if (m.status === 'done') doneCount++;
+      m.problems.forEach((p) => {
+        if (p.resolved) return;
+        openIssueCount++;
+        openIssues.push({
+          text: p.text,
+          where: label + ' · ' + severityDef(p.severity).label + (p.author ? ' · ' + p.author : ''),
+          color: severityDef(p.severity).color,
+          onClick: () => (s.defs[id] ? this.selectLayer(id) : this.selectBlock(id))
+        });
+      });
+    };
+    s.rows.forEach((row) => {
+      row.forEach((lid) => {
+        const d = s.defs[lid];
+        pushEntity(lid, d.name);
+        (s.blocks[lid] || []).forEach((b) => pushEntity(b.id, d.name + ' / ' + b.name));
+      });
+    });
+    const donePct = entityCount ? Math.round((doneCount / entityCount) * 100) : 0;
+
+    const statusBoard = STATUS.map((st) => ({
+      label: st.short, color: st.color, count: statusCounts[st.id]
+    }));
+
+    const statusOptions = STATUS.map((st) => {
+      const active = !!selMeta && selMeta.status === st.id;
+      return {
+        label: st.label,
+        bg: active ? st.color : '#1e2128',
+        border: active ? st.color : 'rgba(255,255,255,.07)',
+        fg: active ? '#ffffff' : '#8a8a82',
+        onPick: () => selId && this.setStatus(selId, st.id)
+      };
+    });
+
+    const sevOptions = SEVERITY.map((sv) => {
+      const active = s.pSeverity === sv.id;
+      return {
+        label: sv.label,
+        bg: active ? sv.color : '#1e2128',
+        border: active ? sv.color : 'rgba(255,255,255,.07)',
+        fg: active ? '#ffffff' : '#8a8a82',
+        onPick: () => this.setState({ pSeverity: sv.id })
+      };
+    });
+
+    const mgmtProblems = selMeta ? selMeta.problems.slice().reverse().map((p) => ({
+      text: p.text,
+      meta: severityDef(p.severity).label + (p.author ? ' · ' + p.author : '') + (p.at ? ' · ' + p.at : '') + (p.resolved ? ' · RESOLVED' : ''),
+      color: p.resolved ? '#3a3d44' : severityDef(p.severity).color,
+      opacity: p.resolved ? '.45' : '1',
+      deco: p.resolved ? 'line-through' : 'none',
+      toggleColor: p.resolved ? '#4a9a5e' : '#555550',
+      onToggle: () => this.toggleProblem(selId, p.id),
+      onRemove: () => this.removeProblem(selId, p.id)
+    })) : [];
 
     const palette = PALETTE.map((c) => ({
       color: c,
@@ -889,6 +1260,50 @@ class Component extends DCLogic {
       isLayerSel: !!sel && sel.kind === 'layer',
       isBlockSel: !!sel && sel.kind === 'block' && !!selBlock,
       noSel: !sel,
+      hasSel: !!sel,
+
+      // management card
+      mgmtTarget: sel ? (sel.kind === 'layer'
+        ? ('LAYER · ' + String(selLayer ? selLayer.name : '').toUpperCase())
+        : ('BLOCK · ' + String(selBlock ? selBlock.name : '').toUpperCase())) : '',
+      mgmtStatusColor: selMeta ? statusDef(selMeta.status).color : '#1e2128',
+      mgmtStatusShort: selMeta ? statusDef(selMeta.status).short : '',
+      mgmtSummary: selMeta ? selMeta.summary : '',
+      mgmtSummaryDisplay: (selMeta && selMeta.summary.trim())
+        ? selMeta.summary
+        : '// chưa có mô tả — bấm EDIT để thêm',
+      summaryColor: (selMeta && selMeta.summary.trim()) ? '#c9c7c1' : '#555550',
+      summaryEditing: !!s.sumEdit,
+      summaryReading: !s.sumEdit,
+      summaryToggleLabel: s.sumEdit ? '👁 VIEW' : '✎ EDIT',
+      summaryToggleBg: s.sumEdit ? accent : '#1e2128',
+      summaryToggleBorder: s.sumEdit ? accent : 'rgba(255,255,255,.07)',
+      summaryToggleFg: s.sumEdit ? '#ffffff' : '#8a8a82',
+      summaryRef: this._sumEl,
+      onToggleSummaryEdit: () => this.toggleSummaryEdit(),
+      onSummaryKey: (e) => { if (e.key === 'Escape') this.setState({ sumEdit: false }); },
+      mgmtProblems: mgmtProblems,
+      mgmtProblemCount: selMeta ? selMeta.problems.length : 0,
+      mgmtOpenCount: selMeta ? openProblems(selMeta) : 0,
+      mgmtNoProblems: !selMeta || selMeta.problems.length === 0,
+      statusOptions: statusOptions,
+      sevOptions: sevOptions,
+      onMgmtSummary: (e) => selId && this.setMeta(selId, { summary: e.target.value }),
+      pDraft: s.pDraft,
+      pAuthor: s.pAuthor,
+      onPDraft: (e) => this.setState({ pDraft: e.target.value }),
+      onPAuthor: (e) => this.setState({ pAuthor: e.target.value }),
+      onPDraftKey: (e) => { if (e.key === 'Enter') this.addProblem(); },
+      onAddProblem: () => this.addProblem(),
+
+      // status board
+      entityCount: entityCount,
+      statusBoard: statusBoard,
+      donePct: donePct,
+      openIssueCount: openIssueCount,
+      issueColor: openIssueCount > 0 ? '#e8867c' : '#e8e6e1',
+      openIssues: openIssues.slice(0, 6),
+      noOpenIssues: openIssues.length === 0,
 
       selLayerCode: selLayerId ? 'L' + orderedIds.indexOf(selLayerId) : '',
       selLayerRow: selLayerId ? this.rowIndexOf(selLayerId) + 1 : '',
